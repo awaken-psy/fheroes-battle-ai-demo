@@ -110,15 +110,21 @@ class BattleState:
 
     # ── victory ─────────────────────────────────────────────
 
+    MAX_ROUNDS = 200
+
     def is_over(self) -> bool:
-        return len(self.alive(0)) == 0 or len(self.alive(1)) == 0
+        return (len(self.alive(0)) == 0 or len(self.alive(1)) == 0
+                or self.round_num >= self.MAX_ROUNDS)
 
     def winner(self) -> int:
         if not self.alive(0):
             return 1
         if not self.alive(1):
             return 0
-        return -1
+        # max rounds reached — winner by remaining army strength
+        s0 = sum(u.strength for u in self.alive(0))
+        s1 = sum(u.strength for u in self.alive(1))
+        return 0 if s0 >= s1 else 1
 
     def start_round(self):
         self.round_num += 1

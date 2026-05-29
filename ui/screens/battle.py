@@ -99,7 +99,9 @@ class BattleScreen:
                 self._anim_unit = None; self._exec_result = None
                 self.b_path = None; self.b_target = None
                 if self.battle.is_over():
-                    self.logger.end(self.battle.winner(), self.battle.round_num)
+                    timeout = self.battle.round_num >= BattleState.MAX_ROUNDS
+                    self.logger.end(self.battle.winner(), self.battle.round_num,
+                                    timeout=timeout)
                     self.game.state = config.GAME_OVER; return
                 self._ph = PH_IDLE
 
@@ -123,7 +125,8 @@ class BattleScreen:
                 self.b_action = action; self.b_desc = desc
                 self._start_anim(action)
                 return
-        self._round_order = None; self._next_unit()
+        # all units in this round processed — reset order so next call starts a new round
+        self._round_order = None
 
     def _fast_forward(self):
         """Skip all animations, resolve battle to completion, log and return."""
@@ -143,7 +146,8 @@ class BattleScreen:
                 action, desc = self.ai.decide(self.battle, unit)
                 result = self.battle.execute(action)
                 self.logger.action(desc, result['desc'])
-        self.logger.end(self.battle.winner(), self.battle.round_num)
+        timeout = self.battle.round_num >= BattleState.MAX_ROUNDS
+        self.logger.end(self.battle.winner(), self.battle.round_num, timeout=timeout)
         self.game.reset()
 
     # ── animation engine ──────────────────────────────────────
