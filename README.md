@@ -3,18 +3,25 @@
 从 [fheroes2](https://github.com/ihhub/fheroes2) 项目中提取核心战斗 AI 算法的独立演示项目。
 无美术资源，纯几何形状 + 颜色。专注**战术层 AI**——只做战场内的决策，不做冒险地图/战略层。
 
-## 运行
+## 快速开始
 
 ```bash
 cd learn/battle-ai-demo
-uv run main.py
+uv run main.py                # GUI 模式
+uv run main.py configs/example.json   # CLI 无头模式
 ```
 
 首次运行会自动创建 `.venv` 并安装 pygame。
 
-## 操作说明
+## 使用方式
 
-### 摆兵阶段
+### GUI 模式（无参数）
+
+```bash
+uv run main.py
+```
+
+#### 摆兵阶段
 
 | 操作 | 说明 |
 |------|------|
@@ -25,7 +32,7 @@ uv run main.py
 | 点击 **Start Battle** | 开始战斗 |
 | 点击 **Preset** | 加载预设阵型 |
 
-### 战斗阶段
+#### 战斗阶段
 
 | 按键 | 说明 |
 |------|------|
@@ -38,7 +45,7 @@ uv run main.py
 | `+` / `-` | 调整窗口大小 |
 | `F11` | 全屏切换 |
 
-### 战场上的图形含义
+#### 战场上的图形含义
 
 | 形状 | 含义 |
 |------|------|
@@ -50,6 +57,64 @@ uv run main.py
 红色虚线 = 射击/攻击目标
 高亮格子 = 移动路径
 兵种旁数字 = `数量/总HP`（如 `12/120`）
+
+### CLI 无头模式（传配置文件）
+
+```bash
+# 单场战斗
+uv run main.py configs/example.json
+
+# 指定输出路径
+uv run main.py configs/example.json -o result.log
+
+# 批量
+uv run main.py configs/*.json
+```
+
+不启动任何 GUI，读取配置 → 跑完战斗 → 写日志。
+
+#### 配置文件格式
+
+JSON 数组，每项指定阵营、兵种、位置（`type` 对应兵种表中的名称）：
+
+```json
+[
+  {"team": 0, "type": "Archer", "col": 2, "row": 3},
+  {"team": 0, "type": "Swordsman", "col": 1, "row": 5},
+  {"team": 1, "type": "Griffin", "col": 8, "row": 4},
+  {"team": 1, "type": "Cavalry", "col": 9, "row": 6}
+]
+```
+
+示例配置见 `configs/example.json`。
+
+## 打包
+
+```bash
+uv pip install pyinstaller
+uv run pyinstaller --onefile --name battle-ai-demo \
+  --hidden-import=config --hidden-import=config.colors \
+  --hidden-import=config.units --hidden-import=config.presets \
+  --hidden-import=config.timing \
+  --hidden-import=engine --hidden-import=engine.hex_grid \
+  --hidden-import=engine.unit --hidden-import=engine.battle_state \
+  --hidden-import=engine.battle_logger --hidden-import=engine.actions \
+  --hidden-import=ai --hidden-import=ai.planner \
+  --hidden-import=ai.evaluation --hidden-import=ai.scoring \
+  --hidden-import=ai.strategy \
+  --hidden-import=ui --hidden-import=ui.fonts \
+  --hidden-import=ui.renderer --hidden-import=ui.game \
+  --hidden-import=ui.screens --hidden-import=ui.screens.setup \
+  --hidden-import=ui.screens.battle \
+  main.py
+```
+
+产出单个可执行文件 `dist/battle-ai-demo`（约 22M），可分发：
+
+```bash
+./dist/battle-ai-demo                        # GUI
+./dist/battle-ai-demo configs/example.json   # CLI
+```
 
 ## 战斗日志
 
@@ -86,8 +151,12 @@ log/2026-05-30_04-15-23.log
 
 ```
 battle-ai-demo/
-├── main.py                入口
+├── main.py                统一入口（GUI / CLI）
+├── headless.py            无头战斗引擎（被 main.py 调用）
 ├── pyproject.toml         项目配置
+│
+├── configs/               战斗配置文件（CLI 模式输入）
+│   └── example.json
 │
 ├── config/                纯数据常量（无逻辑）
 │   ├── colors.py          调色板
@@ -95,7 +164,7 @@ battle-ai-demo/
 │   ├── presets.py         预设阵型
 │   └── timing.py          动画/延迟常量
 │
-├── engine/                核心引擎（不依赖 pygame，可单独测试）
+├── engine/                核心引擎（不依赖 pygame 渲染，可单独测试）
 │   ├── hex_grid.py        六角格几何 + 寻路        ← battle_board.h/cpp
 │   ├── unit.py            单位类                    ← battle_troop.h/cpp
 │   ├── battle_state.py    战斗状态机 + 伤害公式      ← battle_arena.h/cpp
@@ -174,6 +243,7 @@ battle-ai-demo/
 - **Python 3.11+**
 - **pygame** — 渲染、输入、窗口管理
 - **uv** — 包管理与依赖解析
+- **PyInstaller** — 打包为单文件可执行
 - 无第三方 AI/ML 框架，所有决策逻辑手工实现以忠实复刻原版算法
 
 ## 安全机制
