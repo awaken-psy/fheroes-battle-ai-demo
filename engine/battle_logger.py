@@ -42,10 +42,13 @@ class BattleLogger:
         if result_desc:
             self._lines.append(f"  -> {result_desc}")
 
-    def end(self, winner: int, round_num: int):
-        """Finish the log — write winner and flush to disk."""
+    def end(self, winner: Optional[int], round_num: int):
+        """Finish the log — write result and flush to disk."""
         self._lines.append("")
-        self._lines.append(f"=== Team {winner} wins (Round {round_num}) ===")
+        if winner is not None:
+            self._lines.append(f"=== Team {winner} wins (Round {round_num}) ===")
+        else:
+            self._lines.append(f"=== Battle reset (Round {round_num}) ===")
         if self._path:
             with open(self._path, "w", encoding="utf-8") as f:
                 f.write("\n".join(self._lines) + "\n")

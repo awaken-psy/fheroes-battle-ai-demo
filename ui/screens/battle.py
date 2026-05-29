@@ -62,6 +62,8 @@ class BattleScreen:
             elif ev.key == pygame.K_3:
                 self.speed = 2
             elif ev.key == pygame.K_r:
+                if self.battle:
+                    self.logger.end(None, self.battle.round_num)
                 self.game.reset()
             elif ev.key == pygame.K_d:
                 self.debug = not self.debug
