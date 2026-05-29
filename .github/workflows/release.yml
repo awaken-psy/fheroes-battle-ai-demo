@@ -34,22 +34,22 @@ jobs:
           pip install pygame pyinstaller
 
       - name: Build
-        run: |
-          pyinstaller --onefile --name fheroes-battle-ai-demo \
-            --hidden-import=config --hidden-import=config.colors \
-            --hidden-import=config.units --hidden-import=config.presets \
-            --hidden-import=config.timing \
-            --hidden-import=engine --hidden-import=engine.hex_grid \
-            --hidden-import=engine.unit --hidden-import=engine.battle_state \
-            --hidden-import=engine.battle_logger --hidden-import=engine.actions \
-            --hidden-import=ai --hidden-import=ai.planner \
-            --hidden-import=ai.evaluation --hidden-import=ai.scoring \
-            --hidden-import=ai.strategy \
-            --hidden-import=ui --hidden-import=ui.fonts \
-            --hidden-import=ui.renderer --hidden-import=ui.game \
-            --hidden-import=ui.screens --hidden-import=ui.screens.setup \
-            --hidden-import=ui.screens.battle \
-            main.py
+        run: >
+          pyinstaller --onefile --name fheroes-battle-ai-demo
+          --hidden-import=config --hidden-import=config.colors
+          --hidden-import=config.units --hidden-import=config.presets
+          --hidden-import=config.timing
+          --hidden-import=engine --hidden-import=engine.hex_grid
+          --hidden-import=engine.unit --hidden-import=engine.battle_state
+          --hidden-import=engine.battle_logger --hidden-import=engine.actions
+          --hidden-import=ai --hidden-import=ai.planner
+          --hidden-import=ai.evaluation --hidden-import=ai.scoring
+          --hidden-import=ai.strategy
+          --hidden-import=ui --hidden-import=ui.fonts
+          --hidden-import=ui.renderer --hidden-import=ui.game
+          --hidden-import=ui.screens --hidden-import=ui.screens.setup
+          --hidden-import=ui.screens.battle
+          main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
