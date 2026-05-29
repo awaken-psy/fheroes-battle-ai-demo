@@ -1,11 +1,11 @@
 [project]
-name = "battle-ai-demo"
+name = "fheroes-battle-ai-demo"
 version = "0.2.0"
-description = "HoMM2 Battle AI Demo — tactical AI reimplementation"
+description = "HoMM2 Battle AI Demo — tactical AI reimplementation from fheroes2"
 requires-python = ">=3.11"
 dependencies = [
     "pygame>=2.6",
 ]
 
 [project.scripts]
-battle-ai-demo = "main:main"
+fheroes-battle-ai-demo = "main:main"
