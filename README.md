@@ -1,7 +1,7 @@
 # HoMM2 Battle AI Demo
 
 从 [fheroes2](https://github.com/ihhub/fheroes2) 项目中提取核心战斗 AI 算法的独立演示项目。
-无美术资源，纯几何形状 + 颜色。目标是**逐步复刻 fheroes2 的完整 AI 决策系统**。
+无美术资源，纯几何形状 + 颜色。专注**战术层 AI**——只做战场内的决策，不做冒险地图/战略层。
 
 ## 运行
 
@@ -15,6 +15,7 @@ uv run main.py
 ## 操作说明
 
 ### 摆兵阶段
+
 | 操作 | 说明 |
 |------|------|
 | 点击左侧兵种 | 选择要放置的兵种 |
@@ -25,17 +26,20 @@ uv run main.py
 | 点击 **Preset** | 加载预设阵型 |
 
 ### 战斗阶段
+
 | 按键 | 说明 |
 |------|------|
 | `Space` | 暂停/继续 |
 | `1` / `2` / `3` | 慢速 / 正常 / 快速 |
+| `F` | 快进：瞬间算完所有回合，写日志后回到摆兵界面 |
+| `R` | 中止：立即结束本局（写入日志），回到摆兵界面 |
 | `D` | 开关 AI 决策调试信息 |
-| `R` | 回到摆兵阶段 |
 | `F12` | 截图到 `/tmp/demo-screenshot.png` |
 | `+` / `-` | 调整窗口大小 |
 | `F11` | 全屏切换 |
 
 ### 战场上的图形含义
+
 | 形状 | 含义 |
 |------|------|
 | ● 圆形 | 近战步兵 |
@@ -45,6 +49,18 @@ uv run main.py
 黄色圆圈 = 当前行动单位
 红色虚线 = 射击/攻击目标
 高亮格子 = 移动路径
+兵种旁数字 = `数量/总HP`（如 `12/120`）
+
+## 战斗日志
+
+每场战斗结束后自动保存到 `log/` 目录，文件名带时间戳：
+
+```
+log/2026-05-30_04-15-23.log
+```
+
+日志内容包含：双方阵容、逐回合 AI 决策链、战斗结果、胜负判定。
+按 `F` 快进或 `R` 中止也会写入日志。
 
 ## 兵种属性
 
@@ -83,6 +99,7 @@ battle-ai-demo/
 │   ├── hex_grid.py        六角格几何 + 寻路        ← battle_board.h/cpp
 │   ├── unit.py            单位类                    ← battle_troop.h/cpp
 │   ├── battle_state.py    战斗状态机 + 伤害公式      ← battle_arena.h/cpp
+│   ├── battle_logger.py   战斗日志记录
 │   └── actions.py         行动类型（Move/Attack/Skip）
 │
 ├── ai/                    AI 决策系统（主要扩展方向）
@@ -100,6 +117,7 @@ battle-ai-demo/
 │       └── battle.py      战斗界面 + 动画引擎
 │
 ├── tests/                 自动化测试
+├── log/                   战斗日志（自动生成，gitignore）
 └── assets/                资源目录（预留贴图/音效）
 ```
 
@@ -107,9 +125,7 @@ battle-ai-demo/
 
 ## 后续发展方向
 
-本项目目标是**逐步复刻 fheroes2 的完整 AI 决策系统**，按以下阶段推进：
-
-### 第一阶段：完善战斗 AI（当前）
+本项目专注**战术层 AI**——只做战场内的决策（单位移动、攻击、法术、士气等），不做冒险地图、英雄行动、城镇建设等战略层内容。
 
 - [ ] **法术系统** (`engine/spells.py` + `ai/spells.py`)
   - 伤害法术（Magic Arrow, Lightning Bolt）
@@ -137,38 +153,8 @@ battle-ai-demo/
   - 支持所有 HoMM2 原版兵种（约 60 种）
   - 特殊能力：反击次数、死亡凝视、吸血、自我治疗等
 
-### 第二阶段：冒险地图 AI
-
-- [ ] **地图寻路** (`engine/pathfinding_map.py`)
-  - 基于地形的移动消耗
-  - 陆地/水面/飞行区分
-
-- [ ] **资源收集策略** (`ai/resource_planner.py`)
-  - 矿物、宝箱、资源建筑的价值评估
-  - 拾取优先级排序
-
-- [ ] **英雄行动决策** (`ai/hero_planner.py`)
-  - 探索 vs 战斗 vs 发展的权衡
-  - 主英雄 vs 副英雄的分工
-  - 对应 `ai_hero.cpp`
-
-- [ ] **城镇建设 AI** (`ai/town_builder.py`)
-  - 建筑优先级策略
-  - 招兵计划
-  - 对应 `ai_town.cpp`
-
-### 第三阶段：战略层 AI
-
-- [ ] **全局战略评估** (`ai/strategic.py`)
-  - 兵力对比、经济对比、地图控制度
-  - 短期目标 vs 长期目标
-
-- [ ] **多英雄协调** (`ai/coordination.py`)
-  - 分兵 vs 集中的决策
-  - 攻防角色的分配
-
-- [ ] **对抗性学习**
-  - 录制 AI vs AI 对战
+- [ ] **对抗性调优**
+  - AI vs AI 批量对战 + 日志分析
   - 参数调优（scoring weights）
   - 对比 fheroes2 原版 AI 的决策
 
@@ -182,8 +168,6 @@ battle-ai-demo/
 | `engine/hex_grid.py` | `src/fheroes2/battle/battle_board.cpp` | 六角格引擎 |
 | `engine/battle_state.py` | `src/fheroes2/battle/battle_arena.cpp` | 战斗机制 |
 | `engine/unit.py` | `src/fheroes2/battle/battle_troop.cpp` | 单位逻辑 |
-| (future) `ai/hero_planner.py` | `src/fheroes2/ai/ai_hero.cpp` | 英雄决策 |
-| (future) `ai/town_builder.py` | `src/fheroes2/ai/ai_town.cpp` | 城镇建设 |
 
 ## 技术栈
 
@@ -191,3 +175,8 @@ battle-ai-demo/
 - **pygame** — 渲染、输入、窗口管理
 - **uv** — 包管理与依赖解析
 - 无第三方 AI/ML 框架，所有决策逻辑手工实现以忠实复刻原版算法
+
+## 安全机制
+
+- **200 回合上限**：超时按剩余 army strength 判定胜方，防止无限循环
+- **`_next_unit()` 无递归**：避免栈溢出
