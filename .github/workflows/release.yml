@@ -16,9 +16,6 @@ jobs:
           - os: windows-latest
             platform: windows-amd64
             ext: .exe
-          - os: macos-13
-            platform: macos-amd64
-            ext: ''
           - os: macos-14
             platform: macos-arm64
             ext: ''
@@ -76,9 +73,8 @@ jobs:
           mkdir -p upload
           cp artifacts/fheroes-battle-ai-demo-linux-amd64/fheroes-battle-ai-demo upload/fheroes-battle-ai-demo-linux-amd64
           cp artifacts/fheroes-battle-ai-demo-windows-amd64/fheroes-battle-ai-demo.exe upload/fheroes-battle-ai-demo-windows-amd64.exe
-          cp artifacts/fheroes-battle-ai-demo-macos-amd64/fheroes-battle-ai-demo upload/fheroes-battle-ai-demo-macos-amd64
           cp artifacts/fheroes-battle-ai-demo-macos-arm64/fheroes-battle-ai-demo upload/fheroes-battle-ai-demo-macos-arm64
-          chmod +x upload/fheroes-battle-ai-demo-linux-amd64 upload/fheroes-battle-ai-demo-macos-*
+          chmod +x upload/fheroes-battle-ai-demo-linux-amd64 upload/fheroes-battle-ai-demo-macos-arm64
 
       - name: Release
         uses: softprops/action-gh-release@v2
