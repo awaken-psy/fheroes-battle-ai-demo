@@ -3,9 +3,9 @@
 import pygame
 
 import config
-import fonts
-from renderer import draw_btn, draw_unit
-from battle import Unit
+from .. import fonts
+from ..renderer import draw_btn, draw_unit
+from engine.unit import Unit
 
 
 class SetupScreen:
@@ -17,7 +17,7 @@ class SetupScreen:
         self.sel_team = 0
         self.hover: tuple | None = None
 
-    # ── layout rects (virtual canvas coords) ──────────────────
+    # ── layout rects ──────────────────────────────────────────
 
     def _palette_rect(self, i):
         s = self.game._s
@@ -82,7 +82,7 @@ class SetupScreen:
         avail = g.win_w - panel_right
         g.grid.reposition(panel_right + (avail - grid_w) / 2, s(config.GRID_OFFSET_Y))
 
-        # ── left panel background ──
+        # left panel background
         panel = pygame.Rect(int(s(4)), int(s(4)), int(s(216)),
                             int(s(config.WINDOW_HEIGHT) - s(8)))
         pygame.draw.rect(canvas, config.PANEL_BG, panel, border_radius=int(s(6)))
@@ -164,7 +164,7 @@ class SetupScreen:
             cx, cy = g.grid.center(*u.pos)
             draw_unit(g.canvas, g._s, g.grid, u, cx, cy)
 
-    # ── game logic helpers (delegated from Game) ──────────────
+    # ── game logic helpers ────────────────────────────────────
 
     def _can_start(self):
         return (any(u.team == 0 for u in self.game.units)

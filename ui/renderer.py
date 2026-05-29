@@ -3,7 +3,7 @@
 import pygame
 
 import config
-import fonts
+from . import fonts
 
 
 # ── Floating damage number ────────────────────────────────────

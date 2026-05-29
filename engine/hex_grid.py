@@ -2,9 +2,6 @@
 
 Pointy-top hex grid with odd-r offset coordinates.
 Matches the original HoMM2 battle board (11x9).
-
-All coordinates are in virtual space (1060x680) and can be
-scaled to native resolution via the `scale` parameter.
 """
 
 import math

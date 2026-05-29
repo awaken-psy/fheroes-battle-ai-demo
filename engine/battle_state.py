@@ -1,107 +1,12 @@
-"""Battle mechanics: Unit, BattleState, damage calculation, turn execution."""
+"""Battle state machine — turn order, damage, victory."""
 
 import random
-from dataclasses import dataclass, field
 from typing import List, Optional, Set, Tuple
 
-from hex_grid import HexGrid
-import config
+from .unit import Unit
+from .actions import Action, MoveAction, AttackAction, SkipAction
+from .hex_grid import HexGrid
 
-
-class Unit:
-    """A stack of identical creatures on the battlefield."""
-
-    def __init__(self, name: str, team: int, col: int, row: int, **kwargs):
-        self.name = name
-        self.team = team
-        self.col = col
-        self.row = row
-        self.attack = kwargs["attack"]
-        self.defense = kwargs["defense"]
-        self.max_hp = kwargs["hp"]
-        self.speed = kwargs["speed"]
-        self.damage = kwargs["damage"]
-        self.is_archer = kwargs["is_archer"]
-        self.is_flying = kwargs["is_flying"]
-        self.symbol = kwargs.get("symbol", name[0])
-
-        self.count = kwargs["count"]
-        self._total_hp = self.count * self.max_hp
-        self.is_alive = True
-        self.retaliated = False  # can retaliate once per round
-
-    @staticmethod
-    def from_type(type_name: str, team: int, col: int, row: int) -> "Unit":
-        t = config.UNIT_TYPES[type_name]
-        return Unit(type_name, team, col, row, **t)
-
-    # ── properties ──────────────────────────────────────────
-
-    @property
-    def pos(self) -> Tuple[int, int]:
-        return (self.col, self.row)
-
-    @pos.setter
-    def pos(self, value: Tuple[int, int]):
-        self.col, self.row = value
-
-    @property
-    def hp(self) -> int:
-        """HP of the top unit in the stack."""
-        if self.count <= 0:
-            return 0
-        return self._total_hp - (self.count - 1) * self.max_hp
-
-    @property
-    def strength(self) -> float:
-        """Approximate combat strength (used by AI)."""
-        if not self.is_alive:
-            return 0
-        return (self.attack + self.defense) * self.count * self.damage * self.max_hp / 200.0
-
-    # ── combat ──────────────────────────────────────────────
-
-    def take_damage(self, dmg: int) -> tuple:
-        """Apply damage, return (actual_damage, killed_count)."""
-        old_count = self.count
-        actual = min(dmg, self._total_hp)
-        self._total_hp -= actual
-        if self._total_hp <= 0:
-            self.count = 0
-            self.is_alive = False
-        else:
-            self.count = (self._total_hp + self.max_hp - 1) // self.max_hp
-        return actual, old_count - self.count
-
-    def new_round(self):
-        self.retaliated = False
-
-
-# ── Actions ─────────────────────────────────────────────────
-
-class Action:
-    pass
-
-class MoveAction(Action):
-    def __init__(self, unit: Unit, path: List[Tuple[int, int]]):
-        self.unit = unit
-        self.path = path
-
-class AttackAction(Action):
-    def __init__(self, attacker: Unit, target: Unit,
-                 from_pos: Optional[Tuple[int, int]] = None,
-                 ranged: bool = False):
-        self.attacker = attacker
-        self.target = target
-        self.from_pos = from_pos  # position to attack from (melee)
-        self.ranged = ranged
-
-class SkipAction(Action):
-    def __init__(self, unit: Unit):
-        self.unit = unit
-
-
-# ── Battle state ────────────────────────────────────────────
 
 class BattleState:
     def __init__(self, grid: HexGrid, units: List[Unit]):
@@ -187,7 +92,7 @@ class BattleState:
                 r['ret_dmg'] = ret_actual
                 r['ret_killed'] = ret_killed
                 r['attacker_alive'] = atk.is_alive
-                desc += f" → {tgt.name} retaliates: {ret_actual}"
+                desc += f" -> {tgt.name} retaliates: {ret_actual}"
                 if ret_killed > 0:
                     desc += f" ({ret_killed} killed)"
                 if not atk.is_alive:

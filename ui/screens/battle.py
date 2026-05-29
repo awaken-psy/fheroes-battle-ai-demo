@@ -4,10 +4,11 @@ import math
 import pygame
 
 import config
-import fonts
-from renderer import Popup, draw_btn, draw_unit
-from battle import BattleState, MoveAction, AttackAction, SkipAction
-from battle_ai import BattleAI
+from .. import fonts
+from ..renderer import Popup, draw_btn, draw_unit
+from engine.battle_state import BattleState
+from engine.actions import MoveAction, AttackAction, SkipAction
+from ai.planner import BattleAI
 
 # Animation phases
 PH_IDLE, PH_MOVE, PH_STRIKE, PH_RETAL, PH_AFTER = range(5)
@@ -20,7 +21,6 @@ class BattleScreen:
         self.game = game
         self.ai = BattleAI()
 
-        # battle state
         self.battle: BattleState | None = None
         self.b_action = None
         self.b_desc = ""
@@ -31,7 +31,6 @@ class BattleScreen:
         self.paused = False
         self.debug = True
 
-        # animation state
         self._ph = PH_IDLE
         self._ph_t = 0.0
         self._anim_unit = None
@@ -44,7 +43,6 @@ class BattleScreen:
         self._flash = None
         self._exec_result = None
 
-        # round tracking
         self._round_order = None
         self._order_idx = 0
         self._round_num = 0
@@ -69,7 +67,6 @@ class BattleScreen:
     # ── update ────────────────────────────────────────────────
 
     def update(self, dt):
-        # always update popups and flash (purely visual)
         self._popups = [p for p in self._popups if p.update(dt)]
         if self._flash:
             pos, timer = self._flash
@@ -123,7 +120,6 @@ class BattleScreen:
     # ── animation engine ──────────────────────────────────────
 
     def _start_anim(self, action):
-        """Initialize animation for the decided action."""
         self._exec_result = None
         self._projectile = None
 
@@ -167,7 +163,6 @@ class BattleScreen:
                 self._ph = PH_MOVE; self._ph_t = 0
 
     def _anim_move(self, dt, spd):
-        """Animate unit sliding along path."""
         px_per_sec = 280.0 / spd
 
         if self._move_idx >= len(self._move_px) - 1:
@@ -200,7 +195,6 @@ class BattleScreen:
                              a[1] + (b[1] - a[1]) * t)
 
     def _anim_strike(self, dt, spd):
-        """Animate attack: melee lunge or ranged projectile."""
         action = self.b_action
         self._ph_t += dt
         s = self.game._s
@@ -260,7 +254,6 @@ class BattleScreen:
                 self._goto_retal_or_after()
 
     def _goto_retal_or_after(self):
-        """Transition to retaliation pause or after phase."""
         r = self._exec_result
         if r and r['ret_dmg'] > 0:
             atk = self.b_action.attacker
@@ -283,11 +276,11 @@ class BattleScreen:
         s = g._s
         canvas = g.canvas
 
-        # Reposition grid to centre horizontally on screen
+        # centre grid
         grid_w = g.grid.cols * g.grid.hex_w
         g.grid.reposition((g.win_w - grid_w) / 2, s(config.GRID_OFFSET_Y))
 
-        # ── top bar ──
+        # top bar
         top_bar = pygame.Rect(0, 0, s(config.WINDOW_WIDTH), s(42))
         pygame.draw.rect(canvas, config.PANEL_BG, top_bar)
         pygame.draw.line(canvas, (55, 65, 90),
@@ -296,19 +289,16 @@ class BattleScreen:
         if self.battle:
             cx = int(g.win_w // 2)
             bar_cy = int(s(21))
-            # Round text centred
             round_surf = fonts.BIG.render(
                 f"Round {self.battle.round_num}", True, config.WHITE)
             round_rect = round_surf.get_rect(center=(cx, bar_cy))
             canvas.blit(round_surf, round_rect)
-            # Vertical dividers
             div_x_l = round_rect.left - int(s(12))
             div_x_r = round_rect.right + int(s(12))
             pygame.draw.line(canvas, (55, 65, 90),
                              (div_x_l, int(s(8))), (div_x_l, int(s(34))), 1)
             pygame.draw.line(canvas, (55, 65, 90),
                              (div_x_r, int(s(8))), (div_x_r, int(s(34))), 1)
-            # Team info symmetric around centre
             div_pad = int(s(20))
             for team in (0, 1):
                 units = self.battle.alive(team)
@@ -336,13 +326,11 @@ class BattleScreen:
             highlights[self._flash[0]] = (intensity, 40, 40)
         g.grid.draw_grid(canvas, highlights)
 
-        # attack line / overlay
         if self.b_target and self.b_action and isinstance(self.b_action, AttackAction):
             g.grid.draw_dashed_line(canvas, self.b_action.attacker.pos,
                                     self.b_target.pos, config.TARGET_COLOR, 2)
             g.grid.draw_overlay(canvas, self.b_target.pos, config.TARGET_COLOR, 3)
 
-        # projectile
         if self._projectile:
             src, dst, prog = self._projectile
             ex = src[0] + (dst[0] - src[0]) * prog
@@ -351,7 +339,6 @@ class BattleScreen:
                              (int(src[0]), int(src[1])), (int(ex), int(ey)), 2)
             pygame.draw.circle(canvas, config.YELLOW, (int(ex), int(ey)), 4)
 
-        # units
         current_unit = None
         if self.b_action:
             if isinstance(self.b_action, MoveAction):
@@ -362,15 +349,11 @@ class BattleScreen:
                 current_unit = self.b_action.unit
         self._draw_units(current_unit)
 
-        # floating damage numbers
         for p in self._popups:
             p.draw(canvas)
 
-        # debug panel
         if self.debug and self.b_desc:
             self._draw_debug(canvas, s)
-
-        # hint bar
         self._draw_hints(canvas, s)
 
     def _draw_units(self, current=None):
@@ -385,14 +368,12 @@ class BattleScreen:
             draw_unit(g.canvas, g._s, g.grid, u, cx, cy, current=(u is current))
 
     def _draw_debug(self, canvas, s):
-        vw = config.WINDOW_WIDTH
-        vh = config.WINDOW_HEIGHT
+        vw, vh = config.WINDOW_WIDTH, config.WINDOW_HEIGHT
         bar_h = s(60)
         bar_y = s(vh) - s(88)
         bar = pygame.Rect(0, bar_y, s(vw), bar_h)
         pygame.draw.rect(canvas, config.PANEL_BG, bar)
         pygame.draw.line(canvas, (55, 65, 90), (0, bar_y), (s(vw), bar_y), 1)
-        # Row 1: AI decision (final step only)
         steps = self.b_desc.split(" -> ")
         action = steps[-1].strip() if steps else ""
         ai_label = fonts.BODY.render("AI ", True, config.GRAY)
@@ -400,7 +381,6 @@ class BattleScreen:
         row1_y = bar_y + s(6)
         canvas.blit(ai_label, (s(14), row1_y))
         canvas.blit(ai_text, (s(14) + ai_label.get_width() + s(4), row1_y))
-        # Row 2: last battle event
         if self.b_log:
             log_label = fonts.DATA.render("LOG ", True, config.GRAY)
             log_text = fonts.DATA.render(self.b_log[-1], True, (170, 180, 200))
@@ -409,8 +389,7 @@ class BattleScreen:
             canvas.blit(log_text, (s(14) + log_label.get_width() + s(4), row2_y))
 
     def _draw_hints(self, canvas, s):
-        vw = config.WINDOW_WIDTH
-        vh = config.WINDOW_HEIGHT
+        vw, vh = config.WINDOW_WIDTH, config.WINDOW_HEIGHT
         spd_names = ["Slow", "Normal", "Fast"]
         hints = (f"[Space] {'>> Play' if self.paused else '|| Pause'}   "
                  f"[1/2/3] Speed: {spd_names[self.speed]}   "
@@ -422,7 +401,7 @@ class BattleScreen:
                          (0, hint_y - s(4)), (s(vw), hint_y - s(4)), 1)
         canvas.blit(fonts.DATA.render(hints, True, config.GRAY), (s(14), hint_y))
 
-    # ── game over overlay (called from Game) ──────────────────
+    # ── game over overlay ─────────────────────────────────────
 
     def draw_gameover(self):
         self.draw()
@@ -439,13 +418,12 @@ class BattleScreen:
             g.canvas.blit(txt, txt.get_rect(
                 center=(s(config.WINDOW_WIDTH) // 2,
                         s(config.WINDOW_HEIGHT) // 2 - s(20))))
-        # play again button
         cx = s(config.WINDOW_WIDTH) // 2
         r = pygame.Rect(cx - s(100),
                         s(config.WINDOW_HEIGHT) // 2 + s(30),
                         s(200), s(48))
         draw_btn(g.canvas, r.x, r.y, r.w, r.h, "Play Again", config.GREEN, config.BLACK)
-        return r  # so Game can do click detection
+        return r
 
     # ── reset ─────────────────────────────────────────────────
 
