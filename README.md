@@ -3,6 +3,9 @@
 从 [fheroes2](https://github.com/ihhub/fheroes2) 项目中提取核心战斗 AI 算法的独立演示项目。
 无美术资源，纯几何形状 + 颜色。专注**战术层 AI**——只做战场内的决策，不做冒险地图/战略层。
 
+> 本项目复刻了 fheroes2 的战斗 AI 算法，基于 GPL-2.0 许可证发布。
+> 原作版权 © ihhub 及 fheroes2 贡献者。详见 [LICENSE](LICENSE)。
+
 ## 快速开始
 
 ```bash
