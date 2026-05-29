@@ -14,7 +14,13 @@ import sys
 def main():
     parser = argparse.ArgumentParser(
         description="HoMM2 Battle AI Demo",
-        usage="%(prog)s [config.json ...] [-o output.log]")
+        usage="%(prog)s [config.json ...] [-o output.log]",
+        epilog="""examples:
+  %(prog)s                          GUI mode (no args)
+  %(prog)s configs/example.json     single battle, log auto-named
+  %(prog)s configs/a.json -o a.log  single battle, custom output
+  %(prog)s configs/*.json           batch mode, each gets its own log""",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("configs", nargs="*", help="Battle config JSON file(s). "
                         "Omit to launch GUI.")
     parser.add_argument("-o", "--output", help="Output log path (single config only)")
