@@ -65,6 +65,8 @@ class BattleScreen:
                 if self.battle:
                     self.logger.end(None, self.battle.round_num)
                 self.game.reset()
+            elif ev.key == pygame.K_f:
+                self._fast_forward()
             elif ev.key == pygame.K_d:
                 self.debug = not self.debug
 
@@ -122,6 +124,27 @@ class BattleScreen:
                 self._start_anim(action)
                 return
         self._round_order = None; self._next_unit()
+
+    def _fast_forward(self):
+        """Skip all animations, resolve battle to completion, log and return."""
+        if not self.battle or self.battle.is_over():
+            return
+        while not self.battle.is_over():
+            order = self.battle.turn_order()
+            if not order:
+                break
+            self.battle.start_round()
+            self.logger.round_start(self.battle.round_num)
+            for unit in order:
+                if not unit.is_alive:
+                    continue
+                if self.battle.is_over():
+                    break
+                action, desc = self.ai.decide(self.battle, unit)
+                result = self.battle.execute(action)
+                self.logger.action(desc, result['desc'])
+        self.logger.end(self.battle.winner(), self.battle.round_num)
+        self.game.reset()
 
     # ── animation engine ──────────────────────────────────────
 
@@ -403,7 +426,8 @@ class BattleScreen:
         spd_names = ["Slow", "Normal", "Fast"]
         hints = (f"[Space] {'>> Play' if self.paused else '|| Pause'}   "
                  f"[1/2/3] Speed: {spd_names[self.speed]}   "
-                 f"[R] Reset   [D] Debug: {'ON' if self.debug else 'OFF'}   "
+                 f"[F] Fast Finish   [R] Reset   "
+                 f"[D] Debug: {'ON' if self.debug else 'OFF'}   "
                  f"[+/-] Size  [F11] Fullscreen")
         hint_y = s(vh) - s(22)
         pygame.draw.rect(canvas, config.PANEL_BG, (0, hint_y - s(4), s(vw), s(26)))
