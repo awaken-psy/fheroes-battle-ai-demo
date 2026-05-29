@@ -251,7 +251,8 @@ class Game:
                 for i, name in enumerate(config.UNIT_TYPES):
                     if self._palette_rect(i).collidepoint(mx, my):
                         self.sel_type = name; return
-                if pygame.Rect(10, 8, 90, 28).collidepoint(mx, my):
+                if pygame.Rect(int(self._s(14)), int(self._s(12)),
+                               int(self._s(100)), int(self._s(32))).collidepoint(mx, my):
                     self.sel_team = 1 - self.sel_team; return
                 for i, pname in enumerate(config.PRESETS):
                     if self._preset_rect(i).collidepoint(mx, my):
@@ -676,8 +677,10 @@ class Game:
             pygame.draw.line(self.canvas, (55, 65, 90),
                              (div_x_r, int(s(8))), (div_x_r, int(s(34))), 1)
             # Team info symmetric around center, with colored dot indicator
-            gap = int(s(24))
-            dot_r = int(s(5))  # dot radius
+            # Use divider positions as boundaries so text never overlaps Round
+            dot_r = int(s(5))
+            dot_gap = int(s(4))
+            div_pad = int(s(10))  # padding from divider to text
             for team in (0, 1):
                 units = self.battle.alive(team)
                 total = sum(u.strength for u in units)
@@ -685,15 +688,13 @@ class Game:
                 label = f"{team_name(team)}: {n} units  STR {total:.0f}"
                 txt = FONT_TITLE.render(label, True, team_light(team))
                 if team == 0:
-                    rect = txt.get_rect(right=cx - gap, centery=bar_cy)
-                    # team dot to the left of text
+                    rect = txt.get_rect(right=div_x_l - div_pad, centery=bar_cy)
                     pygame.draw.circle(self.canvas, team_color(team),
-                                       (rect.left - dot_r - int(s(4)), bar_cy), dot_r)
+                                       (rect.left - dot_r - dot_gap, bar_cy), dot_r)
                 else:
-                    rect = txt.get_rect(left=cx + gap, centery=bar_cy)
-                    # team dot to the left of text
+                    rect = txt.get_rect(left=div_x_r + div_pad, centery=bar_cy)
                     pygame.draw.circle(self.canvas, team_color(team),
-                                       (rect.left - dot_r - int(s(4)), bar_cy), dot_r)
+                                       (rect.left - dot_r - dot_gap, bar_cy), dot_r)
                 self.canvas.blit(txt, rect)
 
         highlights = {}
