@@ -17,7 +17,7 @@ GRID_OFFSET_Y = 80   # leave space for top bar
 # ── Colors (Pixel Retro dark palette) ──────────────────────
 BG = (15, 23, 42)          # #0F172A deep navy
 PANEL_BG = (25, 33, 55)    # #192137 panel surface
-GRID_LINE = (45, 55, 78)   # #2D374E subtle grid
+GRID_LINE = (60, 72, 98)   # #3C4862 more visible grid
 BLUE = (37, 99, 235)       # #2563EB vibrant blue
 RED = (220, 38, 38)        # #DC2626 vibrant red
 BLUE_LIGHT = (96, 165, 250)  # #60A5FA lighter blue

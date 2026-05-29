@@ -3,8 +3,8 @@
 Pointy-top hex grid with odd-r offset coordinates.
 Matches the original HoMM2 battle board (11x9).
 
-All coordinates are in the fixed virtual canvas (1060x680).
-Window scaling is handled by main.py's canvas-to-screen blit.
+All coordinates are in virtual space (1060x680) and can be
+scaled to native resolution via the `scale` parameter.
 """
 
 import math
@@ -21,16 +21,29 @@ ODD_NEIGHBORS = [(1, 0), (-1, 0), (1, -1), (0, -1), (1, 1), (0, 1)]
 
 
 class HexGrid:
-    def __init__(self):
+    def __init__(self, scale: float = 1.0):
         self.cols = config.GRID_COLS
         self.rows = config.GRID_ROWS
-        self.size = float(config.HEX_SIZE)
-        self.ox = float(config.GRID_OFFSET_X)
-        self.oy = float(config.GRID_OFFSET_Y)
+        self.scale = scale
+        self.size = float(config.HEX_SIZE) * scale
+        self.ox = float(config.GRID_OFFSET_X) * scale
+        self.oy = float(config.GRID_OFFSET_Y) * scale
         self.hex_w = math.sqrt(3) * self.size
         self.hex_h = 2 * self.size
         # pre-compute pixel centers for every cell
         self._centers: Dict[Tuple[int, int], Tuple[float, float]] = {}
+        for r in range(self.rows):
+            for c in range(self.cols):
+                x = self.hex_w * (c + 0.5 * (r & 1)) + self.ox + self.hex_w / 2
+                y = self.hex_h * 0.75 * r + self.oy + self.size
+                self._centers[(c, r)] = (x, y)
+
+    def reposition(self, ox=None, oy=None):
+        """Update grid origin and recompute all cell centers."""
+        if ox is not None:
+            self.ox = ox
+        if oy is not None:
+            self.oy = oy
         for r in range(self.rows):
             for c in range(self.cols):
                 x = self.hex_w * (c + 0.5 * (r & 1)) + self.ox + self.hex_w / 2

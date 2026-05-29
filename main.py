@@ -59,16 +59,17 @@ PH_IDLE, PH_MOVE, PH_STRIKE, PH_RETAL, PH_AFTER = range(5)
 
 class Popup:
     """Floating damage number that rises and fades."""
-    def __init__(self, x, y, text, color, life=1.0):
+    def __init__(self, x, y, text, color, life=1.0, speed=1.0):
         self.x, self.y = float(x), float(y)
         self.text = text
         self.color = color
         self.age = 0.0
         self.life = life
+        self._speed = speed
 
     def update(self, dt):
         self.age += dt
-        self.y -= 22 * dt
+        self.y -= 22 * self._speed * dt
         return self.age < self.life
 
     def draw(self, surf):
@@ -81,16 +82,19 @@ class Popup:
 class Game:
     def __init__(self):
         self.fullscreen = False
-        # start at 2.5x canvas size (27" display)
+        # start at 3.5x canvas size (27" display)
         self.win_w, self.win_h = int(VW * 3.5), int(VH * 3.5)
         self.screen = pygame.display.set_mode((self.win_w, self.win_h), pygame.RESIZABLE)
         pygame.display.set_caption("HoMM2 Battle AI Demo")
         self.clock = pygame.time.Clock()
 
-        # fixed virtual surface — everything draws here
-        self.canvas = pygame.Surface((VW, VH))
+        # render scale: virtual coords → native window pixels
+        self._rs = self.win_w / VW
+        # native-resolution canvas — no blurry scaling
+        self.canvas = pygame.Surface((self.win_w, self.win_h))
+        self._init_fonts()
+        self._init_grid()
 
-        self.grid = HexGrid()
         self.ai = BattleAI()
 
         # setup state
@@ -124,6 +128,39 @@ class Game:
         self._flash = None
         self._exec_result = None
 
+    # ── scale helpers ───────────────────────────────────────
+
+    def _s(self, v):
+        """Scale virtual coordinate/size to native pixels."""
+        return v * self._rs
+
+    def _init_fonts(self):
+        """Create fonts scaled to native resolution."""
+        rs = self._rs
+        global FONT_DATA, FONT_BODY, FONT_LABEL, FONT_TITLE, FONT_POPUP, FONT_BIG
+        global FONT_SM, FONT_MD, FONT_LG, FONT_XL
+        FONT_DATA = pygame.font.SysFont("jetbrainsmono", max(10, int(12 * rs)))
+        FONT_BODY = pygame.font.SysFont("jetbrainsmono", max(12, int(14 * rs)))
+        FONT_LABEL = pygame.font.SysFont("ubuntusans", max(12, int(15 * rs)), bold=True)
+        FONT_TITLE = pygame.font.SysFont("ubuntusans", max(14, int(18 * rs)), bold=True)
+        FONT_POPUP = pygame.font.SysFont("jetbrainsmono", max(16, int(22 * rs)))
+        FONT_BIG = pygame.font.SysFont("ubuntusans", max(24, int(34 * rs)), bold=True)
+        FONT_SM = FONT_DATA
+        FONT_MD = FONT_BODY
+        FONT_LG = FONT_POPUP
+        FONT_XL = FONT_BIG
+
+    def _init_grid(self):
+        """Create hex grid at native resolution."""
+        self.grid = HexGrid(self._rs)
+
+    def _rebuild_canvas(self):
+        """Rebuild canvas, fonts, grid after window size change."""
+        self._rs = self.win_w / VW
+        self.canvas = pygame.Surface((self.win_w, self.win_h))
+        self._init_fonts()
+        self._init_grid()
+
     # ── window sizing ────────────────────────────────────────
 
     def _apply_window_size(self):
@@ -138,38 +175,24 @@ class Game:
             self.screen = pygame.display.set_mode(
                 (self.win_w, self.win_h), pygame.RESIZABLE
             )
+        self._rebuild_canvas()
 
     def _toggle_fullscreen(self):
         self.fullscreen = not self.fullscreen
         self._apply_window_size()
 
     def _scale_canvas_to_screen(self):
-        """Scale the fixed canvas to fill the window, letterboxed."""
-        sw = self.win_w / VW
-        sh = self.win_h / VH
-        scale = min(sw, sh)
-        dst_w = int(VW * scale)
-        dst_h = int(VH * scale)
-        dst_x = (self.win_w - dst_w) // 2
-        dst_y = (self.win_h - dst_h) // 2
-        self.screen.fill(config.BLACK)
-        scaled = pygame.transform.scale(self.canvas, (dst_w, dst_h))
-        self.screen.blit(scaled, (dst_x, dst_y))
+        """Blit native-resolution canvas directly to screen."""
+        self.screen.blit(self.canvas, (0, 0))
 
     def _screen_to_canvas(self, pos: tuple) -> tuple:
-        """Convert screen pixel coords to canvas coords."""
-        sw = self.win_w / VW
-        sh = self.win_h / VH
-        scale = min(sw, sh)
-        dst_w = int(VW * scale)
-        dst_h = int(VH * scale)
-        dst_x = (self.win_w - dst_w) // 2
-        dst_y = (self.win_h - dst_h) // 2
-        return ((pos[0] - dst_x) / scale, (pos[1] - dst_y) / scale)
+        """Convert screen pixel coords to native canvas coords (= identity)."""
+        return pos
 
     # ── main loop ────────────────────────────────────────────
 
     def run(self):
+        frame = 0
         while True:
             dt = self.clock.tick(config.FPS) / 1000.0
             for ev in pygame.event.get():
@@ -178,9 +201,13 @@ class Game:
                 if ev.type == pygame.VIDEORESIZE and not self.fullscreen:
                     self.win_w, self.win_h = ev.w, ev.h
                     self._apply_window_size()
+                if ev.type == pygame.KEYDOWN and ev.key == pygame.K_F12:
+                    pygame.image.save(self.canvas, '/tmp/demo-screenshot.png')
+                    print('Screenshot saved to /tmp/demo-screenshot.png')
                 self._handle(ev)
             self._update(dt)
             self._draw()
+            frame += 1
 
     # ── event handling ───────────────────────────────────────
 
@@ -412,11 +439,11 @@ class Game:
                 if len(self.b_log) > 5: self.b_log.pop(0)
                 # damage popup on target
                 self._popups.append(
-                    Popup(dst[0], dst[1] - 12,
-                          f"-{self._exec_result['dmg']}", config.RED))
+                    Popup(dst[0], dst[1] - self._s(12),
+                          f"-{self._exec_result['dmg']}", config.RED, speed=self._rs))
                 if not self._exec_result['target_alive']:
                     self._popups.append(
-                        Popup(dst[0], dst[1] - 32, "DEAD", config.YELLOW))
+                        Popup(dst[0], dst[1] - self._s(32), "DEAD", config.YELLOW, speed=self._rs))
                 self._flash = (action.target.pos, 0.15)
                 self._goto_retal_or_after()
         else:
@@ -441,11 +468,11 @@ class Game:
                     self.b_log.append(self._exec_result['desc'])
                     if len(self.b_log) > 5: self.b_log.pop(0)
                     self._popups.append(
-                        Popup(tgt_px[0], tgt_px[1] - 12,
-                              f"-{self._exec_result['dmg']}", config.RED))
+                        Popup(tgt_px[0], tgt_px[1] - self._s(12),
+                              f"-{self._exec_result['dmg']}", config.RED, speed=self._rs))
                     if not self._exec_result['target_alive']:
                         self._popups.append(
-                            Popup(tgt_px[0], tgt_px[1] - 32, "DEAD", config.YELLOW))
+                            Popup(tgt_px[0], tgt_px[1] - self._s(32), "DEAD", config.YELLOW, speed=self._rs))
                     self._flash = (action.target.pos, 0.15)
                 # return from lunge
                 t = min(1.0, (self._ph_t - lunge_dur) / ret_dur)
@@ -462,10 +489,10 @@ class Game:
             atk = self.b_action.attacker
             ax, ay = self.grid.center(*atk.pos)
             self._popups.append(
-                Popup(ax, ay - 12, f"-{r['ret_dmg']}", config.ORANGE))
+                Popup(ax, ay - self._s(12), f"-{r['ret_dmg']}", config.ORANGE, speed=self._rs))
             if not r['attacker_alive']:
                 self._popups.append(
-                    Popup(ax, ay - 32, "DEAD", config.YELLOW))
+                    Popup(ax, ay - self._s(32), "DEAD", config.YELLOW, speed=self._rs))
             self._flash = (atk.pos, 0.15)
             self._ph = PH_RETAL; self._ph_t = 0
         else:
@@ -496,46 +523,71 @@ class Game:
 
     @property
     def bottom_y(self):
-        return VH - 90  # bottom debug bar height
+        return self._s(VH - 100)
 
     def _palette_rect(self, i):
-        return pygame.Rect(10, 70 + i * 50, 190, 44)
+        return pygame.Rect(self._s(12), self._s(74 + i * 56), self._s(200), self._s(50))
 
     def _start_btn_rect(self):
-        return pygame.Rect(VW // 2 - 90, VH - 50, 180, 40)
+        cx = self._s(VW) // 2
+        return pygame.Rect(cx - self._s(100), self._s(VH - 55), self._s(200), self._s(44))
 
     def _playagain_rect(self):
-        return pygame.Rect(VW // 2 - 90, VH // 2 + 30, 180, 44)
+        cx = self._s(VW) // 2
+        return pygame.Rect(cx - self._s(100), self._s(VH) // 2 + self._s(30), self._s(200), self._s(48))
 
     def _preset_rect(self, i):
         total = len(config.PRESETS)
-        return pygame.Rect(10, VH - 90 - 10 - (total - i) * 28, 190, 24)
+        return pygame.Rect(self._s(12), self._s(VH - 100 - 10 - (total - i) * 32), self._s(200), self._s(28))
 
     # ── setup drawing ────────────────────────────────────────
 
     def _draw_setup(self):
-        self._draw_btn(10, 8, 90, 28,
+        s = self._s
+        # Reposition grid to center in available space after left panel
+        panel_right = s(228)  # panel ends at ~220 + 8px gap
+        grid_w = self.grid.cols * self.grid.hex_w
+        avail = self.win_w - panel_right
+        self.grid.reposition(panel_right + (avail - grid_w) / 2, s(config.GRID_OFFSET_Y))
+
+        # ── left panel background ──
+        panel = pygame.Rect(int(s(4)), int(s(4)), int(s(216)), int(self._s(VH) - s(8)))
+        pygame.draw.rect(self.canvas, config.PANEL_BG, panel, border_radius=int(s(6)))
+        pygame.draw.rect(self.canvas, (55, 65, 90), panel, 1, border_radius=int(s(6)))
+
+        # team selector
+        self._draw_btn(s(14), s(12), s(100), s(32),
                        f"Team: {team_name(self.sel_team)}",
                        team_color(self.sel_team), config.WHITE)
-        txt = FONT_BODY.render("Click palette → click hex. Right-click to remove.", True, config.GRAY)
-        self.canvas.blit(txt, (220, 12))
+        txt = FONT_BODY.render("Click palette -> hex. Right-click remove.", True, (170, 180, 200))
+        self.canvas.blit(txt, (s(230), s(16)))
 
-        self.canvas.blit(FONT_TITLE.render("UNITS", True, config.GRAY), (55, 48))
+        # section header
+        self.canvas.blit(FONT_TITLE.render("UNITS", True, config.WHITE), (s(18), s(52)))
+
         for i, name in enumerate(config.UNIT_TYPES):
             r = self._palette_rect(i)
             sel = self.sel_type == name
-            bg = (60, 60, 80) if sel else config.DARK
-            pygame.draw.rect(self.canvas, bg, r, border_radius=4)
+            bg = (50, 55, 78) if sel else (38, 45, 65)
+            pygame.draw.rect(self.canvas, bg, r, border_radius=int(s(4)))
             if sel:
-                pygame.draw.rect(self.canvas, config.YELLOW, r, 2, border_radius=4)
+                pygame.draw.rect(self.canvas, config.YELLOW, r, 2, border_radius=int(s(4)))
+            else:
+                pygame.draw.rect(self.canvas, (60, 68, 92), r, 1, border_radius=int(s(4)))
             ut = config.UNIT_TYPES[name]
             tc = team_light(self.sel_team)
-            self.canvas.blit(FONT_LABEL.render(ut["symbol"], True, tc), (r.x + 6, r.y + 4))
-            self.canvas.blit(FONT_BODY.render(name, True, config.WHITE), (r.x + 24, r.y + 3))
+            self.canvas.blit(FONT_LABEL.render(ut["symbol"], True, tc), (r.x + s(8), r.y + s(5)))
+            self.canvas.blit(FONT_BODY.render(name, True, config.WHITE), (r.x + s(28), r.y + s(4)))
             self.canvas.blit(FONT_DATA.render(
                 f"A{ut['attack']} D{ut['defense']} H{ut['hp']} S{ut['speed']} x{ut['count']}",
-                True, config.GRAY), (r.x + 24, r.y + 20))
+                True, (170, 180, 200)), (r.x + s(28), r.y + s(24)))
 
+        # separator
+        sep_y = self._preset_rect(0).y - s(8)
+        pygame.draw.line(self.canvas, (55, 65, 90), (s(14), sep_y), (s(210), sep_y), 1)
+        self.canvas.blit(FONT_LABEL.render("PRESETS", True, config.WHITE), (s(18), sep_y - s(20)))
+
+        # hex grid
         highlights = {}
         if self.hover and self.sel_type:
             if self.grid.half_of(self.hover[0]) == self.sel_team:
@@ -543,6 +595,7 @@ class Game:
         self.grid.draw_grid(self.canvas, highlights)
         self._draw_units(self.units)
 
+        # start button
         can = self._can_start()
         sr = self._start_btn_rect()
         self._draw_btn(sr.x, sr.y, sr.w, sr.h, "Start Battle",
@@ -550,16 +603,20 @@ class Game:
 
         for i, pname in enumerate(config.PRESETS):
             r = self._preset_rect(i)
-            pygame.draw.rect(self.canvas, config.DARK, r, border_radius=3)
-            pygame.draw.rect(self.canvas, config.GRAY, r, 1, border_radius=3)
-            self.canvas.blit(FONT_DATA.render(f"Preset: {pname}", True, config.WHITE), (r.x + 6, r.y + 4))
+            pygame.draw.rect(self.canvas, config.DARK, r, border_radius=int(s(3)))
+            pygame.draw.rect(self.canvas, (60, 68, 92), r, 1, border_radius=int(s(3)))
+            self.canvas.blit(FONT_BODY.render(f"Preset: {pname}", True, config.WHITE), (r.x + s(8), r.y + s(5)))
 
         for team in (0, 1):
             n = sum(1 for u in self.units if u.team == team)
-            self.canvas.blit(FONT_DATA.render(f"{team_name(team)}: {n} units", True, team_light(team)),
-                             (self.grid.ox + (0 if team == 0 else 320), 52))
+            txt = FONT_BODY.render(f"{team_name(team)}: {n} units", True, team_light(team))
+            if team == 0:
+                self.canvas.blit(txt, (int(self.grid.ox) + int(s(10)), int(s(56))))
+            else:
+                self.canvas.blit(txt, (int(self.grid.ox) + int(grid_w) - txt.get_width() - int(s(10)), int(s(56))))
 
     def _draw_units(self, units, current=None):
+        s = self._s
         for u in units:
             if not u.is_alive:
                 continue
@@ -568,40 +625,76 @@ class Game:
             else:
                 cx, cy = self.grid.center(*u.pos)
             color = team_color(u.team)
+            r = s(15)  # unit shape radius
             if u.is_archer:
-                pts = [(cx, cy - 14), (cx - 12, cy + 10), (cx + 12, cy + 10)]
+                pts = [(cx, cy - r), (cx - s(12), cy + s(10)), (cx + s(12), cy + s(10))]
                 pygame.draw.polygon(self.canvas, color, pts)
                 pygame.draw.polygon(self.canvas, config.WHITE, pts, 1)
             elif u.is_flying:
-                pts = [(cx, cy - 14), (cx + 12, cy), (cx, cy + 14), (cx - 12, cy)]
+                pts = [(cx, cy - r), (cx + s(12), cy), (cx, cy + r), (cx - s(12), cy)]
                 pygame.draw.polygon(self.canvas, color, pts)
                 pygame.draw.polygon(self.canvas, config.WHITE, pts, 1)
             else:
-                pygame.draw.circle(self.canvas, color, (int(cx), int(cy)), 13)
-                pygame.draw.circle(self.canvas, config.WHITE, (int(cx), int(cy)), 13, 1)
+                pygame.draw.circle(self.canvas, color, (int(cx), int(cy)), int(r))
+                pygame.draw.circle(self.canvas, config.WHITE, (int(cx), int(cy)), int(r), 1)
             sym = FONT_LABEL.render(u.symbol, True, config.WHITE)
-            self.canvas.blit(sym, sym.get_rect(center=(cx, cy - 1)))
+            self.canvas.blit(sym, sym.get_rect(center=(cx, cy - s(1))))
             hp_ratio = u._total_hp / (u.max_hp * max(u.count, 1))
-            bw = 22; bx = cx - bw // 2; by = cy + 16
-            pygame.draw.rect(self.canvas, (60, 20, 20), (bx, by, bw, 4))
+            bw = s(24); bx = cx - bw // 2; by = cy + s(18)
+            pygame.draw.rect(self.canvas, (60, 20, 20), (bx, by, bw, s(6)))
             c = config.GREEN if hp_ratio > 0.5 else (config.YELLOW if hp_ratio > 0.25 else config.RED)
-            pygame.draw.rect(self.canvas, c, (bx, by, max(1, int(bw * hp_ratio)), 4))
-            self.canvas.blit(FONT_DATA.render(str(u.count), True, config.WHITE), (cx + 14, cy + 8))
+            pygame.draw.rect(self.canvas, c, (bx, by, max(1, int(bw * hp_ratio)), s(6)))
+            self.canvas.blit(FONT_DATA.render(str(u.count), True, config.WHITE), (cx + s(14), cy + s(8)))
             if u is current:
-                pygame.draw.circle(self.canvas, config.YELLOW, (int(cx), int(cy)), 18, 2)
+                pygame.draw.circle(self.canvas, config.YELLOW, (int(cx), int(cy)), int(s(18)), 2)
 
     # ── battle drawing ───────────────────────────────────────
 
     def _draw_battle(self):
+        s = self._s
+        # Reposition grid to center horizontally on screen
+        grid_w = self.grid.cols * self.grid.hex_w
+        self.grid.reposition((self.win_w - grid_w) / 2, s(config.GRID_OFFSET_Y))
+
+        # ── top bar background ──
+        top_bar = pygame.Rect(0, 0, s(VW), s(42))
+        pygame.draw.rect(self.canvas, config.PANEL_BG, top_bar)
+        pygame.draw.line(self.canvas, (55, 65, 90), (0, s(42)), (s(VW), s(42)), 1)
+
         if self.battle:
+            cx = int(self.win_w // 2)
+            bar_cy = int(s(21))  # vertical center of top bar
+            # Round text centered at screen center
+            round_surf = FONT_BIG.render(f"Round {self.battle.round_num}", True, config.WHITE)
+            round_rect = round_surf.get_rect(center=(cx, bar_cy))
+            self.canvas.blit(round_surf, round_rect)
+            # Subtle vertical dividers flanking the round text
+            div_x_l = round_rect.left - int(s(12))
+            div_x_r = round_rect.right + int(s(12))
+            pygame.draw.line(self.canvas, (55, 65, 90),
+                             (div_x_l, int(s(8))), (div_x_l, int(s(34))), 1)
+            pygame.draw.line(self.canvas, (55, 65, 90),
+                             (div_x_r, int(s(8))), (div_x_r, int(s(34))), 1)
+            # Team info symmetric around center, with colored dot indicator
+            gap = int(s(24))
+            dot_r = int(s(5))  # dot radius
             for team in (0, 1):
                 units = self.battle.alive(team)
                 total = sum(u.strength for u in units)
                 n = len(units)
-                txt = FONT_TITLE.render(f"{team_name(team)}: {n} units (str {total:.0f})", True, team_light(team))
-                self.canvas.blit(txt, (self.grid.ox + (0 if team == 0 else 340), 10))
-            self.canvas.blit(FONT_TITLE.render(f"Round {self.battle.round_num}", True, config.WHITE),
-                             (self.grid.ox + 180, 10))
+                label = f"{team_name(team)}: {n} units  STR {total:.0f}"
+                txt = FONT_TITLE.render(label, True, team_light(team))
+                if team == 0:
+                    rect = txt.get_rect(right=cx - gap, centery=bar_cy)
+                    # team dot to the left of text
+                    pygame.draw.circle(self.canvas, team_color(team),
+                                       (rect.left - dot_r - int(s(4)), bar_cy), dot_r)
+                else:
+                    rect = txt.get_rect(left=cx + gap, centery=bar_cy)
+                    # team dot to the left of text
+                    pygame.draw.circle(self.canvas, team_color(team),
+                                       (rect.left - dot_r - int(s(4)), bar_cy), dot_r)
+                self.canvas.blit(txt, rect)
 
         highlights = {}
         if self.b_path:
@@ -641,35 +734,40 @@ class Game:
             p.draw(self.canvas)
 
         if self.debug and self.b_desc:
-            bar = pygame.Rect(0, self.bottom_y, VW, VH - self.bottom_y)
-            pygame.draw.rect(self.canvas, (20, 20, 28), bar)
-            pygame.draw.line(self.canvas, config.GRAY, bar.topleft, bar.topright, 1)
-            for i, line in enumerate(self.b_desc.split(" → ")):
-                last = (i == len(self.b_desc.split(" → ")) - 1)
+            bar = pygame.Rect(0, self.bottom_y, s(VW), s(VH) - self.bottom_y)
+            pygame.draw.rect(self.canvas, config.PANEL_BG, bar)
+            pygame.draw.line(self.canvas, (55, 65, 90), bar.topleft, bar.topright, 2)
+            for i, line in enumerate(self.b_desc.split(" -> ")):
+                last = (i == len(self.b_desc.split(" -> ")) - 1)
                 self.canvas.blit(FONT_BODY.render(line, True, config.CYAN if last else config.WHITE),
-                                 (10, self.bottom_y + 5 + i * 18))
+                                 (s(14), self.bottom_y + s(8) + i * s(20)))
             for i, log in enumerate(self.b_log):
                 self.canvas.blit(FONT_DATA.render(log, True, config.GRAY),
-                                 (VW // 2, self.bottom_y + 5 + i * 14))
+                                 (s(VW) // 2, self.bottom_y + s(8) + i * s(16)))
 
         spd_names = ["Slow", "Normal", "Fast"]
         hints = (f"[Space] {'>> Play' if self.paused else '|| Pause'}   "
                  f"[1/2/3] Speed: {spd_names[self.speed]}   "
                  f"[R] Reset   [D] Debug: {'ON' if self.debug else 'OFF'}   "
                  f"[+/-] Size  [F11] Fullscreen")
-        self.canvas.blit(FONT_DATA.render(hints, True, config.GRAY), (10, VH - 16))
+        # hint bar at very bottom
+        hint_y = s(VH) - s(22)
+        pygame.draw.rect(self.canvas, config.PANEL_BG, (0, hint_y - s(4), s(VW), s(26)))
+        pygame.draw.line(self.canvas, (55, 65, 90), (0, hint_y - s(4)), (s(VW), hint_y - s(4)), 1)
+        self.canvas.blit(FONT_DATA.render(hints, True, config.GRAY), (s(14), hint_y))
 
     # ── game over ────────────────────────────────────────────
 
     def _draw_gameover(self):
         self._draw_battle()
-        overlay = pygame.Surface((VW, VH), pygame.SRCALPHA)
+        s = self._s
+        overlay = pygame.Surface((s(VW), s(VH)), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 160))
         self.canvas.blit(overlay, (0, 0))
         if self.battle:
             w = self.battle.winner()
             txt = FONT_BIG.render(f"{team_name(w)} Wins!", True, team_color(w))
-            self.canvas.blit(txt, txt.get_rect(center=(VW // 2, VH // 2 - 20)))
+            self.canvas.blit(txt, txt.get_rect(center=(s(VW) // 2, s(VH) // 2 - s(20))))
         r = self._playagain_rect()
         self._draw_btn(r.x, r.y, r.w, r.h, "Play Again", config.GREEN, config.BLACK)
 
