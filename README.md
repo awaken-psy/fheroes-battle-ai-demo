@@ -1,4 +1,4 @@
-# HoMM2 Battle AI Demo
+# fheroes-battle-ai-demo
 
 从 [fheroes2](https://github.com/ihhub/fheroes2) 项目中提取核心战斗 AI 算法的独立演示项目。
 无美术资源，纯几何形状 + 颜色。专注**战术层 AI**——只做战场内的决策，不做冒险地图/战略层。
@@ -9,9 +9,8 @@
 ## 快速开始
 
 ```bash
-cd learn/battle-ai-demo
-uv run main.py                # GUI 模式
-uv run main.py configs/example.json   # CLI 无头模式
+uv run main.py                          # GUI 模式
+uv run main.py configs/example.json     # CLI 无头模式
 ```
 
 首次运行会自动创建 `.venv` 并安装 pygame。
@@ -95,7 +94,7 @@ JSON 数组，每项指定阵营、兵种、位置（`type` 对应兵种表中�
 
 ```bash
 uv pip install pyinstaller
-uv run pyinstaller --onefile --name battle-ai-demo \
+uv run pyinstaller --onefile --name fheroes-battle-ai-demo \
   --hidden-import=config --hidden-import=config.colors \
   --hidden-import=config.units --hidden-import=config.presets \
   --hidden-import=config.timing \
@@ -112,11 +111,11 @@ uv run pyinstaller --onefile --name battle-ai-demo \
   main.py
 ```
 
-产出单个可执行文件 `dist/battle-ai-demo`（约 22M），可分发：
+产出单个可执行文件 `dist/fheroes-battle-ai-demo`（约 22M），可分发：
 
 ```bash
-./dist/battle-ai-demo                        # GUI
-./dist/battle-ai-demo configs/example.json   # CLI
+./dist/fheroes-battle-ai-demo                        # GUI
+./dist/fheroes-battle-ai-demo configs/example.json   # CLI
 ```
 
 ## 战斗日志
@@ -142,7 +141,7 @@ log/2026-05-30_04-15-23.log
 
 ## AI 行为观察指南
 
-对应学习指南 `learn/ai决策/战斗AI学习指南.md` 中的算法：
+对应 [docs/战斗AI学习指南.md](docs/战斗AI学习指南.md) 中的算法：
 
 1. **射手逃跑**：用 "Flyer Threat" 预设，观察弓箭手面对狮鹫时的逃跑决策（狮鹫是飞行单位 → 弓箭手不会逃跑，因为飞兵追得上）
 2. **射手射击优先级**：观察弓箭手射击哪个目标（基于 threat 评分）
@@ -153,13 +152,16 @@ log/2026-05-30_04-15-23.log
 ## 项目结构
 
 ```
-battle-ai-demo/
+fheroes-battle-ai-demo/
 ├── main.py                统一入口（GUI / CLI）
 ├── headless.py            无头战斗引擎（被 main.py 调用）
 ├── pyproject.toml         项目配置
 │
 ├── configs/               战斗配置文件（CLI 模式输入）
 │   └── example.json
+│
+├── docs/                  文档
+│   └── 战斗AI学习指南.md
 │
 ├── config/                纯数据常量（无逻辑）
 │   ├── colors.py          调色板
@@ -168,16 +170,16 @@ battle-ai-demo/
 │   └── timing.py          动画/延迟常量
 │
 ├── engine/                核心引擎（不依赖 pygame 渲染，可单独测试）
-│   ├── hex_grid.py        六角格几何 + 寻路        ← battle_board.h/cpp
-│   ├── unit.py            单位类                    ← battle_troop.h/cpp
-│   ├── battle_state.py    战斗状态机 + 伤害公式      ← battle_arena.h/cpp
+│   ├── hex_grid.py        六角格几何 + 寻路
+│   ├── unit.py            单位类
+│   ├── battle_state.py    战斗状态机 + 伤害公式
 │   ├── battle_logger.py   战斗日志记录
 │   └── actions.py         行动类型（Move/Attack/Skip）
 │
 ├── ai/                    AI 决策系统（主要扩展方向）
-│   ├── planner.py         顶层决策调度              ← ai_battle.cpp
-│   ├── evaluation.py      局面分析（兵力对比、战术标志）← ai_battle.cpp:949
-│   ├── scoring.py         威胁评分 + 位置评估        ← ai_battle.cpp (散布)
+│   ├── planner.py         顶层决策调度
+│   ├── evaluation.py      局面分析（兵力对比、战术标志）
+│   ├── scoring.py         威胁评分 + 位置评估
 │   └── strategy.py        策略枚举（预留）
 │
 ├── ui/                    渲染层（依赖 engine + config）
@@ -204,7 +206,7 @@ battle-ai-demo/
   - 辅助法术（Slow, Haste, Shield, Bless, Curse）
   - 召唤法术（Summon Earth/Fire/Water/Air Elemental）
   - AI 法术决策：何时施法 vs 普攻/移动
-  - 对应 `ai_battle_spell.cpp`
+  - 对应 [ai_battle_spell.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle_spell.cpp)
 
 - [ ] **士气/运气系统** (`engine/morale.py`)
   - 高士气 → 额外行动概率
@@ -215,7 +217,7 @@ battle-ai-demo/
 - [ ] **撤退/投降** (`ai/retreat.py`)
   - 判断战局劣势时机
   - 评估撤退代价 vs 全灭代价
-  - 对应 `ai_battle.cpp` 中的投降逻辑
+  - 对应 [ai_battle.cpp:703-870](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle.cpp#L703-L870)
 
 - [ ] **阵型/编队** (`ai/formation.py`)
   - 开局布阵优化（前锋、射手后排、飞行侧翼）
@@ -234,12 +236,12 @@ battle-ai-demo/
 
 | 本项目模块 | fheroes2 源码 | 功能 |
 |-----------|--------------|------|
-| `ai/planner.py` | `src/fheroes2/ai/ai_battle.cpp` | 战斗 AI 主逻辑 |
-| `ai/spells.py` | `src/fheroes2/ai/ai_battle_spell.cpp` | 法术 AI |
-| `ai/evaluation.py` | `ai_battle.cpp:949` | 局面分析 |
-| `engine/hex_grid.py` | `src/fheroes2/battle/battle_board.cpp` | 六角格引擎 |
-| `engine/battle_state.py` | `src/fheroes2/battle/battle_arena.cpp` | 战斗机制 |
-| `engine/unit.py` | `src/fheroes2/battle/battle_troop.cpp` | 单位逻辑 |
+| `ai/planner.py` | [ai_battle.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle.cpp) | 战斗 AI 主逻辑 |
+| `ai/spells.py` | [ai_battle_spell.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle_spell.cpp) | 法术 AI |
+| `ai/evaluation.py` | [ai_battle.cpp:949](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle.cpp#L949) | 局面分析 |
+| `engine/hex_grid.py` | [battle_board.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/battle/battle_board.cpp) | 六角格引擎 |
+| `engine/battle_state.py` | [battle_arena.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/battle/battle_arena.cpp) | 战斗机制 |
+| `engine/unit.py` | [battle_troop.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/battle/battle_troop.cpp) | 单位逻辑 |
 
 ## 技术栈
 
