@@ -1,6 +1,6 @@
 [project]
 name = "battle-ai-demo"
-version = "0.1.0"
+version = "0.2.0"
 description = "HoMM2 Battle AI Demo — tactical AI reimplementation"
 requires-python = ">=3.11"
 dependencies = [

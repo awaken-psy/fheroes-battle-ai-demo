@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 from typing import List, Optional
 
-_LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "log")
+_LOG_DIR = os.path.join(os.getcwd(), "log")
 
 
 class BattleLogger:

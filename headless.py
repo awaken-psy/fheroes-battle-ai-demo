@@ -1,17 +1,11 @@
 """Headless battle runner — no GUI, reads config, writes log.
 
-Usage:
-    uv run headless.py configs/example.json
-    uv run headless.py configs/example.json -o result.log
-    uv run headless.py configs/*.json
+Called from main.py when config files are provided as arguments.
 """
 
-import argparse
 import json
 import os
 import sys
-
-import pygame  # init needed by hex_grid import
 
 from engine.hex_grid import HexGrid
 from engine.unit import Unit
@@ -32,9 +26,6 @@ def run_battle(config_path: str, output_path: str | None = None) -> str:
             units.append(Unit.from_type(p["type"], p["team"], p["col"], p["row"]))
         except KeyError as e:
             print(f"Invalid entry in {config_path}: missing {e}", file=sys.stderr)
-            sys.exit(1)
-        except KeyError:
-            print(f"Unknown unit type '{p['type']}' in {config_path}", file=sys.stderr)
             sys.exit(1)
 
     # run battle
@@ -69,24 +60,3 @@ def run_battle(config_path: str, output_path: str | None = None) -> str:
         return output_path
 
     return logger._path
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Run a headless battle")
-    parser.add_argument("configs", nargs="+", help="Battle config JSON file(s)")
-    parser.add_argument("-o", "--output", help="Output log path (single config only)")
-    args = parser.parse_args()
-
-    pygame.init()
-
-    if args.output and len(args.configs) > 1:
-        print("Error: -o can only be used with a single config file", file=sys.stderr)
-        sys.exit(1)
-
-    for path in args.configs:
-        log = run_battle(path, args.output if len(args.configs) == 1 else None)
-        print(f"[{os.path.basename(path)}] -> {log}")
-
-
-if __name__ == "__main__":
-    main()
