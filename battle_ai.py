@@ -53,8 +53,8 @@ class BattleAI:
         tactic = "DEF" if state.defensive else ("CAUT" if state.cautious else "ATK")
         desc = (
             f"[{tactic}]  "
-            f"Me:{state.my_army:.0f}(🏹{state.my_shooters:.0f})  "
-            f"En:{state.enemy_army:.0f}(🏹{state.enemy_shooters:.0f})  "
+            f"Me:{state.my_army:.0f}([ARC]{state.my_shooters:.0f})  "
+            f"En:{state.enemy_army:.0f}([ARC]{state.enemy_shooters:.0f})  "
             f"→ {detail}"
         )
         return action, desc
@@ -140,7 +140,7 @@ class BattleAI:
                 path = battle.grid.find_path(unit.pos, ret, occ, unit.is_flying, unit.speed)
                 if path and len(path) > 1:
                     return MoveAction(unit, path[:unit.speed + 1]), \
-                        f"🏹 retreat → {ret}"
+                        f"[ARC] retreat → {ret}"
 
             # no retreat → melee the best adjacent target
             best_e, best_d = None, float('-inf')
@@ -154,8 +154,8 @@ class BattleAI:
                     best_d, best_e = diff, e
             if best_e:
                 return AttackAction(unit, best_e, unit.pos, ranged=False), \
-                    f"🏹 blocked → melee {best_e.name}"
-            return SkipAction(unit), "🏹 blocked, no target"
+                    f"[ARC] blocked → melee {best_e.name}"
+            return SkipAction(unit), "[ARC] blocked, no target"
 
         # ── free to shoot ─────────────────────────────────────
         best_e, best_t = None, float('-inf')
@@ -165,8 +165,8 @@ class BattleAI:
                 best_t, best_e = t, e
         if best_e:
             return AttackAction(unit, best_e, ranged=True), \
-                f"🏹 shoots {best_e.name} (threat {best_t:.0f})"
-        return SkipAction(unit), "🏹 no target"
+                f"[ARC] shoots {best_e.name} (threat {best_t:.0f})"
+        return SkipAction(unit), "[ARC] no target"
 
     def _retreat_pos(self, battle: BattleState, unit: Unit,
                      enemies: List[Unit], occ: Set[tuple]
@@ -239,7 +239,7 @@ class BattleAI:
                     best_val, best_e, best_pos = val, e, nb
         if best_e:
             return AttackAction(unit, best_e, best_pos, ranged=False), \
-                f"⚔ attacks {best_e.name} (in range)"
+                f"[ME] attacks {best_e.name} (in range)"
 
         # ── tier 2: chase distant target ──────────────────────
         result = self._chase(battle, unit, enemies, occ, s,
@@ -253,7 +253,7 @@ class BattleAI:
         result = self._chase(battle, unit, enemies, occ, s,
                              lambda e: True,
                              "chasing any")
-        return result or (SkipAction(unit), "⚔ no target")
+        return result or (SkipAction(unit), "[ME] no target")
 
     def _chase(self, battle: BattleState, unit: Unit,
                enemies: List[Unit], occ: Set[tuple], s: AIState,
@@ -283,9 +283,9 @@ class BattleAI:
             final = seg[-1]
             if grid.distance(final, best_e.pos) == 1:
                 return (AttackAction(unit, best_e, final, ranged=False),
-                        f"⚔ {reason} {best_e.name}")
+                        f"[ME] {reason} {best_e.name}")
             return (MoveAction(unit, seg),
-                    f"⚔ {reason} {best_e.name}, moving closer")
+                    f"[ME] {reason} {best_e.name}, moving closer")
         return None
 
     # ================================================================
@@ -333,7 +333,7 @@ class BattleAI:
                                               unit.is_flying, unit.speed)
                         if path:
                             return (AttackAction(unit, tgt, path[-1], ranged=False),
-                                    f"🛡 defends {a.name}, attacks {tgt.name}")
+                                    f"[DEF] defends {a.name}, attacks {tgt.name}")
 
         if best_arch and best_cover:
             path = grid.find_path(unit.pos, best_cover, occ,
@@ -341,7 +341,7 @@ class BattleAI:
             if path:
                 seg = path[:unit.speed + 1]
                 return (MoveAction(unit, seg),
-                        f"🛡 covers {best_arch.name}")
+                        f"[DEF] covers {best_arch.name}")
 
         return self._offense(battle, unit, s)
 

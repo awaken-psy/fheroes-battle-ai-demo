@@ -61,8 +61,9 @@ class Unit:
 
     # ── combat ──────────────────────────────────────────────
 
-    def take_damage(self, dmg: int) -> int:
-        """Apply damage, return actual damage dealt."""
+    def take_damage(self, dmg: int) -> tuple:
+        """Apply damage, return (actual_damage, killed_count)."""
+        old_count = self.count
         actual = min(dmg, self._total_hp)
         self._total_hp -= actual
         if self._total_hp <= 0:
@@ -70,7 +71,7 @@ class Unit:
             self.is_alive = False
         else:
             self.count = (self._total_hp + self.max_hp - 1) // self.max_hp
-        return actual
+        return actual, old_count - self.count
 
     def new_round(self):
         self.retaliated = False
@@ -148,42 +149,59 @@ class BattleState:
 
     # ── execute ─────────────────────────────────────────────
 
-    def execute(self, action: Action) -> str:
-        """Execute an action, return description."""
+    def execute(self, action: Action) -> dict:
+        """Execute an action, return result dict with damage details."""
+        r = {'desc': '', 'dmg': 0, 'killed': 0,
+             'ret_dmg': 0, 'ret_killed': 0,
+             'target_alive': True, 'attacker_alive': True}
+
         if isinstance(action, MoveAction):
             action.unit.pos = action.path[-1]
-            return f"{action.unit.name} → {action.path[-1]}"
+            r['desc'] = f"{action.unit.name} moves to {action.path[-1]}"
+            return r
 
         if isinstance(action, AttackAction):
             atk, tgt = action.attacker, action.target
-            # move to attack position
             if not action.ranged and action.from_pos:
                 atk.pos = action.from_pos
-            # damage
+
             dmg = self.calc_damage(atk, tgt, action.ranged)
-            actual = tgt.take_damage(dmg)
-            killed = tgt.count  # 0 if still alive
+            actual, killed = tgt.take_damage(dmg)
+            r['dmg'] = actual
+            r['killed'] = killed
+            r['target_alive'] = tgt.is_alive
+
             verb = "shoots" if action.ranged else "attacks"
-            desc = f"{atk.name} {verb} {tgt.name} for {actual} dmg"
+            desc = f"{atk.name} {verb} {tgt.name}: {actual} dmg"
+            if killed > 0:
+                desc += f" ({killed} killed)"
             if not tgt.is_alive:
                 self.deaths_this_round += 1
-                desc += " 💀"
-            else:
-                # retaliation (melee only, once per round)
-                if not action.ranged and not tgt.retaliated and tgt.is_alive:
-                    ret = self.calc_damage(tgt, atk)
-                    ret_actual = atk.take_damage(ret)
-                    tgt.retaliated = True
-                    desc += f" | {tgt.name} retaliates {ret_actual}"
-                    if not atk.is_alive:
-                        self.deaths_this_round += 1
-                        desc += " 💀"
-            return desc
+                desc += " [DEAD]"
+
+            # retaliation (melee only, once per round)
+            if not action.ranged and not tgt.retaliated and tgt.is_alive:
+                ret = self.calc_damage(tgt, atk)
+                ret_actual, ret_killed = atk.take_damage(ret)
+                tgt.retaliated = True
+                r['ret_dmg'] = ret_actual
+                r['ret_killed'] = ret_killed
+                r['attacker_alive'] = atk.is_alive
+                desc += f" → {tgt.name} retaliates: {ret_actual}"
+                if ret_killed > 0:
+                    desc += f" ({ret_killed} killed)"
+                if not atk.is_alive:
+                    self.deaths_this_round += 1
+                    desc += " [DEAD]"
+
+            r['desc'] = desc
+            return r
 
         if isinstance(action, SkipAction):
-            return f"{action.unit.name} skips"
+            r['desc'] = f"{action.unit.name} skips"
+            return r
 
-        return ""
+        return r
 
     # ── victory ─────────────────────────────────────────────
 

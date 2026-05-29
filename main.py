@@ -17,10 +17,20 @@ from battle_ai import BattleAI
 
 pygame.init()
 
-FONT_SM = pygame.font.SysFont("consolas", 13)
-FONT_MD = pygame.font.SysFont("consolas", 16)
-FONT_LG = pygame.font.SysFont("consolas", 22)
-FONT_XL = pygame.font.SysFont("consolas", 36)
+# ── Font system ────────────────────────────────────────────
+# JetBrains Mono for data/stats, Ubuntu Sans for text/labels
+FONT_DATA = pygame.font.SysFont("jetbrainsmono", 12)   # stats, hints, small labels
+FONT_BODY = pygame.font.SysFont("jetbrainsmono", 14)   # unit names, log, general text
+FONT_POPUP = pygame.font.SysFont("jetbrainsmono", 22)  # damage numbers
+FONT_LABEL = pygame.font.SysFont("ubuntusans", 15, bold=True)  # buttons, headers
+FONT_TITLE = pygame.font.SysFont("ubuntusans", 18, bold=True)  # top bar, round info
+FONT_BIG = pygame.font.SysFont("ubuntusans", 34, bold=True)    # game over text
+
+# Backward-compatible aliases (to be replaced gradually)
+FONT_SM = FONT_DATA
+FONT_MD = FONT_BODY
+FONT_LG = FONT_POPUP
+FONT_XL = FONT_BIG
 
 # Fixed virtual resolution — all rendering targets this surface
 VW, VH = config.WINDOW_WIDTH, config.WINDOW_HEIGHT  # 1060 x 680
@@ -42,7 +52,30 @@ def team_name(team):
 # ── Game ─────────────────────────────────────────────────────
 
 SETUP, BATTLE, GAME_OVER = 0, 1, 2
-B_IDLE, B_SHOW, B_EXEC, B_RESULT = 0, 1, 2, 3
+
+# Animation phases
+PH_IDLE, PH_MOVE, PH_STRIKE, PH_RETAL, PH_AFTER = range(5)
+
+
+class Popup:
+    """Floating damage number that rises and fades."""
+    def __init__(self, x, y, text, color, life=1.0):
+        self.x, self.y = float(x), float(y)
+        self.text = text
+        self.color = color
+        self.age = 0.0
+        self.life = life
+
+    def update(self, dt):
+        self.age += dt
+        self.y -= 22 * dt
+        return self.age < self.life
+
+    def draw(self, surf):
+        fade = max(0.0, 1.0 - self.age / self.life)
+        c = tuple(int(ch * fade) for ch in self.color)
+        txt = FONT_POPUP.render(self.text, True, c)
+        surf.blit(txt, txt.get_rect(center=(int(self.x), int(self.y))))
 
 
 class Game:
@@ -68,8 +101,6 @@ class Game:
 
         # battle state
         self.battle: BattleState | None = None
-        self.b_sub = B_IDLE
-        self.b_timer = 0.0
         self.b_action: Action | None = None
         self.b_desc = ""
         self.b_log: list[str] = []
@@ -79,6 +110,19 @@ class Game:
         self.paused = False
         self.debug = True
         self.state = SETUP
+
+        # animation state
+        self._ph = PH_IDLE
+        self._ph_t = 0.0
+        self._anim_unit = None
+        self._anim_px = (0.0, 0.0)
+        self._move_px = []
+        self._move_idx = 0
+        self._move_frac = 0.0
+        self._popups: list[Popup] = []
+        self._projectile = None
+        self._flash = None
+        self._exec_result = None
 
     # ── window sizing ────────────────────────────────────────
 
@@ -219,29 +263,35 @@ class Game:
     def _update(self, dt):
         if self.state != BATTLE:
             return
-        if self.paused and self.b_sub != B_IDLE:
+        # always update popups and flash (purely visual)
+        self._popups = [p for p in self._popups if p.update(dt)]
+        if self._flash:
+            pos, timer = self._flash
+            timer -= dt
+            self._flash = (pos, timer) if timer > 0 else None
+        if self.paused:
             return
-        speeds = [1.5, 0.7, 0.25]
-        interval = speeds[self.speed]
-        self.b_timer += dt
 
-        if self.b_sub == B_IDLE:
+        spd = [1.5, 1.0, 0.5][self.speed]
+
+        if self._ph == PH_IDLE:
             self._next_unit()
-        elif self.b_sub == B_SHOW and self.b_timer >= interval:
-            self.b_timer = 0
-            desc = self.battle.execute(self.b_action)
-            self.b_log.append(desc)
-            if len(self.b_log) > 5:
-                self.b_log.pop(0)
-            self.b_sub = B_EXEC
-        elif self.b_sub == B_EXEC and self.b_timer >= interval * 0.6:
-            self.b_timer = 0
-            if self.battle.is_over():
-                self.state = GAME_OVER; return
-            self.b_path = None; self.b_target = None
-            self.b_sub = B_IDLE
-        elif self.b_sub == B_RESULT and self.b_timer >= interval * 0.3:
-            self.b_timer = 0; self.b_sub = B_IDLE
+        elif self._ph == PH_MOVE:
+            self._anim_move(dt, spd)
+        elif self._ph == PH_STRIKE:
+            self._anim_strike(dt, spd)
+        elif self._ph == PH_RETAL:
+            self._ph_t += dt
+            if self._ph_t >= 0.35 * spd:
+                self._ph = PH_AFTER; self._ph_t = 0
+        elif self._ph == PH_AFTER:
+            self._ph_t += dt
+            if self._ph_t >= 0.25 * spd:
+                self._anim_unit = None; self._exec_result = None
+                self.b_path = None; self.b_target = None
+                if self.battle.is_over():
+                    self.state = GAME_OVER; return
+                self._ph = PH_IDLE
 
     def _next_unit(self):
         if not self.battle.alive():
@@ -249,24 +299,177 @@ class Game:
         order = self.battle.turn_order()
         if not hasattr(self, '_round_order') or self._round_order != order or self._round_num != self.battle.round_num:
             self._round_order = order
-            self._round_num = self.battle.round_num
             self._order_idx = 0
             self.battle.start_round()
+            self._round_num = self.battle.round_num
         while self._order_idx < len(self._round_order):
             unit = self._round_order[self._order_idx]
             self._order_idx += 1
             if unit.is_alive:
                 action, desc = self.ai.decide(self.battle, unit)
                 self.b_action = action; self.b_desc = desc
-                self.b_path = None; self.b_target = None
-                if isinstance(action, MoveAction):
-                    self.b_path = set(action.path)
-                elif isinstance(action, AttackAction):
-                    if action.from_pos:
-                        self.b_path = {action.from_pos}
-                    self.b_target = action.target
-                self.b_timer = 0; self.b_sub = B_SHOW; return
+                self._start_anim(action)
+                return
         self._round_order = None; self._next_unit()
+
+    # ── animation engine ─────────────────────────────────────
+
+    def _start_anim(self, action):
+        """Initialize animation for the decided action."""
+        self._exec_result = None
+        self._projectile = None
+
+        if isinstance(action, SkipAction):
+            self._anim_unit = action.unit
+            self._anim_px = self.grid.center(*action.unit.pos)
+            self._ph = PH_AFTER; self._ph_t = 0
+            return
+
+        if isinstance(action, MoveAction):
+            self._anim_unit = action.unit
+            self._move_px = [self.grid.center(*p) for p in action.path]
+            self._move_idx = 0; self._move_frac = 0.0
+            self._anim_px = self._move_px[0]
+            self.b_path = set(action.path)
+            self._ph = PH_MOVE; self._ph_t = 0
+            return
+
+        if isinstance(action, AttackAction):
+            self._anim_unit = action.attacker
+            self.b_target = action.target
+            if action.ranged:
+                # no movement, go straight to strike
+                self._anim_px = self.grid.center(*action.attacker.pos)
+                self._ph = PH_STRIKE; self._ph_t = 0
+            else:
+                # melee: move to attack position first
+                if action.from_pos and action.from_pos != action.attacker.pos:
+                    occ = self.battle.occupied(exclude=action.attacker)
+                    path = self.grid.find_path(
+                        action.attacker.pos, action.from_pos, occ,
+                        action.attacker.is_flying, action.attacker.speed)
+                    self._move_px = ([self.grid.center(*p) for p in path]
+                                     if path
+                                     else [self.grid.center(*action.attacker.pos),
+                                           self.grid.center(*action.from_pos)])
+                    self.b_path = {action.from_pos}
+                else:
+                    self._move_px = [self.grid.center(*action.attacker.pos)]
+                self._move_idx = 0; self._move_frac = 0.0
+                self._anim_px = self._move_px[0]
+                self._ph = PH_MOVE; self._ph_t = 0
+
+    def _anim_move(self, dt, spd):
+        """Animate unit sliding along path."""
+        px_per_sec = 280.0 / spd
+
+        if self._move_idx >= len(self._move_px) - 1:
+            self._anim_px = self._move_px[-1]
+            if isinstance(self.b_action, AttackAction):
+                self._ph = PH_STRIKE; self._ph_t = 0
+            else:
+                # MoveAction: execute now
+                result = self.battle.execute(self.b_action)
+                self.b_log.append(result['desc'])
+                if len(self.b_log) > 5: self.b_log.pop(0)
+                self._ph = PH_AFTER; self._ph_t = 0
+            return
+
+        a = self._move_px[self._move_idx]
+        b = self._move_px[self._move_idx + 1]
+        seg_len = max(math.hypot(b[0] - a[0], b[1] - a[1]), 1.0)
+        self._move_frac += px_per_sec * dt / seg_len
+
+        while self._move_frac >= 1.0 and self._move_idx < len(self._move_px) - 1:
+            self._move_frac -= 1.0
+            self._move_idx += 1
+
+        if self._move_idx >= len(self._move_px) - 1:
+            self._anim_px = self._move_px[-1]
+        else:
+            a = self._move_px[self._move_idx]
+            b = self._move_px[self._move_idx + 1]
+            t = min(self._move_frac, 1.0)
+            self._anim_px = (a[0] + (b[0] - a[0]) * t,
+                             a[1] + (b[1] - a[1]) * t)
+
+    def _anim_strike(self, dt, spd):
+        """Animate attack: melee lunge or ranged projectile."""
+        action = self.b_action
+        self._ph_t += dt
+
+        if action.ranged:
+            lunge_dur = 0.25 * spd
+            src = self.grid.center(*action.attacker.pos)
+            dst = self.grid.center(*action.target.pos)
+            prog = min(1.0, self._ph_t / lunge_dur)
+            self._projectile = (src, dst, prog)
+
+            if self._ph_t >= lunge_dur:
+                self._projectile = None
+                self._exec_result = self.battle.execute(self.b_action)
+                self.b_log.append(self._exec_result['desc'])
+                if len(self.b_log) > 5: self.b_log.pop(0)
+                # damage popup on target
+                self._popups.append(
+                    Popup(dst[0], dst[1] - 12,
+                          f"-{self._exec_result['dmg']}", config.RED))
+                if not self._exec_result['target_alive']:
+                    self._popups.append(
+                        Popup(dst[0], dst[1] - 32, "DEAD", config.YELLOW))
+                self._flash = (action.target.pos, 0.15)
+                self._goto_retal_or_after()
+        else:
+            # melee lunge
+            lunge_dur = 0.15 * spd
+            ret_dur = 0.12 * spd
+            atk_px = self._move_px[-1] if self._move_px else self.grid.center(*action.attacker.pos)
+            tgt_px = self.grid.center(*action.target.pos)
+            dx = tgt_px[0] - atk_px[0]
+            dy = tgt_px[1] - atk_px[1]
+
+            if self._ph_t < lunge_dur:
+                # lunge toward target (35% of distance, smoothstep)
+                t = self._ph_t / lunge_dur
+                t = t * t * (3 - 2 * t)
+                self._anim_px = (atk_px[0] + dx * 0.35 * t,
+                                 atk_px[1] + dy * 0.35 * t)
+            elif self._ph_t < lunge_dur + ret_dur:
+                # execute on first frame of return phase
+                if self._exec_result is None:
+                    self._exec_result = self.battle.execute(self.b_action)
+                    self.b_log.append(self._exec_result['desc'])
+                    if len(self.b_log) > 5: self.b_log.pop(0)
+                    self._popups.append(
+                        Popup(tgt_px[0], tgt_px[1] - 12,
+                              f"-{self._exec_result['dmg']}", config.RED))
+                    if not self._exec_result['target_alive']:
+                        self._popups.append(
+                            Popup(tgt_px[0], tgt_px[1] - 32, "DEAD", config.YELLOW))
+                    self._flash = (action.target.pos, 0.15)
+                # return from lunge
+                t = min(1.0, (self._ph_t - lunge_dur) / ret_dur)
+                self._anim_px = (atk_px[0] + dx * 0.35 * (1 - t),
+                                 atk_px[1] + dy * 0.35 * (1 - t))
+            else:
+                self._anim_px = atk_px
+                self._goto_retal_or_after()
+
+    def _goto_retal_or_after(self):
+        """Transition to retaliation pause or after phase."""
+        r = self._exec_result
+        if r and r['ret_dmg'] > 0:
+            atk = self.b_action.attacker
+            ax, ay = self.grid.center(*atk.pos)
+            self._popups.append(
+                Popup(ax, ay - 12, f"-{r['ret_dmg']}", config.ORANGE))
+            if not r['attacker_alive']:
+                self._popups.append(
+                    Popup(ax, ay - 32, "DEAD", config.YELLOW))
+            self._flash = (atk.pos, 0.15)
+            self._ph = PH_RETAL; self._ph_t = 0
+        else:
+            self._ph = PH_AFTER; self._ph_t = 0
 
     # ── drawing (all to self.canvas at VW×VH) ────────────────
 
@@ -286,7 +489,7 @@ class Game:
         r = pygame.Rect(x, y, bw, bh)
         pygame.draw.rect(s, bg, r, border_radius=5)
         pygame.draw.rect(s, (200, 200, 200), r, 1, border_radius=5)
-        t = FONT_MD.render(text, True, fg)
+        t = FONT_LABEL.render(text, True, fg)
         s.blit(t, t.get_rect(center=r.center))
 
     # ── layout constants (virtual canvas coords) ─────────────
@@ -314,12 +517,10 @@ class Game:
         self._draw_btn(10, 8, 90, 28,
                        f"Team: {team_name(self.sel_team)}",
                        team_color(self.sel_team), config.WHITE)
-        txt = FONT_MD.render("Click palette → click hex. Right-click to remove.", True, config.GRAY)
+        txt = FONT_BODY.render("Click palette → click hex. Right-click to remove.", True, config.GRAY)
         self.canvas.blit(txt, (220, 12))
 
-        FONT_MD.set_bold(True)
-        self.canvas.blit(FONT_MD.render("UNITS", True, config.GRAY), (60, 48))
-        FONT_MD.set_bold(False)
+        self.canvas.blit(FONT_TITLE.render("UNITS", True, config.GRAY), (55, 48))
         for i, name in enumerate(config.UNIT_TYPES):
             r = self._palette_rect(i)
             sel = self.sel_type == name
@@ -329,9 +530,9 @@ class Game:
                 pygame.draw.rect(self.canvas, config.YELLOW, r, 2, border_radius=4)
             ut = config.UNIT_TYPES[name]
             tc = team_light(self.sel_team)
-            self.canvas.blit(FONT_MD.render(ut["symbol"], True, tc), (r.x + 6, r.y + 4))
-            self.canvas.blit(FONT_SM.render(name, True, config.WHITE), (r.x + 24, r.y + 3))
-            self.canvas.blit(FONT_SM.render(
+            self.canvas.blit(FONT_LABEL.render(ut["symbol"], True, tc), (r.x + 6, r.y + 4))
+            self.canvas.blit(FONT_BODY.render(name, True, config.WHITE), (r.x + 24, r.y + 3))
+            self.canvas.blit(FONT_DATA.render(
                 f"A{ut['attack']} D{ut['defense']} H{ut['hp']} S{ut['speed']} x{ut['count']}",
                 True, config.GRAY), (r.x + 24, r.y + 20))
 
@@ -351,18 +552,21 @@ class Game:
             r = self._preset_rect(i)
             pygame.draw.rect(self.canvas, config.DARK, r, border_radius=3)
             pygame.draw.rect(self.canvas, config.GRAY, r, 1, border_radius=3)
-            self.canvas.blit(FONT_SM.render(f"Preset: {pname}", True, config.WHITE), (r.x + 6, r.y + 4))
+            self.canvas.blit(FONT_DATA.render(f"Preset: {pname}", True, config.WHITE), (r.x + 6, r.y + 4))
 
         for team in (0, 1):
             n = sum(1 for u in self.units if u.team == team)
-            self.canvas.blit(FONT_SM.render(f"{team_name(team)}: {n} units", True, team_light(team)),
+            self.canvas.blit(FONT_DATA.render(f"{team_name(team)}: {n} units", True, team_light(team)),
                              (self.grid.ox + (0 if team == 0 else 320), 52))
 
     def _draw_units(self, units, current=None):
         for u in units:
             if not u.is_alive:
                 continue
-            cx, cy = self.grid.center(*u.pos)
+            if u is self._anim_unit and self._anim_px:
+                cx, cy = self._anim_px
+            else:
+                cx, cy = self.grid.center(*u.pos)
             color = team_color(u.team)
             if u.is_archer:
                 pts = [(cx, cy - 14), (cx - 12, cy + 10), (cx + 12, cy + 10)]
@@ -375,14 +579,14 @@ class Game:
             else:
                 pygame.draw.circle(self.canvas, color, (int(cx), int(cy)), 13)
                 pygame.draw.circle(self.canvas, config.WHITE, (int(cx), int(cy)), 13, 1)
-            sym = FONT_MD.render(u.symbol, True, config.WHITE)
+            sym = FONT_LABEL.render(u.symbol, True, config.WHITE)
             self.canvas.blit(sym, sym.get_rect(center=(cx, cy - 1)))
             hp_ratio = u._total_hp / (u.max_hp * max(u.count, 1))
             bw = 22; bx = cx - bw // 2; by = cy + 16
             pygame.draw.rect(self.canvas, (60, 20, 20), (bx, by, bw, 4))
             c = config.GREEN if hp_ratio > 0.5 else (config.YELLOW if hp_ratio > 0.25 else config.RED)
             pygame.draw.rect(self.canvas, c, (bx, by, max(1, int(bw * hp_ratio)), 4))
-            self.canvas.blit(FONT_SM.render(str(u.count), True, config.WHITE), (cx + 14, cy + 8))
+            self.canvas.blit(FONT_DATA.render(str(u.count), True, config.WHITE), (cx + 14, cy + 8))
             if u is current:
                 pygame.draw.circle(self.canvas, config.YELLOW, (int(cx), int(cy)), 18, 2)
 
@@ -394,9 +598,9 @@ class Game:
                 units = self.battle.alive(team)
                 total = sum(u.strength for u in units)
                 n = len(units)
-                txt = FONT_MD.render(f"{team_name(team)}: {n} units (⚔{total:.0f})", True, team_light(team))
+                txt = FONT_TITLE.render(f"{team_name(team)}: {n} units (str {total:.0f})", True, team_light(team))
                 self.canvas.blit(txt, (self.grid.ox + (0 if team == 0 else 340), 10))
-            self.canvas.blit(FONT_MD.render(f"Round {self.battle.round_num}", True, config.WHITE),
+            self.canvas.blit(FONT_TITLE.render(f"Round {self.battle.round_num}", True, config.WHITE),
                              (self.grid.ox + 180, 10))
 
         highlights = {}
@@ -406,12 +610,24 @@ class Game:
         if self.b_action and isinstance(self.b_action, MoveAction):
             for p in self.b_action.path:
                 highlights[p] = tuple(min(highlights.get(p, config.BG)[i] + 40, 255) for i in range(3))
+        if self._flash and self._flash[1] > 0:
+            intensity = int(min(255, 160 * self._flash[1] / 0.15))
+            highlights[self._flash[0]] = (intensity, 40, 40)
         self.grid.draw_grid(self.canvas, highlights)
 
         if self.b_target and self.b_action and isinstance(self.b_action, AttackAction):
             self.grid.draw_dashed_line(self.canvas, self.b_action.attacker.pos,
                                        self.b_target.pos, config.TARGET_COLOR, 2)
             self.grid.draw_overlay(self.canvas, self.b_target.pos, config.TARGET_COLOR, 3)
+
+        # projectile (ranged attack in flight)
+        if self._projectile:
+            src, dst, prog = self._projectile
+            ex = src[0] + (dst[0] - src[0]) * prog
+            ey = src[1] + (dst[1] - src[1]) * prog
+            pygame.draw.line(self.canvas, config.YELLOW,
+                             (int(src[0]), int(src[1])), (int(ex), int(ey)), 2)
+            pygame.draw.circle(self.canvas, config.YELLOW, (int(ex), int(ey)), 4)
 
         current_unit = None
         if self.b_action:
@@ -420,24 +636,28 @@ class Game:
             elif isinstance(self.b_action, SkipAction): current_unit = self.b_action.unit
         self._draw_units(self.units, current=current_unit)
 
+        # floating damage numbers
+        for p in self._popups:
+            p.draw(self.canvas)
+
         if self.debug and self.b_desc:
             bar = pygame.Rect(0, self.bottom_y, VW, VH - self.bottom_y)
             pygame.draw.rect(self.canvas, (20, 20, 28), bar)
             pygame.draw.line(self.canvas, config.GRAY, bar.topleft, bar.topright, 1)
             for i, line in enumerate(self.b_desc.split(" → ")):
                 last = (i == len(self.b_desc.split(" → ")) - 1)
-                self.canvas.blit(FONT_MD.render(line, True, config.CYAN if last else config.WHITE),
+                self.canvas.blit(FONT_BODY.render(line, True, config.CYAN if last else config.WHITE),
                                  (10, self.bottom_y + 5 + i * 18))
             for i, log in enumerate(self.b_log):
-                self.canvas.blit(FONT_SM.render(log, True, config.GRAY),
+                self.canvas.blit(FONT_DATA.render(log, True, config.GRAY),
                                  (VW // 2, self.bottom_y + 5 + i * 14))
 
         spd_names = ["Slow", "Normal", "Fast"]
-        hints = (f"[Space] {'▶ Play' if self.paused else '⏸ Pause'}   "
+        hints = (f"[Space] {'>> Play' if self.paused else '|| Pause'}   "
                  f"[1/2/3] Speed: {spd_names[self.speed]}   "
                  f"[R] Reset   [D] Debug: {'ON' if self.debug else 'OFF'}   "
                  f"[+/-] Size  [F11] Fullscreen")
-        self.canvas.blit(FONT_SM.render(hints, True, config.GRAY), (10, VH - 16))
+        self.canvas.blit(FONT_DATA.render(hints, True, config.GRAY), (10, VH - 16))
 
     # ── game over ────────────────────────────────────────────
 
@@ -448,7 +668,7 @@ class Game:
         self.canvas.blit(overlay, (0, 0))
         if self.battle:
             w = self.battle.winner()
-            txt = FONT_XL.render(f"{team_name(w)} Wins!", True, team_color(w))
+            txt = FONT_BIG.render(f"{team_name(w)} Wins!", True, team_color(w))
             self.canvas.blit(txt, txt.get_rect(center=(VW // 2, VH // 2 - 20)))
         r = self._playagain_rect()
         self._draw_btn(r.x, r.y, r.w, r.h, "Play Again", config.GREEN, config.BLACK)
@@ -461,7 +681,7 @@ class Game:
     def _start_battle(self):
         self.battle = BattleState(self.grid, self.units)
         self.state = BATTLE
-        self.b_sub = B_IDLE; self.b_timer = 0; self.b_log = []
+        self._ph = PH_IDLE; self.b_log = []; self._popups = []
         self._round_order = None; self._order_idx = 0; self._round_num = 0
 
     def _load_preset(self, name):
@@ -476,6 +696,8 @@ class Game:
         self.b_action = None; self.b_desc = ""
         self.b_path = None; self.b_target = None; self.b_log = []
         self.units = []; self._round_order = None
+        self._ph = PH_IDLE; self._anim_unit = None
+        self._popups = []; self._projectile = None; self._flash = None
 
 
 if __name__ == "__main__":

@@ -14,29 +14,29 @@ HEX_SIZE = 32  # radius center→corner
 GRID_OFFSET_X = 210  # leave space for palette on the left
 GRID_OFFSET_Y = 80   # leave space for top bar
 
-# ── Colors ──────────────────────────────────────────────────
-BG = (24, 24, 32)
-PANEL_BG = (32, 32, 44)
-GRID_LINE = (60, 60, 80)
-BLUE = (70, 140, 240)
-RED = (240, 70, 70)
-BLUE_LIGHT = (130, 185, 255)
-RED_LIGHT = (255, 130, 130)
-YELLOW = (255, 230, 50)
-GREEN = (60, 210, 90)
-WHITE = (230, 230, 230)
-GRAY = (130, 130, 140)
-DARK = (40, 40, 52)
-BLACK = (0, 0, 0)
-CYAN = (80, 220, 220)
-ORANGE = (240, 160, 50)
-PATH_COLOR = (200, 200, 60)
-TARGET_COLOR = (255, 60, 60)
-RETREAT_COLOR = (60, 220, 60)
-COVER_COLOR = (60, 120, 220)
-HALF_BLUE = (30, 30, 48)
-HALF_NEUTRAL = (36, 36, 50)
-HALF_RED = (48, 30, 30)
+# ── Colors (Pixel Retro dark palette) ──────────────────────
+BG = (15, 23, 42)          # #0F172A deep navy
+PANEL_BG = (25, 33, 55)    # #192137 panel surface
+GRID_LINE = (45, 55, 78)   # #2D374E subtle grid
+BLUE = (37, 99, 235)       # #2563EB vibrant blue
+RED = (220, 38, 38)        # #DC2626 vibrant red
+BLUE_LIGHT = (96, 165, 250)  # #60A5FA lighter blue
+RED_LIGHT = (248, 113, 113)  # #F87171 lighter red
+YELLOW = (250, 204, 21)    # #FACC15 bright yellow
+GREEN = (34, 197, 94)      # #22C55E vivid green
+WHITE = (241, 245, 249)    # #F1F5F9 warm white
+GRAY = (100, 116, 139)     # #64748B slate gray
+DARK = (30, 41, 59)        # #1E293B dark surface
+BLACK = (2, 6, 23)         # #020617 near-black
+CYAN = (34, 211, 238)      # #22D3EE cyan
+ORANGE = (251, 146, 60)    # #FB923C orange
+PATH_COLOR = (234, 179, 8) # #EAB308 gold path
+TARGET_COLOR = (239, 68, 68)  # #EF4444 red target
+RETREAT_COLOR = (74, 222, 128) # #4ADE80 retreat green
+COVER_COLOR = (59, 130, 246)  # #3B82F6 cover blue
+HALF_BLUE = (18, 28, 56)   # dark blue half
+HALF_NEUTRAL = (28, 32, 48) # neutral middle
+HALF_RED = (56, 18, 22)    # dark red half
 
 # ── Unit types ──────────────────────────────────────────────
 # Each type has: attack, defense, max_hp, speed, damage, default count
