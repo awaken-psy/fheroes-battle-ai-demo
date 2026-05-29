@@ -676,11 +676,8 @@ class Game:
                              (div_x_l, int(s(8))), (div_x_l, int(s(34))), 1)
             pygame.draw.line(self.canvas, (55, 65, 90),
                              (div_x_r, int(s(8))), (div_x_r, int(s(34))), 1)
-            # Team info symmetric around center, with colored dot indicator
-            # Use divider positions as boundaries so text never overlaps Round
-            dot_r = int(s(5))
-            dot_gap = int(s(4))
-            div_pad = int(s(10))  # padding from divider to text
+            # Team info symmetric around center, well separated from Round
+            div_pad = int(s(20))  # padding from divider to text
             for team in (0, 1):
                 units = self.battle.alive(team)
                 total = sum(u.strength for u in units)
@@ -689,12 +686,8 @@ class Game:
                 txt = FONT_TITLE.render(label, True, team_light(team))
                 if team == 0:
                     rect = txt.get_rect(right=div_x_l - div_pad, centery=bar_cy)
-                    pygame.draw.circle(self.canvas, team_color(team),
-                                       (rect.left - dot_r - dot_gap, bar_cy), dot_r)
                 else:
                     rect = txt.get_rect(left=div_x_r + div_pad, centery=bar_cy)
-                    pygame.draw.circle(self.canvas, team_color(team),
-                                       (rect.left - dot_r - dot_gap, bar_cy), dot_r)
                 self.canvas.blit(txt, rect)
 
         highlights = {}
