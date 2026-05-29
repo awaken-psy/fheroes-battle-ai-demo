@@ -1,0 +1,83 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            ext: ''
+          - os: windows-latest
+            platform: windows
+            ext: .exe
+          - os: macos-latest
+            platform: macos
+            ext: ''
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          pip install pygame pyinstaller
+
+      - name: Build
+        run: |
+          pyinstaller --onefile --name fheroes-battle-ai-demo \
+            --hidden-import=config --hidden-import=config.colors \
+            --hidden-import=config.units --hidden-import=config.presets \
+            --hidden-import=config.timing \
+            --hidden-import=engine --hidden-import=engine.hex_grid \
+            --hidden-import=engine.unit --hidden-import=engine.battle_state \
+            --hidden-import=engine.battle_logger --hidden-import=engine.actions \
+            --hidden-import=ai --hidden-import=ai.planner \
+            --hidden-import=ai.evaluation --hidden-import=ai.scoring \
+            --hidden-import=ai.strategy \
+            --hidden-import=ui --hidden-import=ui.fonts \
+            --hidden-import=ui.renderer --hidden-import=ui.game \
+            --hidden-import=ui.screens --hidden-import=ui.screens.setup \
+            --hidden-import=ui.screens.battle \
+            main.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fheroes-battle-ai-demo-${{ matrix.platform }}
+          path: dist/fheroes-battle-ai-demo${{ matrix.ext }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Rename with platform suffix
+        run: |
+          mkdir -p upload
+          cp artifacts/fheroes-battle-ai-demo-linux/fheroes-battle-ai-demo upload/fheroes-battle-ai-demo-linux-amd64
+          cp artifacts/fheroes-battle-ai-demo-windows/fheroes-battle-ai-demo.exe upload/fheroes-battle-ai-demo-windows-amd64.exe
+          cp artifacts/fheroes-battle-ai-demo-macos/fheroes-battle-ai-demo upload/fheroes-battle-ai-demo-macos-amd64
+          chmod +x upload/fheroes-battle-ai-demo-linux-amd64 upload/fheroes-battle-ai-demo-macos-amd64
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: upload/*
+          generate_release_notes: true
