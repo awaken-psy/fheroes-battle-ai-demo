@@ -1,6 +1,7 @@
-# HoMM2 战斗 AI Demo
+# HoMM2 Battle AI Demo
 
-从 fheroes2 项目中提取核心战斗 AI 算法的独立演示。无美术资源，纯几何形状 + 颜色。
+从 [fheroes2](https://github.com/ihhub/fheroes2) 项目中提取核心战斗 AI 算法的独立演示项目。
+无美术资源，纯几何形状 + 颜色。目标是**逐步复刻 fheroes2 的完整 AI 决策系统**。
 
 ## 运行
 
@@ -30,6 +31,9 @@ uv run main.py
 | `1` / `2` / `3` | 慢速 / 正常 / 快速 |
 | `D` | 开关 AI 决策调试信息 |
 | `R` | 回到摆兵阶段 |
+| `F12` | 截图到 `/tmp/demo-screenshot.png` |
+| `+` / `-` | 调整窗口大小 |
+| `F11` | 全屏切换 |
 
 ### 战场上的图形含义
 | 形状 | 含义 |
@@ -56,18 +60,134 @@ uv run main.py
 
 对应学习指南 `learn/ai决策/战斗AI学习指南.md` 中的算法：
 
-1. **射手逃跑**：用 "Flyer Threat" 预设，观察弓箭手面对狮鹫时的逃跑决策（⚡ 狮鹫是飞行单位 → 弓箭手不会逃跑，因为飞兵追得上）
+1. **射手逃跑**：用 "Flyer Threat" 预设，观察弓箭手面对狮鹫时的逃跑决策（狮鹫是飞行单位 → 弓箭手不会逃跑，因为飞兵追得上）
 2. **射手射击优先级**：观察弓箭手射击哪个目标（基于 threat 评分）
 3. **近战追击"逃不掉"的目标**：慢速步兵 vs 快速飞行兽，AI 会优先追速度慢的目标
 4. **防御战术**：用 "Archer Defense" 预设，蓝方弓箭手多 → 近战步兵会保护射手（走绿色路线到射手旁边）
 5. **进攻战术**：红方全骑兵 → 不保护射手，直接冲锋
 
-## 代码结构
+## 项目结构
 
-| 文件 | 内容 | 对应 fheroes2 源码 |
-|------|------|-------------------|
-| `config.py` | 常量、兵种定义 | — |
-| `hex_grid.py` | 六角格引擎 | `battle_board.h/cpp` |
-| `battle.py` | 战斗机制、伤害计算 | `battle_arena.h/cpp`, `battle_troop.h/cpp` |
-| `battle_ai.py` | AI 决策算法 | `ai_battle.cpp`, `ai_battle_spell.cpp` |
-| `main.py` | 游戏循环和 UI | — |
+```
+battle-ai-demo/
+├── main.py                入口
+├── pyproject.toml         项目配置
+│
+├── config/                纯数据常量（无逻辑）
+│   ├── colors.py          调色板
+│   ├── units.py           兵种定义
+│   ├── presets.py         预设阵型
+│   └── timing.py          动画/延迟常量
+│
+├── engine/                核心引擎（不依赖 pygame，可单独测试）
+│   ├── hex_grid.py        六角格几何 + 寻路        ← battle_board.h/cpp
+│   ├── unit.py            单位类                    ← battle_troop.h/cpp
+│   ├── battle_state.py    战斗状态机 + 伤害公式      ← battle_arena.h/cpp
+│   └── actions.py         行动类型（Move/Attack/Skip）
+│
+├── ai/                    AI 决策系统（主要扩展方向）
+│   ├── planner.py         顶层决策调度              ← ai_battle.cpp
+│   ├── evaluation.py      局面分析（兵力对比、战术标志）← ai_battle.cpp:949
+│   ├── scoring.py         威胁评分 + 位置评估        ← ai_battle.cpp (散布)
+│   └── strategy.py        策略枚举（预留）
+│
+├── ui/                    渲染层（依赖 engine + config）
+│   ├── game.py            Game 类：窗口、缩放、主循环
+│   ├── fonts.py           字体系统 + team helpers
+│   ├── renderer.py        共享绘制工具（Popup、按钮、单位）
+│   └── screens/
+│       ├── setup.py       布阵界面
+│       └── battle.py      战斗界面 + 动画引擎
+│
+├── tests/                 自动化测试
+└── assets/                资源目录（预留贴图/音效）
+```
+
+**依赖方向：`config → engine → ai → ui`**，engine 和 ai 可以脱离 pygame 做纯逻辑单元测试。
+
+## 后续发展方向
+
+本项目目标是**逐步复刻 fheroes2 的完整 AI 决策系统**，按以下阶段推进：
+
+### 第一阶段：完善战斗 AI（当前）
+
+- [ ] **法术系统** (`engine/spells.py` + `ai/spells.py`)
+  - 伤害法术（Magic Arrow, Lightning Bolt）
+  - 辅助法术（Slow, Haste, Shield, Bless, Curse）
+  - 召唤法术（Summon Earth/Fire/Water/Air Elemental）
+  - AI 法术决策：何时施法 vs 普攻/移动
+  - 对应 `ai_battle_spell.cpp`
+
+- [ ] **士气/运气系统** (`engine/morale.py`)
+  - 高士气 → 额外行动概率
+  - 低士气 → 跳过行动概率
+  - 运气 → 双倍伤害
+  - AI 需要考虑期望值波动
+
+- [ ] **撤退/投降** (`ai/retreat.py`)
+  - 判断战局劣势时机
+  - 评估撤退代价 vs 全灭代价
+  - 对应 `ai_battle.cpp` 中的投降逻辑
+
+- [ ] **阵型/编队** (`ai/formation.py`)
+  - 开局布阵优化（前锋、射手后排、飞行侧翼）
+  - 战中阵型调整（保持保护关系）
+
+- [ ] **更多兵种**
+  - 支持所有 HoMM2 原版兵种（约 60 种）
+  - 特殊能力：反击次数、死亡凝视、吸血、自我治疗等
+
+### 第二阶段：冒险地图 AI
+
+- [ ] **地图寻路** (`engine/pathfinding_map.py`)
+  - 基于地形的移动消耗
+  - 陆地/水面/飞行区分
+
+- [ ] **资源收集策略** (`ai/resource_planner.py`)
+  - 矿物、宝箱、资源建筑的价值评估
+  - 拾取优先级排序
+
+- [ ] **英雄行动决策** (`ai/hero_planner.py`)
+  - 探索 vs 战斗 vs 发展的权衡
+  - 主英雄 vs 副英雄的分工
+  - 对应 `ai_hero.cpp`
+
+- [ ] **城镇建设 AI** (`ai/town_builder.py`)
+  - 建筑优先级策略
+  - 招兵计划
+  - 对应 `ai_town.cpp`
+
+### 第三阶段：战略层 AI
+
+- [ ] **全局战略评估** (`ai/strategic.py`)
+  - 兵力对比、经济对比、地图控制度
+  - 短期目标 vs 长期目标
+
+- [ ] **多英雄协调** (`ai/coordination.py`)
+  - 分兵 vs 集中的决策
+  - 攻防角色的分配
+
+- [ ] **对抗性学习**
+  - 录制 AI vs AI 对战
+  - 参数调优（scoring weights）
+  - 对比 fheroes2 原版 AI 的决策
+
+### 关键参考文件
+
+| 本项目模块 | fheroes2 源码 | 功能 |
+|-----------|--------------|------|
+| `ai/planner.py` | `src/fheroes2/ai/ai_battle.cpp` | 战斗 AI 主逻辑 |
+| `ai/spells.py` | `src/fheroes2/ai/ai_battle_spell.cpp` | 法术 AI |
+| `ai/evaluation.py` | `ai_battle.cpp:949` | 局面分析 |
+| `engine/hex_grid.py` | `src/fheroes2/battle/battle_board.cpp` | 六角格引擎 |
+| `engine/battle_state.py` | `src/fheroes2/battle/battle_arena.cpp` | 战斗机制 |
+| `engine/unit.py` | `src/fheroes2/battle/battle_troop.cpp` | 单位逻辑 |
+| (future) `ai/hero_planner.py` | `src/fheroes2/ai/ai_hero.cpp` | 英雄决策 |
+| (future) `ai/town_builder.py` | `src/fheroes2/ai/ai_town.cpp` | 城镇建设 |
+
+## 技术栈
+
+- **Python 3.11+**
+- **pygame** — 渲染、输入、窗口管理
+- **uv** — 包管理与依赖解析
+- 无第三方 AI/ML 框架，所有决策逻辑手工实现以忠实复刻原版算法
