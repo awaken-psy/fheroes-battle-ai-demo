@@ -93,7 +93,7 @@ class BattleScreen:
                 self._anim_unit = None; self._exec_result = None
                 self.b_path = None; self.b_target = None
                 if self.battle.is_over():
-                    self.game.state = self.game.GAME_OVER; return
+                    self.game.state = config.GAME_OVER; return
                 self._ph = PH_IDLE
 
     def _next_unit(self):

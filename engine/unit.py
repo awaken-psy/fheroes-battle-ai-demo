@@ -20,6 +20,7 @@ class Unit:
 
         self.count = kwargs["count"]
         self._total_hp = self.count * self.max_hp
+        self._max_total_hp = self._total_hp
         self.is_alive = True
         self.retaliated = False  # can retaliate once per round
 

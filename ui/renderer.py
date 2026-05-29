@@ -63,13 +63,14 @@ def draw_unit(canvas, s, grid, u, cx, cy, current=False):
     sym = fonts.LABEL.render(u.symbol, True, config.WHITE)
     canvas.blit(sym, sym.get_rect(center=(cx, cy - s(1))))
 
-    hp_ratio = u._total_hp / (u.max_hp * max(u.count, 1))
+    hp_ratio = u._total_hp / u._max_total_hp
     bw = s(24); bx = cx - bw // 2; by = cy + s(18)
     pygame.draw.rect(canvas, (60, 20, 20), (bx, by, bw, s(6)))
     bar_c = config.GREEN if hp_ratio > 0.5 else (config.YELLOW if hp_ratio > 0.25 else config.RED)
     pygame.draw.rect(canvas, bar_c, (bx, by, max(1, int(bw * hp_ratio)), s(6)))
 
-    canvas.blit(fonts.DATA.render(str(u.count), True, config.WHITE), (cx + s(14), cy + s(8)))
+    info = f"{u.count}/{u._total_hp}"
+    canvas.blit(fonts.DATA.render(info, True, config.WHITE), (cx + s(14), cy + s(8)))
 
     if current:
         pygame.draw.circle(canvas, config.YELLOW, (int(cx), int(cy)), int(s(18)), 2)

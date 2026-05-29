@@ -13,7 +13,7 @@ from .screens.battle import BattleScreen
 VW, VH = config.WINDOW_WIDTH, config.WINDOW_HEIGHT
 ASPECT = VW / VH
 
-SETUP, BATTLE, GAME_OVER = 0, 1, 2
+from config import SETUP, BATTLE, GAME_OVER
 
 
 class Game:
@@ -134,6 +134,9 @@ class Game:
         self.screen_battle._order_idx = 0
         self.screen_battle._round_num = 0
         self.screen_battle._ph = 0
+        # Position grid for battle screen before first update runs
+        grid_w = self.grid.cols * self.grid.hex_w
+        self.grid.reposition((self.win_w - grid_w) / 2, self._s(config.GRID_OFFSET_Y))
         self.state = BATTLE
 
     def reset(self):

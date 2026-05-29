@@ -1,5 +1,8 @@
 """Game configuration — re-exports all constants for convenient access."""
 
+# Game states
+SETUP, BATTLE, GAME_OVER = 0, 1, 2
+
 # Layout
 WINDOW_WIDTH = 1060
 WINDOW_HEIGHT = 680
