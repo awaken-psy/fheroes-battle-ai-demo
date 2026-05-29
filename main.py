@@ -522,10 +522,6 @@ class Game:
 
     # ── layout constants (virtual canvas coords) ─────────────
 
-    @property
-    def bottom_y(self):
-        return self._s(VH - 100)
-
     def _palette_rect(self, i):
         return pygame.Rect(self._s(12), self._s(74 + i * 56), self._s(200), self._s(50))
 
@@ -728,16 +724,27 @@ class Game:
             p.draw(self.canvas)
 
         if self.debug and self.b_desc:
-            bar = pygame.Rect(0, self.bottom_y, s(VW), s(VH) - self.bottom_y)
+            bar_h = s(60)
+            bar_y = s(VH) - s(88)  # 60px debug + 4px gap + 22px hint bar
+            bar = pygame.Rect(0, bar_y, s(VW), bar_h)
             pygame.draw.rect(self.canvas, config.PANEL_BG, bar)
-            pygame.draw.line(self.canvas, (55, 65, 90), bar.topleft, bar.topright, 2)
-            for i, line in enumerate(self.b_desc.split(" -> ")):
-                last = (i == len(self.b_desc.split(" -> ")) - 1)
-                self.canvas.blit(FONT_BODY.render(line, True, config.CYAN if last else config.WHITE),
-                                 (s(14), self.bottom_y + s(8) + i * s(20)))
-            for i, log in enumerate(self.b_log):
-                self.canvas.blit(FONT_DATA.render(log, True, config.GRAY),
-                                 (s(VW) // 2, self.bottom_y + s(8) + i * s(16)))
+            pygame.draw.line(self.canvas, (55, 65, 90),
+                             (0, bar_y), (s(VW), bar_y), 1)
+            # Row 1: AI decision — show only the final action step
+            steps = self.b_desc.split(" -> ")
+            action = steps[-1].strip() if steps else ""
+            ai_label = FONT_BODY.render("AI ", True, config.GRAY)
+            ai_text = FONT_BODY.render(action, True, config.CYAN)
+            row1_y = bar_y + s(6)
+            self.canvas.blit(ai_label, (s(14), row1_y))
+            self.canvas.blit(ai_text, (s(14) + ai_label.get_width() + s(4), row1_y))
+            # Row 2: Last battle event
+            if self.b_log:
+                log_label = FONT_DATA.render("LOG ", True, config.GRAY)
+                log_text = FONT_DATA.render(self.b_log[-1], True, (170, 180, 200))
+                row2_y = bar_y + s(30)
+                self.canvas.blit(log_label, (s(14), row2_y))
+                self.canvas.blit(log_text, (s(14) + log_label.get_width() + s(4), row2_y))
 
         spd_names = ["Slow", "Normal", "Fast"]
         hints = (f"[Space] {'>> Play' if self.paused else '|| Pause'}   "
