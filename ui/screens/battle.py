@@ -8,6 +8,7 @@ from .. import fonts
 from ..renderer import Popup, draw_btn, draw_unit
 from engine.battle_state import BattleState
 from engine.actions import MoveAction, AttackAction, SkipAction
+from engine.battle_logger import BattleLogger
 from ai.planner import BattleAI
 
 # Animation phases
@@ -20,6 +21,7 @@ class BattleScreen:
     def __init__(self, game):
         self.game = game
         self.ai = BattleAI()
+        self.logger = BattleLogger()
 
         self.battle: BattleState | None = None
         self.b_action = None
@@ -93,6 +95,7 @@ class BattleScreen:
                 self._anim_unit = None; self._exec_result = None
                 self.b_path = None; self.b_target = None
                 if self.battle.is_over():
+                    self.logger.end(self.battle.winner(), self.battle.round_num)
                     self.game.state = config.GAME_OVER; return
                 self._ph = PH_IDLE
 
@@ -107,6 +110,7 @@ class BattleScreen:
             self._order_idx = 0
             self.battle.start_round()
             self._round_num = self.battle.round_num
+            self.logger.round_start(self._round_num)
         while self._order_idx < len(self._round_order):
             unit = self._round_order[self._order_idx]
             self._order_idx += 1
@@ -126,6 +130,7 @@ class BattleScreen:
         if isinstance(action, SkipAction):
             self._anim_unit = action.unit
             self._anim_px = self.game.grid.center(*action.unit.pos)
+            self.logger.action(self.b_desc, "skip")
             self._ph = PH_AFTER; self._ph_t = 0
             return
 
@@ -173,6 +178,7 @@ class BattleScreen:
                 result = self.battle.execute(self.b_action)
                 self.b_log.append(result['desc'])
                 if len(self.b_log) > 5: self.b_log.pop(0)
+                self.logger.action(self.b_desc, result['desc'])
                 self._ph = PH_AFTER; self._ph_t = 0
             return
 
@@ -211,6 +217,7 @@ class BattleScreen:
                 self._exec_result = self.battle.execute(self.b_action)
                 self.b_log.append(self._exec_result['desc'])
                 if len(self.b_log) > 5: self.b_log.pop(0)
+                self.logger.action(self.b_desc, self._exec_result['desc'])
                 self._popups.append(
                     Popup(dst[0], dst[1] - s(12),
                           f"-{self._exec_result['dmg']}", config.RED, speed=self.game._rs))
@@ -238,6 +245,7 @@ class BattleScreen:
                     self._exec_result = self.battle.execute(self.b_action)
                     self.b_log.append(self._exec_result['desc'])
                     if len(self.b_log) > 5: self.b_log.pop(0)
+                    self.logger.action(self.b_desc, self._exec_result['desc'])
                     self._popups.append(
                         Popup(tgt_px[0], tgt_px[1] - s(12),
                               f"-{self._exec_result['dmg']}", config.RED, speed=self.game._rs))
@@ -434,3 +442,4 @@ class BattleScreen:
         self._round_order = None
         self._ph = PH_IDLE; self._anim_unit = None
         self._popups = []; self._projectile = None; self._flash = None
+        self.logger.reset()

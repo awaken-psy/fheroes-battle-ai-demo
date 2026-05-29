@@ -137,6 +137,7 @@ class Game:
         # Position grid for battle screen before first update runs
         grid_w = self.grid.cols * self.grid.hex_w
         self.grid.reposition((self.win_w - grid_w) / 2, self._s(config.GRID_OFFSET_Y))
+        self.screen_battle.logger.start(self.units)
         self.state = BATTLE
 
     def reset(self):
