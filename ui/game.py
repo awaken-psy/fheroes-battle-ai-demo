@@ -19,7 +19,10 @@ from config import SETUP, BATTLE, GAME_OVER
 class Game:
     def __init__(self):
         self.fullscreen = False
-        self.win_w, self.win_h = int(VW * 3.5), int(VH * 3.5)
+        # Fit initial window to 80 % of the desktop so it never overflows
+        info = pygame.display.Info()
+        scale = min(info.current_w * 0.8 / VW, info.current_h * 0.8 / VH)
+        self.win_w, self.win_h = int(VW * scale), int(VH * scale)
         self.screen = pygame.display.set_mode(
             (self.win_w, self.win_h), pygame.RESIZABLE)
         pygame.display.set_caption("HoMM2 Battle AI Demo")
