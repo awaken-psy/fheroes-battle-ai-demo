@@ -2,6 +2,9 @@
 
 ``abilities`` is a set of special-ability tags handled in combat / scoring:
   unlimited_retaliation, hp_drain, death_gaze, self_heal.
+
+``is_wide`` units occupy two horizontally-adjacent cells (head + tail); see
+``engine/unit.py``. fheroes2's mounted creatures and dragons are wide.
 """
 
 UNIT_TYPES = {
@@ -60,5 +63,12 @@ UNIT_TYPES = {
         "is_archer": False, "is_flying": False,
         "abilities": ["death_gaze"],
         "symbol": "M",
+    },
+    "Champion": {  # heavy cavalry — wide (occupies two cells)
+        "attack": 9, "defense": 8, "hp": 30, "speed": 7,
+        "damage": 5, "count": 6,
+        "is_archer": False, "is_flying": False, "is_wide": True,
+        "abilities": [],
+        "symbol": "K",
     },
 }
