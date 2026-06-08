@@ -89,19 +89,23 @@ def run(args):
 
     wins = {0: 0, 1: 0}
     early = 0
+    retreats = 0
     total_rounds = 0
     for i in range(args.games):
         seed = (args.seed + i) if args.seed is not None else None
         # alternate initiative tie-break and attacker side to cancel any
         # first-move / attacker-retreat bias across the batch
         side = i % 2
-        winner, rounds, ended_early = simulate(
+        winner, rounds, ended_early, reason = simulate(
             build_units(spec), seed=seed, first_team=side, attacker_team=side,
-            hero_configs=hero_configs if use_heroes else None)
+            hero_configs=hero_configs if use_heroes else None,
+            difficulty=args.difficulty)
         wins[winner] += 1
         total_rounds += rounds
         if ended_early:
             early += 1
+        if reason == "retreat":
+            retreats += 1
 
     n = args.games
     p, lo, hi = wilson_interval(wins[0], n)
@@ -115,6 +119,7 @@ def run(args):
         "team0_winrate": round(p, 4),
         "ci95": [round(lo, 4), round(hi, 4)],
         "ended_early": early,
+        "retreats": retreats,
         "avg_rounds": round(total_rounds / n, 2) if n else 0,
     }
 
@@ -123,7 +128,8 @@ def run(args):
     print(f"Team 0 wins:  {wins[0]}  ({p*100:.1f}%)")
     print(f"Team 1 wins:  {wins[1]}  ({wins[1]/n*100:.1f}%)")
     print(f"95% CI:       [{lo*100:.1f}%, {hi*100:.1f}%]")
-    print(f"Ended early:  {early}  ({early/n*100:.1f}%)  (stalemate / round cap)")
+    print(f"Ended early:  {early}  ({early/n*100:.1f}%)  (stalemate / round cap / retreat)")
+    print(f"Retreats:     {retreats}  ({retreats/n*100:.1f}%)")
     print(f"Avg rounds:   {result['avg_rounds']}")
     if args.mirror:
         # The odd-r board is not perfectly mirror-symmetric (a plain column
@@ -153,6 +159,9 @@ def main():
                     help="base RNG seed for reproducibility (game i uses seed+i)")
     ap.add_argument("--hero0", action="store_true", help="give team 0 a default spellcasting hero")
     ap.add_argument("--hero1", action="store_true", help="give team 1 a default spellcasting hero")
+    ap.add_argument("--difficulty", default="Normal",
+                    choices=["Easy", "Normal", "Hard", "Expert", "Impossible"],
+                    help="AI retreat threshold (default Normal)")
     ap.add_argument("--json", help="also write the summary to this JSON file")
     run(ap.parse_args())
 

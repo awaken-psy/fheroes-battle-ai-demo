@@ -121,6 +121,17 @@ class BattleScreen:
             unit = self._round_order[self._order_idx]
             self._order_idx += 1
             if unit.is_alive:
+                retreat = self.ai.check_retreat(self.battle, unit)
+                if retreat is not None:
+                    farewell, retreat_action = retreat
+                    if farewell is not None:
+                        self._do_cast(farewell)
+                    rr = self.battle.execute(retreat_action)
+                    self.logger.action("[RETREAT]", rr['desc'])
+                    skip = SkipAction(unit)
+                    self.b_action = skip; self.b_desc = f"[RETREAT] {rr['desc']}"
+                    self._start_anim(skip)
+                    return
                 cast = self.ai.maybe_cast_spell(self.battle, unit)
                 if cast is not None:
                     self._do_cast(cast)
@@ -149,6 +160,7 @@ class BattleScreen:
         """Skip all animations, resolve battle to completion, log and return."""
         if not self.battle or self.battle.is_over():
             return
+        from headless import _take_unit_turn
         while not self.battle.is_over():
             order = self.battle.turn_order()
             if not order:
@@ -160,15 +172,9 @@ class BattleScreen:
                     continue
                 if self.battle.is_over():
                     break
-                cast = self.ai.maybe_cast_spell(self.battle, unit)
-                if cast is not None:
-                    cr = self.battle.execute(cast[0])
-                    self.logger.action(cast[1], cr['desc'])
-                    if self.battle.is_over() or not unit.is_alive:
-                        continue
-                action, desc = self.ai.decide(self.battle, unit)
-                result = self.battle.execute(action)
-                self.logger.action(desc, result['desc'])
+                _take_unit_turn(self.battle, self.ai, unit, log=self.logger.action)
+            if self.battle._retreated is not None:
+                break
         timeout = self.battle.round_num >= BattleState.MAX_ROUNDS
         self.logger.end(self.battle.winner(), self.battle.round_num, timeout=timeout)
         self.game.reset()

@@ -10,16 +10,41 @@ Original source:
 from typing import Optional, Tuple, List, Set
 
 from engine.battle_state import BattleState
-from engine.actions import Action, MoveAction, AttackAction, SkipAction, CastAction
+from engine.actions import (Action, MoveAction, AttackAction, SkipAction,
+                            CastAction, RetreatAction)
 from engine.unit import Unit
 
 from .evaluation import AIState, analyze
 from .scoring import threat, pos_value
 from .spells import select_best_spell
+from .retreat import should_retreat
 
 
 class BattleAI:
     """Core tactical AI, faithful to fheroes2's decision logic."""
+
+    def check_retreat(self, battle: BattleState, unit: Unit
+                      ) -> Optional[Tuple[Optional[Tuple[CastAction, str]], RetreatAction]]:
+        """Before a unit acts, decide whether its hero flees. — ai_battle.cpp Step 2
+
+        Returns (farewell_cast_or_None, RetreatAction) when retreating, else None.
+        The farewell cast is the best damage spell (selectBestSpell retreating).
+        """
+        team = unit.team
+        hero = battle.heroes.get(team)
+        if hero is None:
+            return None
+        state = analyze(battle, unit)
+        if not should_retreat(state, battle.difficulty):
+            return None
+        farewell = None
+        if not hero._cast_this_round:
+            choice = select_best_spell(battle, team, state, retreating=True)
+            if choice is not None:
+                spell, target = choice
+                farewell = (CastAction(team, spell, target),
+                            f"[FAREWELL] {spell.name} -> {target.name}")
+        return farewell, RetreatAction(team)
 
     def maybe_cast_spell(self, battle: BattleState, unit: Unit
                          ) -> Optional[Tuple[CastAction, str]]:
@@ -43,6 +68,10 @@ class BattleAI:
 
         Returns (action, human-readable description).
         """
+        # Berserk units act on instinct toward the nearest unit, friend or foe.
+        if unit.has_effect("Berserk"):
+            return self._berserk(battle, unit)
+
         state = analyze(battle, unit)
 
         # dispatch by unit type
@@ -61,6 +90,45 @@ class BattleAI:
             f"-> {detail}"
         )
         return action, desc
+
+    # ================================================================
+    #  berserkTurn() — ai_battle.cpp:508
+    # ================================================================
+
+    def _berserk(self, battle: BattleState, unit: Unit) -> Tuple[Action, str]:
+        """Attack / move toward the nearest unit, ignoring allegiance."""
+        grid = battle.grid
+        occ = battle.occupied(exclude=unit)
+        others = [u for u in battle.alive() if u is not unit]
+        if not others:
+            return SkipAction(unit), "[BERSERK] no target"
+        others.sort(key=lambda u: grid.distance(unit.pos, u.pos))
+
+        blocked = any(grid.distance(unit.pos, o.pos) == 1 for o in others)
+        if unit.is_archer and not blocked:
+            tgt = others[0]
+            return AttackAction(unit, tgt, ranged=True), f"[BERSERK] shoots {tgt.name}"
+
+        # melee: attack the nearest unit reachable this turn
+        reachable = grid.reachable(unit.pos, unit.speed, occ, unit.is_flying)
+        for tgt in others:
+            for nb in grid.neighbors(*tgt.pos):
+                if nb in occ:
+                    continue
+                if nb in reachable or nb == unit.pos:
+                    return (AttackAction(unit, tgt, nb, ranged=False),
+                            f"[BERSERK] attacks {tgt.name}")
+
+        # otherwise move toward the nearest unit
+        tgt = others[0]
+        tc = grid.nearest_cell_next_to(unit.pos, tgt.pos, occ,
+                                       unit.is_flying, unit.speed * 3)
+        if tc:
+            path = grid.find_path(unit.pos, tc, occ, unit.is_flying, unit.speed * 3)
+            if path and len(path) > 1:
+                return (MoveAction(unit, path[:unit.speed + 1]),
+                        f"[BERSERK] moves toward {tgt.name}")
+        return SkipAction(unit), "[BERSERK] stuck"
 
     # ================================================================
     #  archerDecision() — ai_battle.cpp:1172
