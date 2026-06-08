@@ -14,13 +14,14 @@ from engine.actions import (Action, MoveAction, AttackAction, SkipAction,
                             CastAction, RetreatAction)
 from engine.unit import Unit
 
+from ai.base import AIPlayer
 from .evaluation import AIState, analyze
 from .scoring import threat, pos_value
 from .spells import select_best_spell
 from .retreat import should_retreat
 
 
-class BattleAI:
+class ClassicAI(AIPlayer):
     """Core tactical AI, faithful to fheroes2's decision logic."""
 
     def check_retreat(self, battle: BattleState, unit: Unit

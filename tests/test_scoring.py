@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from engine.hex_grid import HexGrid
 from engine.battle_state import BattleState
 from engine.unit import Unit
-from ai.scoring import threat
+from ai.classic.scoring import threat
 
 
 def _battle(units):

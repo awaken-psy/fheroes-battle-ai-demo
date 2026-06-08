@@ -9,8 +9,8 @@ from engine.hex_grid import HexGrid
 from engine.battle_state import BattleState
 from engine.unit import Unit
 from engine.hero import Hero
-from ai.evaluation import analyze
-from ai.spells import select_best_spell
+from ai.classic.evaluation import analyze
+from ai.classic.spells import select_best_spell
 
 
 def _choose(units, team, hero):
