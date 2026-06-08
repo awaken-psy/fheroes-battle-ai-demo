@@ -152,9 +152,12 @@ class BattleScreen:
         self.logger.action(desc, result['desc'])
         g = self.game; s = g._s
         tx, ty = g.hex_renderer.center(*action.target.pos)
-        text = f"-{result['dmg']}" if result.get('dmg') else action.spell.name
-        self._popups.append(Popup(tx, ty - s(12), text, config.CYAN, speed=g._rs))
-        self._flash = (action.target.pos, 0.15)
+        # Big, long-lived cyan popup so spellcasts stand out from melee numbers.
+        spell = action.spell.name
+        text = f"{spell} -{result['dmg']}" if result.get('dmg') else spell
+        self._popups.append(
+            Popup(tx, ty - s(18), text, config.CYAN, life=2.0, speed=g._rs, big=True))
+        self._flash = (action.target.pos, 0.4)
 
     def _fast_forward(self):
         """Skip all animations, resolve battle to completion, log and return."""

@@ -9,15 +9,16 @@ from . import fonts
 # ── Floating damage number ────────────────────────────────────
 
 class Popup:
-    """Floating damage number that rises and fades."""
+    """Floating text that rises and fades. `big` uses a larger font."""
 
-    def __init__(self, x, y, text, color, life=1.0, speed=1.0):
+    def __init__(self, x, y, text, color, life=1.0, speed=1.0, big=False):
         self.x, self.y = float(x), float(y)
         self.text = text
         self.color = color
         self.age = 0.0
         self.life = life
         self._speed = speed
+        self.big = big
 
     def update(self, dt):
         self.age += dt
@@ -27,7 +28,8 @@ class Popup:
     def draw(self, surf):
         fade = max(0.0, 1.0 - self.age / self.life)
         c = tuple(int(ch * fade) for ch in self.color)
-        txt = fonts.POPUP.render(self.text, True, c)
+        font = fonts.BIG if self.big else fonts.POPUP
+        txt = font.render(self.text, True, c)
         surf.blit(txt, txt.get_rect(center=(int(self.x), int(self.y))))
 
 
