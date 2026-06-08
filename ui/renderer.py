@@ -47,9 +47,25 @@ def draw_btn(surf, x, y, bw, bh, text, bg, fg):
 # ── Unit drawing ──────────────────────────────────────────────
 
 def draw_unit(canvas, s, grid, u, cx, cy, current=False):
-    """Render one unit (shape, symbol, hp bar, count) at pixel (cx, cy)."""
+    """Render one unit (shape, symbol, hp bar, count) at pixel (cx, cy).
+
+    ``cx, cy`` is the head cell's centre (or the animated position). A wide unit
+    also fills its trailing tail cell, drawn underneath the head.
+    """
     color = fonts.team_color(u.team)
     r = s(15)
+
+    # Wide units span two cells: draw a body reaching into the tail cell first,
+    # so the head shape (and symbol / bars) render on top of it.
+    if u.is_wide and u.tail_cell is not None:
+        hx, hy = grid.center(*u.pos)
+        tx, ty = grid.center(*u.tail_cell)
+        tcx, tcy = cx + (tx - hx), cy + (ty - hy)
+        pygame.draw.line(canvas, color, (int(cx), int(cy)),
+                         (int(tcx), int(tcy)), int(s(16)))
+        pygame.draw.circle(canvas, color, (int(tcx), int(tcy)), int(s(11)))
+        pygame.draw.circle(canvas, config.WHITE, (int(tcx), int(tcy)), int(s(11)), 1)
+
     if u.is_archer:
         pts = [(cx, cy - r), (cx - s(12), cy + s(10)), (cx + s(12), cy + s(10))]
         pygame.draw.polygon(canvas, color, pts)

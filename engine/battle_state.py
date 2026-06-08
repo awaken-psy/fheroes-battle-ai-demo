@@ -51,11 +51,17 @@ class BattleState:
         return self.alive(unit.team)
 
     def occupied(self, exclude: Optional[Unit] = None) -> Set[Tuple[int, int]]:
-        return {u.pos for u in self.alive() if u is not exclude}
+        cells: Set[Tuple[int, int]] = set()
+        for u in self.alive():
+            if u is exclude:
+                continue
+            cells |= u.occupied_cells()
+        return cells
 
     def unit_at(self, pos: Tuple[int, int]) -> Optional[Unit]:
+        """The unit whose body (head or tail) covers ``pos``."""
         for u in self.alive():
-            if u.pos == pos:
+            if pos in u.occupied_cells():
                 return u
         return None
 

@@ -46,9 +46,26 @@ class HexGrid:
         return 0 if col < self.cols // 2 else 1
 
     # ── pathfinding ─────────────────────────────────────────
+    #
+    # All three functions track the *head* cell. ``tail_dir`` is the column
+    # offset of a wide unit's tail (-1 for team 0, +1 for team 1); None means a
+    # single-hex unit, in which case the single-hex code path is byte-for-byte
+    # unchanged. For wide units a head cell is only usable when its tail cell is
+    # in-grid and (for non-flyers) unoccupied — see ``_tail_ok``.
+
+    def _tail_ok(self, head: Tuple[int, int], tail_dir: int,
+                 occupied: Set[Tuple[int, int]], flying: bool,
+                 goal: Optional[Tuple[int, int]] = None) -> bool:
+        tail = (head[0] + tail_dir, head[1])
+        if not self.is_valid(*tail):
+            return False
+        if not flying and tail in occupied and tail != goal:
+            return False
+        return True
 
     def reachable(self, start: Tuple[int, int], speed: int,
-                  occupied: Set[Tuple[int, int]], flying: bool = False
+                  occupied: Set[Tuple[int, int]], flying: bool = False,
+                  tail_dir: Optional[int] = None
                   ) -> Dict[Tuple[int, int], int]:
         result: Dict[Tuple[int, int], int] = {start: 0}
         queue = deque([(start, 0)])
@@ -61,13 +78,16 @@ class HexGrid:
                     continue
                 if nb in occupied and not flying:
                     continue
+                if tail_dir is not None and not self._tail_ok(nb, tail_dir, occupied, flying):
+                    continue
                 result[nb] = d + 1
                 queue.append((nb, d + 1))
         return result
 
     def find_path(self, start: Tuple[int, int], goal: Tuple[int, int],
                   occupied: Set[Tuple[int, int]], flying: bool = False,
-                  max_len: int = 99) -> Optional[List[Tuple[int, int]]]:
+                  max_len: int = 99, tail_dir: Optional[int] = None
+                  ) -> Optional[List[Tuple[int, int]]]:
         if start == goal:
             return [start]
         prev: Dict[Tuple[int, int], Tuple[int, int]] = {start: start}
@@ -81,6 +101,8 @@ class HexGrid:
                     continue
                 if nb in occupied and not flying and nb != goal:
                     continue
+                if tail_dir is not None and not self._tail_ok(nb, tail_dir, occupied, flying, goal):
+                    continue
                 prev[nb] = pos
                 if nb == goal:
                     path = [goal]
@@ -93,12 +115,15 @@ class HexGrid:
 
     def nearest_cell_next_to(self, start: Tuple[int, int], target: Tuple[int, int],
                              occupied: Set[Tuple[int, int]], flying: bool = False,
-                             max_dist: int = 99) -> Optional[Tuple[int, int]]:
+                             max_dist: int = 99, tail_dir: Optional[int] = None
+                             ) -> Optional[Tuple[int, int]]:
         best_pos, best_d = None, float('inf')
         for nb in self.neighbors(*target):
             if nb in occupied:
                 continue
-            path = self.find_path(start, nb, occupied, flying, max_dist)
+            if tail_dir is not None and not self._tail_ok(nb, tail_dir, occupied, flying):
+                continue
+            path = self.find_path(start, nb, occupied, flying, max_dist, tail_dir)
             if path and len(path) - 1 < best_d:
                 best_d = len(path) - 1
                 best_pos = nb

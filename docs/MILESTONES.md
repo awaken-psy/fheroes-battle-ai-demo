@@ -13,7 +13,10 @@
 | **M3** `v0.5` | 法术系统 | P2(法术) | ~70% | ✅ 完成 |
 | **M4** `v0.6` | 撤退 + 完整回合行为 | P2(其余) | ~85% | ✅ 完成 |
 | **M5** `v1.0` | 特殊能力 + 谨慎走位 | P3(核心) | ~90% | ✅ 完成 |
-| **M5b/M6** | 宽体单位 / 攻城 / 调参 | P3+P4(其余) | ~95% | 📋 待办 |
+| **M5b** | 宽体单位(2 格占位) | P3 | ~91% | ✅ 完成 |
+| **M6a** | 兵种扩充(~60,原版精确数值) | P3 | ~92% | 📋 待办 |
+| **M6b** | 攻城系统(完整) | P4 | ~94% | 📋 待办 |
+| **M6c** | 验证 / 调参 / 原版对照 | P4 | ~95% | 📋 待办 |
 
 ---
 
@@ -116,7 +119,7 @@
 - [x] 新兵种:Griffin 补无限反击(经典特性)+ Vampire(吸血,飞)/Troll(自愈)/Medusa(死亡凝视)
 - [x] `findOptimalPositionForSubsequentAttack` 谨慎走位:`_safest_step_on_path` 沿路径选威胁最低且仍前进的落点(`cautious` 时启用)
 - [x] 验证:新功能单测 + 现有回归(确认范围,不做 arena 调参/原版对照)
-- [ ] **(留待 M5b/M6)** 宽体单位 + 双格攻击;攻城/城墙/箭塔;更多兵种(~60);arena 权重调参;与原版决策对照;阵型/MCTS
+- [ ] **(已细化为下方 M5b→M6c)** 宽体单位 / 攻城 / 兵种扩充 / arena 调参 / 原版决策对照;~~阵型/MCTS~~(已剔除:属 AI 算法增强而非规则复刻,留待 DL 阶段)
 
 **退出标准:**
 - [x] 4 个能力均生效且有单测;base_strength/threat 能力倍率接上
@@ -124,6 +127,98 @@
 - [x] 全部 pytest 绿(82 个,新增 test_abilities/test_cautious 12 个);镜像仍 40–60(Balanced 40.6 / Flyer 55.0);GUI 含新兵种跑帧正常
 
 > 注:death_gaze 近似为额外斩杀 `max(1,count//10)`;hp_drain **不复活**(只补残血),弱于原版可复活版;self_heal 每回合补一名存活单位的血(不复活)。Bless/Curse 仍 M3 的 ×1.2/×0.8 近似。
+
+---
+
+# M5b/M6 — 规则复刻收尾(冻结规则,为 DL 铺路)
+
+> M5b→M6c 是 v1.0 之后的规则补全。目标是把游戏规则**做到接近原版并冻结**,
+> 之后才进 R2+ 训练脚手架(规则不冻结,观测/动作编码会反复返工)。
+> **范围决策(2026-06-09 确认)**:宽体单位完整 2 格占位、攻城完整版、兵种用原版精确数值、
+> 源码级审计对照;**剔除 MCTS/阵型**(属 AI 算法增强,非规则复刻,留待 DL 阶段)。
+>
+> **依赖顺序**:`M5b 宽体(地基) → M6a 兵种 → M6b 攻城 → M6c 验证`。
+> 原版近 1/3 兵种本身是宽体,故宽体必须先于兵种扩充。
+>
+> **安全网(每个子里程碑通用)**:老的单格 / 野战对战指纹保持逐字不变(零回归),
+> 新行为由新单测覆盖。唯一例外是 M6a 切换原版精确数值时**一次性、有意地**重建指纹基线。
+>
+> **源码对照基准**:本地 `/home/awaken/projects/AI/fheroes2/src/fheroes2/` 有完整 C++ 源码。
+
+## M5b — 宽体单位(结构性地基)✅
+
+> 原版规则:宽体单位占**同一行相邻两格**(head + tail),head 永远朝敌、tail 在身后;
+> 移动需两格都放得下;近战邻接 head 与 tail 都算。**简化决策**:朝向固定由队伍决定
+> (team0 head 在右/tail=col-1,team1 head 在左/tail=col+1),不实现原版倒退翻转(AI 几乎只向前)。
+> 对照源码:`battle/battle_cell.cpp`(`Position::Set`)、`battle/battle_troop.cpp`(GetHead/TailIndex,
+> `_isReflected = headIdx < tailIdx`)、`battle/battle_board.cpp`、`battle/battle_pathfinding.cpp`。
+
+任务:
+- [x] `engine/unit.py`:加 `is_wide`(默认 False)、`tail_cell`(由 head+team 朝向推导)、`occupied_cells()`(单格返回 `{pos}`,与旧逻辑逐字等价)
+- [x] `engine/hex_grid.py`:`reachable`/`find_path`/`nearest_cell_next_to` 加 `tail_dir` 参数,`_tail_ok` 校验尾格在界内且空闲;单格路径逐字不变
+- [x] `engine/battle_state.py`:`occupied()`/`unit_at()` 改 footprint 并集(单格等价)
+- [x] `ai/classic/planner.py`:加 `_tail_dir`/`_dist`/`_pos_dist`/`_attack_cells` 几何 helper(均对单格等价),全调用点 footprint 化 + `tail_dir` 串入寻路
+- [x] `ui/renderer.py`:`draw_unit` 宽体先画连到 tail 格的身体(head 之下层,动画跟随)
+- [x] `config/units.py`+`config/presets.py`:新增宽体兵种 `Champion` + `Wide Clash` 预设(老预设不动)
+- [x] `scripts/fingerprint.py`:提交可复现指纹脚本,基线钉死在 3 个单格预设(与 PRESETS 增删解耦)
+
+**退出标准:**
+- [x] 宽体单位移动 / 攻击 / 反击 / 渲染正确,有单测(`tests/test_wide.py` 12 个)
+- [x] 纯单格预设战斗指纹与 M5b 前**逐字一致** = `49b740ae1e7e90d3`(零回归安全网,贯穿 6 步不变)
+- [x] 全部 pytest 绿(94 个);GUI 宽体局渲染 202 帧无错正常分胜负;arena 镜像 Balanced 仍 PASS(40–60%)
+
+> 注:朝向固定为近似(原版 `UpdateDirection` 倒退翻转未实现);宽体 ENEMY 的 `pos_value`/`threat`
+> 评分仍按 head 近似(scoring.py 未动以守指纹),M6a 接原版数值后再评估是否细化。
+
+## M6a — 兵种扩充(~60,原版精确数值)
+
+> 一次性把兵种数值切到 **fheroes2 原版精确表**(现有 8 个简化数值随之作废),
+> 此刻重建指纹基线(有意的一次性行为变更,记录在案)。
+> 对照源码:`monster/monster.cpp`(`GetBattleStats` 等)、`monster/monster_info.cpp`。
+
+任务:
+- [ ] 移植原版兵种数据表(attack/defense/hp/damage/speed/count/shots/wide/abilities + 6 阵营分组),重构 `config/units.py`
+- [ ] 各兵种能力映射到现有能力钩子;产出**能力覆盖表**,逐个标注「忠实 / 近似 / 暂缺」(施法单位、龙息双格伤害、闪电反击等)
+- [ ] 单测:批量创建全部兵种、strength 公式 sanity、宽体标记正确
+- [ ] **重建并记录**新指纹基线(替换 R1 的 `545c41fcb8481a63`,注明原因)
+
+**退出标准:**
+- [ ] ~60 兵种可创建且通过 strength sanity;能力覆盖表入档
+- [ ] 新指纹基线已记录,后续以它为零回归基准
+- [ ] 全部 pytest 绿
+
+## M6b — 攻城系统(完整版)
+
+> fheroes2 最大的单一子系统。对照源码:`battle/battle_arena.cpp`、`battle/battle_catapult.cpp`、
+> `battle/battle_tower.cpp`、`battle/battle_bridge.cpp`、`battle/battle_board.cpp`(墙/河格位)、`castle/castle.cpp`。
+
+任务:
+- [ ] `engine/castle.py` 数据层:4 段城墙(多状态 hp:完好/破损/摧毁)、城门吊桥(开/关/毁)、护城河格、箭塔(≤3,射手伪单位)、投石车
+- [ ] 几何 + 规则:城墙阻挡移动与射击 LOS;护城河停止移动 + 防御惩罚;吊桥开关控制入城;守军加成
+- [ ] 回合机制:箭塔自动射击、投石车每回合自动砸墙(攻方)、隔墙射击惩罚
+- [ ] `ai/classic` 攻城决策:攻方优先破墙 / 破桥,守方据墙,箭塔选目标,投石车选目标启发式(对齐原版 Arena AI)
+- [ ] `ui` + `config/presets.py`:渲染城堡 / 墙 / 塔 / 河 + 一个攻城预设
+
+**退出标准:**
+- [ ] 城墙 / 护城河 / 箭塔 / 投石 / 吊桥 / 守军加成各部件生效且有单测
+- [ ] 攻 / 守 AI 在攻城场景表现合理
+- [ ] 野战指纹不受影响(攻城为独立场景);GUI 攻城跑帧正常
+
+## M6c — 验证与调参(打 ~95% tag)
+
+> 对照源码:`ai/` 下的战斗 AI(`AIBattle`/`AIToBattle` 相关)。审计方式为**源码级逐条比对**,
+> 产出「行为差异清单」,不做原版运行时注入对照(工程上不现实)。
+
+任务:
+- [ ] `scripts/arena.py` 扩展:支持新兵种 + 攻城场景
+- [ ] arena 权重调参一遍,向原版行为靠拢
+- [ ] 源码级审计对照:逐条比对原版 AI 源码,产出 `docs/` 行为差异清单
+- [ ] 文档更新,保真度 ~95%,打 tag
+
+**退出标准:**
+- [ ] arena 支持新兵种 + 攻城并跑完
+- [ ] 行为差异清单入档(逐条标注已对齐 / 近似 / 暂缺)
+- [ ] 全部 pytest 绿;镜像仍 40–60%;打 tag
 
 ---
 

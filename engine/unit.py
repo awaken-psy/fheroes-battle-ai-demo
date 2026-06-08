@@ -1,6 +1,7 @@
 """Unit class — a stack of identical creatures on the battlefield."""
 
 import math
+from typing import Optional
 
 import config
 
@@ -21,6 +22,11 @@ class Unit:
         self.damage = kwargs["damage"]
         self.is_archer = kwargs["is_archer"]
         self.is_flying = kwargs["is_flying"]
+        # Wide units occupy two horizontally-adjacent cells (head + tail).
+        # fheroes2: the head always faces the enemy; the tail trails behind.
+        # We fix facing by team (team 0 faces right, team 1 faces left) rather
+        # than reflecting on backward moves — our AI almost always advances.
+        self.is_wide = kwargs.get("is_wide", False)
         self.abilities = set(kwargs.get("abilities", ()))
         self.symbol = kwargs.get("symbol", name[0])
 
@@ -45,11 +51,34 @@ class Unit:
 
     @property
     def pos(self) -> tuple:
+        """The head cell — the enemy-facing front of the unit."""
         return (self.col, self.row)
 
     @pos.setter
     def pos(self, value: tuple):
         self.col, self.row = value
+
+    @property
+    def tail_cell(self) -> Optional[tuple]:
+        """The trailing cell for a wide unit, else None.
+
+        Team 0 faces right so the tail sits to the left of the head; team 1
+        faces left so the tail sits to the right. Same row in both cases.
+        """
+        if not self.is_wide:
+            return None
+        dc = -1 if self.team == 0 else 1
+        return (self.col + dc, self.row)
+
+    def occupied_cells(self) -> set:
+        """All cells this unit's body occupies — {head} or {head, tail}.
+
+        For single-hex units this is exactly {pos}, so occupancy / collision
+        logic is byte-for-byte unchanged from before wide units existed.
+        """
+        if self.is_wide:
+            return {self.pos, self.tail_cell}
+        return {self.pos}
 
     @property
     def hp(self) -> int:
