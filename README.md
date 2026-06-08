@@ -204,7 +204,7 @@ fheroes-battle-ai-demo/
 │
 ├── docs/                  文档
 │   ├── MILESTONES.md      里程碑 M1–M5（含退出标准）
-│   ├── TODO.md            复刻路线图
+│   ├── VERIFICATION.md    M1–M5 验证清单（可逐条复核）
 │   └── 战斗AI学习指南.md
 │
 ├── config/                纯数据常量（无逻辑）
