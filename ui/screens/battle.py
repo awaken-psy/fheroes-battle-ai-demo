@@ -9,7 +9,7 @@ from ..renderer import Popup, draw_btn, draw_unit
 from engine.battle_state import BattleState
 from engine.actions import MoveAction, AttackAction, SkipAction
 from engine.battle_logger import BattleLogger
-from ai.planner import BattleAI
+from ai import create_ai
 
 # Animation phases
 PH_IDLE, PH_MOVE, PH_STRIKE, PH_RETAL, PH_AFTER = range(5)
@@ -20,7 +20,7 @@ class BattleScreen:
 
     def __init__(self, game):
         self.game = game
-        self.ai = BattleAI()
+        self.ai = create_ai("classic")
         self.logger = BattleLogger()
 
         self.battle: BattleState | None = None

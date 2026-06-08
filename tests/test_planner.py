@@ -18,7 +18,7 @@ from engine.hex_grid import HexGrid
 from engine.battle_state import BattleState
 from engine.unit import Unit
 from engine.actions import MoveAction, AttackAction, SkipAction
-from ai.planner import BattleAI
+from ai.classic import BattleAI
 
 GRID = HexGrid()
 AI = BattleAI()
@@ -100,7 +100,7 @@ def test_engine_and_ai_import_without_pygame():
         "        raise ImportError('pygame imported by engine/ai')\n"
         "sys.meta_path.insert(0, B())\n"
         "import engine.hex_grid, engine.battle_state, engine.unit, engine.actions\n"
-        "import ai.planner, ai.scoring, ai.evaluation\n"
+        "import ai, ai.classic.planner, ai.classic.scoring, ai.classic.evaluation\n"
     )
     repo_root = os.path.join(os.path.dirname(__file__), "..")
     proc = subprocess.run([sys.executable, "-c", code], cwd=repo_root,

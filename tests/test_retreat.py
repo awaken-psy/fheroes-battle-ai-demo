@@ -10,9 +10,9 @@ from engine.battle_state import BattleState
 from engine.unit import Unit
 from engine.hero import Hero
 from engine.actions import RetreatAction, CastAction
-from ai.evaluation import AIState, analyze
-from ai.planner import BattleAI
-from ai.retreat import should_retreat, retreat_ratio
+from ai.classic.evaluation import AIState, analyze
+from ai.classic import BattleAI
+from ai.classic.retreat import should_retreat, retreat_ratio
 
 AI = BattleAI()
 

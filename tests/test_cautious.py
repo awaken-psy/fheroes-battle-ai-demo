@@ -9,8 +9,8 @@ from engine.hex_grid import HexGrid
 from engine.battle_state import BattleState
 from engine.unit import Unit
 from engine.actions import MoveAction
-from ai.planner import BattleAI
-from ai.evaluation import analyze
+from ai.classic import BattleAI
+from ai.classic.evaluation import analyze
 
 AI = BattleAI()
 G = HexGrid()

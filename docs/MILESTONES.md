@@ -124,3 +124,51 @@
 - [x] 全部 pytest 绿(82 个,新增 test_abilities/test_cautious 12 个);镜像仍 40–60(Balanced 40.6 / Flyer 55.0);GUI 含新兵种跑帧正常
 
 > 注:death_gaze 近似为额外斩杀 `max(1,count//10)`;hp_drain **不复活**(只补残血),弱于原版可复活版;self_heal 每回合补一名存活单位的血(不复活)。Bless/Curse 仍 M3 的 ×1.2/×0.8 近似。
+
+---
+
+# 路线图 — AI 可插拔化(面向未来深度学习)
+
+> 目标:把整套 AI 改写成**可插拔**形式,未来能用深度学习训练的 `DeepAI` 替换原版 AI,
+> 同时**原版规则 AI 完整保留**,两者可同台对战(天然互为基准)。
+> 训练本身不急;先铺骨架,等游戏规则冻结后再做训练相关的重武器。
+
+## 设计原则
+
+1. **零行为变化** — 原版 AI 逻辑一行不改,只搬位置 + 加一层接口;重构前后所有测试逐字一致。
+2. **依赖方向不变** — 继续 `ai → engine` 单向,引擎/UI 不知道有几种 AI。
+3. **接口稳定、实现可换** — 调用方只认抽象接口 `AIPlayer`,不认具体类。
+4. **本阶段不引入 DL 依赖** — 不碰 numpy / gym / torch,纯软件工程重构,与继续写规则零冲突。
+
+## 解耦现状(2026-06-09 审查结论)
+
+- ✅ 分层健康:`config → engine → ai → ui`,`engine` 零反向依赖,`ai` 不依赖 config/ui/pygame。
+- ✅ AI 输出是干净的 `Action` 对象,引擎用 `battle.execute()` 消费。
+- ⚠️ 替换 DL 的 4 个障碍:(1) 无抽象接口+工厂,8 处硬编码 `BattleAI()`;(3) 无观测编码层;
+  (4) 无形式化动作空间+合法掩码+训练环境。障碍 2(三段式接口)向前兼容,DL 可内部委托统一策略。
+
+## R1 — 可插拔骨架(障碍 1)✅ 完成
+
+> 本阶段只解决障碍 1。规则可继续随意改,接口不变。
+
+任务:
+- [x] `ai/base.py`:`AIPlayer` 抽象基类,签名照搬现有三方法(`check_retreat` / `maybe_cast_spell` / `decide`)
+- [x] `git mv` 原版 6 文件(planner/evaluation/scoring/spells/retreat/strategy)进 `ai/classic/`,内部相对 import 整组搬动后仍成立
+- [x] `BattleAI` 继承 `AIPlayer` 并重命名 `ClassicAI`(`ai/classic/__init__.py` 保留 `BattleAI` 别名防旧引用)
+- [x] `ai/factory.py`:`create_ai(kind)` + 注册表 + `register_ai` / `available_ais`,注册 `"classic" → ClassicAI`
+- [x] 调用点(headless ×2 / GUI)改走 `create_ai("classic")`;8 个测试改 import 路径到 `ai.classic.*`
+- [x] 预留空 `ai/deep/` 占位目录(含未来 DeepAI 注册说明)
+
+**退出标准:**
+- [x] `pytest` 全绿(82 个),结果与重构前一致
+- [x] 同 seed 的 headless 战斗指纹重构前后逐字相同(30 局 `HASH 545c41fcb8481a63`,零行为变化安全网)
+- [x] 切换 AI 只需改 `create_ai("...")` 的字符串;`create_ai("deep")` 清晰报错列出可用项
+
+## R2+ — 训练脚手架(障碍 3/4,规则冻结后做,保持框架无关)
+
+> 以下依赖「游戏规则已基本冻结」,过早做会随规则反复返工,故**显式留到规则稳定后**。
+
+- [ ] **R2 观测编码** `ai/observation.py`:`BattleState` → 定长数值向量(numpy,框架无关)
+- [ ] **R3 动作空间** `ai/action_space.py`:动作编号 + 合法性掩码 + 编号↔Action 互转
+- [ ] **R4 环境适配** `ai/env.py`:通用 `reset/step/reward` 三件套;是否套 Gymnasium 适配层到时再定(适配层单独隔离)
+- [ ] **R5 DeepAI** `ai/deep/`:实现 `DeepAI(AIPlayer)` 注册进工厂,`create_ai("deep")` 与原版同台对战

@@ -9,7 +9,7 @@ from engine.hex_grid import HexGrid
 from engine.battle_state import BattleState
 from engine.unit import Unit
 from engine.actions import AttackAction
-from ai.scoring import threat
+from ai.classic.scoring import threat
 
 G = HexGrid()
 

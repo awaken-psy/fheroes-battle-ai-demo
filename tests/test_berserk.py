@@ -10,7 +10,7 @@ from engine.battle_state import BattleState
 from engine.unit import Unit
 from engine.spells import Effect
 from engine.actions import AttackAction, MoveAction
-from ai.planner import BattleAI
+from ai.classic import BattleAI
 
 AI = BattleAI()
 

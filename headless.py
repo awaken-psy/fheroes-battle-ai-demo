@@ -13,7 +13,7 @@ from engine.hex_grid import HexGrid
 from engine.unit import Unit
 from engine.battle_state import BattleState
 from engine.battle_logger import BattleLogger
-from ai.planner import BattleAI
+from ai import create_ai
 
 
 def simulate(units: List[Unit], seed: Optional[int] = None,
@@ -40,7 +40,7 @@ def simulate(units: List[Unit], seed: Optional[int] = None,
     battle = BattleState(grid, units, first_team=first_team,
                          attacker_team=attacker_team, heroes=heroes,
                          difficulty=difficulty, morale=morale, luck=luck)
-    ai = BattleAI()
+    ai = create_ai("classic")
     while not battle.is_over():
         order = battle.turn_order()
         if not order:
@@ -140,7 +140,7 @@ def run_battle(config_path: str, output_path: str | None = None) -> str:
     battle = BattleState(grid, units, heroes=heroes,
                          difficulty=cfg.get("difficulty", "Normal"),
                          morale=morale, luck=luck)
-    ai = BattleAI()
+    ai = create_ai("classic")
     logger = BattleLogger()
     logger.start(units)
 
