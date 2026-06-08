@@ -10,7 +10,7 @@
 |---|---|---|---|---|
 | **M1** `v0.3` | 验证闭环可用 | P0 | ~45%(不变,但**可量化**) | ✅ 完成 |
 | **M2** `v0.4` | 保真度修正 | P1 | ~55% | ✅ 完成 |
-| **M3** `v0.5` | 法术系统 | P2(法术) | ~70% | 📋 待办 |
+| **M3** `v0.5` | 法术系统 | P2(法术) | ~70% | ✅ 完成 |
 | **M4** `v0.6` | 撤退 + 完整回合行为 | P2(其余) | ~85% | 📋 待办 |
 | **M5** `v1.0` | 战场机制与调优 | P3 + P4 | ~95% | 📋 待办 |
 
@@ -68,13 +68,21 @@
 > 原版最大单块(958 行),也是观感差距最明显处。先做这块。
 
 任务:
-- [ ] `engine/spells.py`:伤害 / 增益 / 减益 / 召唤 / 复活,buff/debuff 为**有时限临时状态**
-- [ ] `ai/spells.py`:施法阈值 `myStr²/enemyStr×0.04`、法力开方折价 `value/√(sp/3)`、各法术 ratio 与时长系数(对齐 `ai_battle_spell.cpp:71` `selectBestSpell`)
+- [x] `engine/spells.py` + `engine/hero.py`:6 法术(伤害/增益/减益),buff/debuff 为**有时限临时状态**(Effect 逐回合 tick 失效);Hero{power, spell_points, spellbook},每回合≤1 法
+- [x] `engine/unit.py`:`effects[]` + 有效 `speed`(base+Σdelta) + `damage_factor`(Bless/Curse) + `tick_effects`
+- [x] `engine/battle_state.py`:heroes + `_cast` 执行 + damage_factor 入伤害 + start_round tick/reset;`CastAction`
+- [x] `ai/spells.py`:`select_best_spell` 阈值 `myStr²/enemyStr×0.04`(射手×0.5/低法力×2)、法力开方折价 `value/√(cost/3)`、伤害启发式(击杀奖励/掉血%)、Haste/Slow/Bless/Curse ratio(对齐 `ai_battle_spell.cpp:71`)
+- [x] 整合:`planner.maybe_cast_spell`(单位行动前)、headless/GUI 接入、config/presets 支持 heroes、arena `--hero0/--hero1`
 
 **退出标准:**
-- 至少覆盖 Magic Arrow / Lightning Bolt / Haste / Slow / Bless / Curse
-- buff/debuff 到期自动失效(单测验证),不永久改属性
-- arena 中带法术英雄 vs 无法术,胜率有显著、合理的差异
+- [x] 覆盖 Magic Arrow / Lightning Bolt / Haste / Slow / Bless / Curse
+- [x] buff/debuff 到期自动失效(单测验证),不永久改属性
+- [x] arena 带法术 vs 无法术胜率显著差异(team0 +hero ≈100%);镜像双英雄仍 40–60%(46.8%)
+- [x] 全部 pytest 绿(52 个,新增 test_spells/test_spell_ai 18 个);GUI 无头含施法跑帧通过
+
+> 注:Bless/Curse 原版为"打最大/最小伤害",demo 单伤害值→近似 ×1.2 / ×0.8。
+> 召唤/复活/驱散/群体/AOE/特殊能力(死亡凝视等)留待后续。arena 的 per-config 英雄未接入
+> (用 `--hero0/--hero1` 旗标),配置文件英雄走 `run_battle`/GUI 路径。
 
 ---
 

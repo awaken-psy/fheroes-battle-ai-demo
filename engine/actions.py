@@ -27,3 +27,12 @@ class AttackAction(Action):
 class SkipAction(Action):
     def __init__(self, unit: Unit):
         self.unit = unit
+
+
+class CastAction(Action):
+    """A hero casts one spell on a target unit (damage / buff / debuff)."""
+
+    def __init__(self, team: int, spell, target: Unit):
+        self.team = team
+        self.spell = spell
+        self.target = target

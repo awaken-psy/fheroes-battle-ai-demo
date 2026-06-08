@@ -4,15 +4,18 @@ import random
 from typing import List, Optional, Set, Tuple
 
 from .unit import Unit
-from .actions import Action, MoveAction, AttackAction, SkipAction
+from .actions import Action, MoveAction, AttackAction, SkipAction, CastAction
 from .hex_grid import HexGrid
+from .spells import DAMAGE, spell_damage, make_effect
 
 
 class BattleState:
     def __init__(self, grid: HexGrid, units: List[Unit], first_team: int = 0,
-                 attacker_team: int = 0):
+                 attacker_team: int = 0, heroes: Optional[dict] = None):
         self.grid = grid
         self.units = units
+        # Optional commander per team; None means that side has no spellcaster.
+        self.heroes = heroes if heroes is not None else {0: None, 1: None}
         self.round_num = 0
         self.deaths_this_round = 0
         # Which team wins the initiative tie on equal speed. Arena flips this
@@ -97,12 +100,12 @@ class BattleState:
 
     def expected_damage(self, atk: Unit, dfn: Unit, ranged: bool = False) -> int:
         """Average damage — used by the AI for decisions and by tests."""
-        base = atk.count * atk.damage
+        base = atk.count * atk.damage * atk.damage_factor
         return max(1, int(base * self._damage_mult(atk, dfn, ranged)))
 
     def roll_damage(self, atk: Unit, dfn: Unit, ranged: bool = False) -> int:
         """Actual damage with random spread — used when executing an attack."""
-        base = atk.count * atk.damage
+        base = atk.count * atk.damage * atk.damage_factor
         mult = self._damage_mult(atk, dfn, ranged) * random.uniform(0.85, 1.15)
         return max(1, int(base * mult))
 
@@ -163,6 +166,38 @@ class BattleState:
             r['desc'] = f"{action.unit.name} skips"
             return r
 
+        if isinstance(action, CastAction):
+            return self._cast(action)
+
+        return r
+
+    def _cast(self, action: CastAction) -> dict:
+        """Resolve a hero spellcast: damage or apply a timed effect."""
+        r = {'desc': '', 'dmg': 0, 'killed': 0,
+             'ret_dmg': 0, 'ret_killed': 0,
+             'target_alive': True, 'attacker_alive': True, 'cast': True}
+        hero = self.heroes.get(action.team)
+        spell, tgt = action.spell, action.target
+        if hero is None:
+            return r
+        hero.cast(spell)
+
+        if spell.kind == DAMAGE:
+            dmg = spell_damage(spell, hero.power)
+            actual, killed = tgt.take_damage(dmg)
+            r['dmg'] = actual
+            r['killed'] = killed
+            r['target_alive'] = tgt.is_alive
+            desc = f"{hero.name} casts {spell.name} on {tgt.name}: {actual} dmg"
+            if killed > 0:
+                desc += f" ({killed} killed)"
+            if not tgt.is_alive:
+                self.deaths_this_round += 1
+                desc += " [DEAD]"
+            r['desc'] = desc
+        else:
+            tgt.add_effect(make_effect(spell, hero.power))
+            r['desc'] = f"{hero.name} casts {spell.name} on {tgt.name}"
         return r
 
     # ── victory ─────────────────────────────────────────────
@@ -204,3 +239,7 @@ class BattleState:
         self.deaths_this_round = 0
         for u in self.alive():
             u.new_round()
+            u.tick_effects()
+        for hero in self.heroes.values():
+            if hero is not None:
+                hero.reset_round()
