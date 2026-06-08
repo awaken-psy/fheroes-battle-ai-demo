@@ -36,3 +36,10 @@ class CastAction(Action):
         self.team = team
         self.spell = spell
         self.target = target
+
+
+class RetreatAction(Action):
+    """The hero of `team` flees — the battle ends and that side loses."""
+
+    def __init__(self, team: int):
+        self.team = team

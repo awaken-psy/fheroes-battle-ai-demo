@@ -4,14 +4,17 @@ import random
 from typing import List, Optional, Set, Tuple
 
 from .unit import Unit
-from .actions import Action, MoveAction, AttackAction, SkipAction, CastAction
+from .actions import (Action, MoveAction, AttackAction, SkipAction,
+                      CastAction, RetreatAction)
 from .hex_grid import HexGrid
 from .spells import DAMAGE, spell_damage, make_effect
 
 
 class BattleState:
     def __init__(self, grid: HexGrid, units: List[Unit], first_team: int = 0,
-                 attacker_team: int = 0, heroes: Optional[dict] = None):
+                 attacker_team: int = 0, heroes: Optional[dict] = None,
+                 difficulty: str = "Normal",
+                 morale: Optional[dict] = None, luck: Optional[dict] = None):
         self.grid = grid
         self.units = units
         # Optional commander per team; None means that side has no spellcaster.
@@ -26,6 +29,14 @@ class BattleState:
         self.attacker_team = attacker_team
         # Consecutive completed rounds in which no unit died (anti-stalemate).
         self._stale_rounds = 0
+        # Difficulty governs the AI retreat threshold.
+        self.difficulty = difficulty
+        # Army-wide morale / luck per team in [-3, 3]; 0 = no effect (default).
+        # Engine-only: the AI never evaluates these (fheroes2 ai_battle.cpp:1289).
+        self.morale = morale if morale is not None else {0: 0, 1: 0}
+        self.luck = luck if luck is not None else {0: 0, 1: 0}
+        # Set to a team index when that side's hero flees.
+        self._retreated = None
 
     def alive(self, team: Optional[int] = None) -> List[Unit]:
         u = [u for u in self.units if u.is_alive]
@@ -104,10 +115,34 @@ class BattleState:
         return max(1, int(base * self._damage_mult(atk, dfn, ranged)))
 
     def roll_damage(self, atk: Unit, dfn: Unit, ranged: bool = False) -> int:
-        """Actual damage with random spread — used when executing an attack."""
+        """Actual damage with random spread — used when executing an attack.
+
+        Also applies the attacker army's luck: a good-luck roll doubles damage,
+        a bad-luck roll halves it. The AI never sees this (expected_damage is
+        luck-free), matching fheroes2 where luck is engine-only.
+        """
         base = atk.count * atk.damage * atk.damage_factor
         mult = self._damage_mult(atk, dfn, ranged) * random.uniform(0.85, 1.15)
+        mult *= self._roll_luck(atk.team)
         return max(1, int(base * mult))
+
+    def _roll_luck(self, team: int) -> float:
+        """Return 2.0 (good luck), 0.5 (bad luck) or 1.0, by army luck value."""
+        lk = self.luck.get(team, 0)
+        if lk > 0 and random.random() < lk * 0.10:
+            return 2.0
+        if lk < 0 and random.random() < -lk * 0.10:
+            return 0.5
+        return 1.0
+
+    def roll_morale(self, team: int) -> int:
+        """+1 good morale (extra action), -1 bad (skip), 0 none — by army morale."""
+        mr = self.morale.get(team, 0)
+        if mr > 0 and random.random() < mr * 0.10:
+            return 1
+        if mr < 0 and random.random() < -mr * 0.10:
+            return -1
+        return 0
 
     # Backwards-compatible alias: callers that want a real (rolled) hit.
     calc_damage = roll_damage
@@ -169,6 +204,13 @@ class BattleState:
         if isinstance(action, CastAction):
             return self._cast(action)
 
+        if isinstance(action, RetreatAction):
+            self.retreat(action.team)
+            hero = self.heroes.get(action.team)
+            who = hero.name if hero else f"Team {action.team}"
+            r['desc'] = f"{who} retreats"
+            return r
+
         return r
 
     def _cast(self, action: CastAction) -> dict:
@@ -210,12 +252,20 @@ class BattleState:
     def is_stalemate(self) -> bool:
         return self._stale_rounds >= self.MAX_TURNS_WITHOUT_DEATHS
 
+    def retreat(self, team: int) -> None:
+        """Record that `team`'s hero has fled; ends the battle, that side loses."""
+        self._retreated = team
+
     def is_over(self) -> bool:
-        return (len(self.alive(0)) == 0 or len(self.alive(1)) == 0
+        return (self._retreated is not None
+                or len(self.alive(0)) == 0 or len(self.alive(1)) == 0
                 or self.is_stalemate()
                 or self.round_num >= self.MAX_ROUNDS)
 
     def winner(self) -> int:
+        # A hero fled -> the other side wins.
+        if self._retreated is not None:
+            return 1 - self._retreated
         if not self.alive(0):
             return 1
         if not self.alive(1):

@@ -18,14 +18,15 @@ from ai.planner import BattleAI
 
 def simulate(units: List[Unit], seed: Optional[int] = None,
              first_team: int = 0, attacker_team: int = 0,
-             hero_configs: Optional[dict] = None) -> Tuple[int, int, bool]:
+             hero_configs: Optional[dict] = None, difficulty: str = "Normal",
+             morale: Optional[dict] = None, luck: Optional[dict] = None
+             ) -> Tuple[int, int, bool, str]:
     """Run one battle to completion with no logging or IO.
 
-    Returns ``(winner_team, rounds, ended_early)`` where ``ended_early`` means
-    the battle stopped on a stalemate or the absolute round cap rather than by
-    elimination. ``hero_configs`` is an optional {team: dict} of hero configs.
-    Reused by ``scripts/arena.py``; the given ``units`` are mutated, so pass a
-    fresh list (and fresh heroes are built here) per game.
+    Returns ``(winner_team, rounds, ended_early, end_reason)`` where end_reason
+    is one of "elim" / "retreat" / "stalemate" / "cap". ``hero_configs`` is an
+    optional {team: dict} of hero configs. Reused by ``scripts/arena.py``; the
+    given ``units`` are mutated, so pass a fresh list per game.
     """
     from engine.hero import Hero
 
@@ -37,7 +38,8 @@ def simulate(units: List[Unit], seed: Optional[int] = None,
                   1: Hero.from_config(hero_configs.get(1))}
     grid = HexGrid()
     battle = BattleState(grid, units, first_team=first_team,
-                         attacker_team=attacker_team, heroes=heroes)
+                         attacker_team=attacker_team, heroes=heroes,
+                         difficulty=difficulty, morale=morale, luck=luck)
     ai = BattleAI()
     while not battle.is_over():
         order = battle.turn_order()
@@ -49,14 +51,57 @@ def simulate(units: List[Unit], seed: Optional[int] = None,
                 continue
             if battle.is_over():
                 break
-            cast = ai.maybe_cast_spell(battle, unit)
-            if cast is not None:
-                battle.execute(cast[0])
-                if battle.is_over() or not unit.is_alive:
-                    continue
-            battle.execute(ai.decide(battle, unit)[0])
-    ended_early = battle.is_stalemate() or battle.round_num >= BattleState.MAX_ROUNDS
-    return battle.winner(), battle.round_num, ended_early
+            _take_unit_turn(battle, ai, unit)
+        if battle._retreated is not None:
+            break
+
+    if battle._retreated is not None:
+        reason = "retreat"
+    elif battle.is_stalemate():
+        reason = "stalemate"
+    elif battle.round_num >= BattleState.MAX_ROUNDS:
+        reason = "cap"
+    else:
+        reason = "elim"
+    return battle.winner(), battle.round_num, reason != "elim", reason
+
+
+def _take_unit_turn(battle, ai, unit, log=None):
+    """One unit's full activation: retreat / morale / cast / act.
+
+    Shared by simulate and run_battle. ``log`` is an optional callable
+    (ai_desc, result_desc) -> None for logging.
+    """
+    def execute(action, desc):
+        result = battle.execute(action)
+        if log is not None:
+            log(desc, result["desc"])
+
+    # Step 2: retreat (with a farewell damage spell)
+    retreat = ai.check_retreat(battle, unit)
+    if retreat is not None:
+        farewell, retreat_action = retreat
+        if farewell is not None:
+            execute(farewell[0], farewell[1])
+        execute(retreat_action, "[RETREAT]")
+        return
+
+    # Morale: bad -> skip the turn; good -> an extra action after acting.
+    morale = battle.roll_morale(unit.team)
+    if morale < 0:
+        return
+    for _ in range(2 if morale > 0 else 1):
+        if not unit.is_alive or battle.is_over():
+            break
+        # Step 3: hero spellcast (once per round)
+        cast = ai.maybe_cast_spell(battle, unit)
+        if cast is not None:
+            execute(cast[0], cast[1])
+            if battle.is_over() or not unit.is_alive:
+                break
+        # Step 4: the unit's own action
+        action, desc = ai.decide(battle, unit)
+        execute(action, desc)
 
 
 def run_battle(config_path: str, output_path: str | None = None) -> str:
@@ -86,9 +131,15 @@ def run_battle(config_path: str, output_path: str | None = None) -> str:
     heroes = {0: Hero.from_config(hero_cfg.get("0") or hero_cfg.get(0)),
               1: Hero.from_config(hero_cfg.get("1") or hero_cfg.get(1))}
 
+    cfg = data if isinstance(data, dict) else {}
+    morale = {int(k): v for k, v in cfg.get("morale", {}).items()} or None
+    luck = {int(k): v for k, v in cfg.get("luck", {}).items()} or None
+
     # run battle
     grid = HexGrid()
-    battle = BattleState(grid, units, heroes=heroes)
+    battle = BattleState(grid, units, heroes=heroes,
+                         difficulty=cfg.get("difficulty", "Normal"),
+                         morale=morale, luck=luck)
     ai = BattleAI()
     logger = BattleLogger()
     logger.start(units)
@@ -104,15 +155,9 @@ def run_battle(config_path: str, output_path: str | None = None) -> str:
                 continue
             if battle.is_over():
                 break
-            cast = ai.maybe_cast_spell(battle, unit)
-            if cast is not None:
-                result = battle.execute(cast[0])
-                logger.action(cast[1], result["desc"])
-                if battle.is_over() or not unit.is_alive:
-                    continue
-            action, desc = ai.decide(battle, unit)
-            result = battle.execute(action)
-            logger.action(desc, result["desc"])
+            _take_unit_turn(battle, ai, unit, log=logger.action)
+        if battle._retreated is not None:
+            break
 
     timeout = battle.round_num >= BattleState.MAX_ROUNDS
     logger.end(battle.winner(), battle.round_num, timeout=timeout)

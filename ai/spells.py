@@ -16,11 +16,13 @@ from engine.spells import Spell, DAMAGE, BUFF, DEBUFF
 from .evaluation import AIState
 
 
-def select_best_spell(battle: BattleState, team: int, s: AIState
+def select_best_spell(battle: BattleState, team: int, s: AIState,
+                      retreating: bool = False
                       ) -> Optional[Tuple[Spell, Unit]]:
     """Return (spell, target) for the hero of `team`, or None.
 
-    selectBestSpell — ai_battle_spell.cpp:71
+    selectBestSpell — ai_battle_spell.cpp:71. When ``retreating`` is set this is
+    the farewell cast: only damage spells, no threshold and no cost discount.
     """
     hero: Hero = battle.heroes.get(team)
     if hero is None:
@@ -44,8 +46,15 @@ def select_best_spell(battle: BattleState, team: int, s: AIState
     for spell in hero.spellbook:
         if not hero.can_cast(spell):
             continue
+        if retreating and spell.kind != DAMAGE:
+            continue  # farewell cast considers only damage spells
         value, target = _spell_value(battle, hero, spell, friendly, enemies, s)
         if target is None or value <= 0:
+            continue
+        if retreating:
+            # No cost discount, ignore the threshold — just deal max damage.
+            if value > best_value:
+                best_value, best = value, (spell, target)
             continue
         # Diminish by spell-point cost: sqrt so high-level spells aren't linear.
         spv = value / math.sqrt(spell.cost / 3.0)
