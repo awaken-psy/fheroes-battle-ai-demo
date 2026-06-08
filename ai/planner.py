@@ -284,9 +284,45 @@ class BattleAI:
             if grid.distance(final, best_e.pos) == 1:
                 return (AttackAction(unit, best_e, final, ranged=False),
                         f"[ME] {reason} {best_e.name}")
+            # When playing cautiously, advance only to the safest cell on the
+            # path instead of charging the full distance into enemy range.
+            if s.cautious:
+                seg = self._safest_step_on_path(battle, unit, seg, enemies)
             return (MoveAction(unit, seg),
                     f"[ME] {reason} {best_e.name}, moving closer")
         return None
+
+    def _safest_step_on_path(self, battle: BattleState, unit: Unit,
+                             seg: List[tuple], enemies: List[Unit]) -> List[tuple]:
+        """findOptimalPositionForSubsequentAttack — pick the lowest-threat step.
+
+        Among the cells reachable this turn (``seg[1:]``), return the path
+        truncated at the one exposing the unit to the least enemy threat next
+        turn; ties go to the cell that advances furthest.
+        """
+        if len(seg) <= 2:
+            return seg
+        best_idx, best_key = 1, None
+        for idx in range(1, len(seg)):
+            t = self._cell_threat(battle, unit, seg[idx], enemies)
+            key = (t, -idx)   # least threat, then furthest progress
+            if best_key is None or key < best_key:
+                best_key, best_idx = key, idx
+        return seg[:best_idx + 1]
+
+    def _cell_threat(self, battle: BattleState, unit: Unit,
+                     cell: tuple, enemies: List[Unit]) -> float:
+        """Expected damage enemies could deal to `unit` if it stood at `cell`."""
+        grid = battle.grid
+        total = 0.0
+        for e in enemies:
+            if e.is_archer or e.is_flying:
+                reachable = True   # shooters / flyers threaten anywhere
+            else:
+                reachable = grid.distance(cell, e.pos) <= e.speed + 1
+            if reachable:
+                total += battle.expected_damage(e, unit, ranged=e.is_archer)
+        return total
 
     # ================================================================
     #  meleeUnitDefense() — ai_battle.cpp:1708
