@@ -9,7 +9,7 @@
 | 里程碑 | 主题 | 对应 TODO | 目标保真度 | 状态 |
 |---|---|---|---|---|
 | **M1** `v0.3` | 验证闭环可用 | P0 | ~45%(不变,但**可量化**) | ✅ 完成 |
-| **M2** `v0.4` | 保真度修正 | P1 | ~55% | 📋 待办 |
+| **M2** `v0.4` | 保真度修正 | P1 | ~55% | ✅ 完成 |
 | **M3** `v0.5` | 法术系统 | P2(法术) | ~70% | 📋 待办 |
 | **M4** `v0.6` | 撤退 + 完整回合行为 | P2(其余) | ~85% | 📋 待办 |
 | **M5** `v1.0` | 战场机制与调优 | P3 + P4 | ~95% | 📋 待办 |
@@ -45,14 +45,21 @@
 > 三处**改现有代码**的小改动,直接拉高保真度。改完用 M1 的 arena 验证未引入回归。
 
 任务:
-- [ ] 战力公式对齐原版量纲(`engine/unit.py` / `ai/evaluation.py`)
-- [ ] `threat()` 升级为双向伤害+反击估值(`ai/scoring.py`)
-- [ ] `isLimitOfTurnsExceeded`:50 回合无死亡撤退,替换 200 回合硬上限
+- [x] 战力公式对齐原版量纲(`engine/unit.py`)— `getMonsterBaseStrength` 算法(sqrt(dmg·hp)·special)+ `(1+0.1atk+0.05def)×base×count`
+- [x] `threat()` 升级为伤害+距离衰减(`ai/scoring.py`)— `expected_damage / distMod`;双击/能力/符号修正留 M3/M4
+- [x] `isLimitOfTurnsExceeded`:50 回合无死亡 → 进攻方(可配置,默认 team0)撤退,替换 200 回合硬上限
+- [x] **(闭环发现)交替出手 turn order** — 对齐原版 `GetCurrentUnit` 归并:同速单位 A,B,A,B 交替而非整队先动
 
 **退出标准:**
-- `strength` 公式 = `(1+0.1·atk+0.05·def)×baseStrength×count`,有单测覆盖
-- `should_defend` 的姿态阈值在新量纲下重新校准,回归测试更新且通过
-- arena 对战不再出现 200 回合僵局触顶的情况
+- [x] `pytest` 全绿(34 个;新增 strength/threat/stalemate/turn-order 用例)
+- [x] `strength` 公式 = `(1+0.1·atk+0.05·def)×baseStrength×count`,有单测覆盖
+- [x] 三预设镜像仍落 40–60%(40.6 / 49.6 / 55.0,均 PASS)
+- [x] arena 不再撞 200 回合兜底(Ended early 0%,平均 9–25 回合)
+
+> **闭环再次兑现价值**:M2 更锐利的 damage-based 集火暴露出 demo 的 turn order 不保真——
+> 同速时「整队先动」导致后手方集火反击的巨大优势(镜像 35/70/79%)。原版 `GetCurrentUnit`
+> 是两队速度队列归并、同速交替出手。改为交替后镜像回到 40–60%。这是 turn-order 保真缺口,
+> 非 M2 三项之一,但因污染镜像测量而一并修掉(同 M1 修 should_defend 的处理)。
 
 ---
 

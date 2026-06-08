@@ -9,7 +9,8 @@ from .hex_grid import HexGrid
 
 
 class BattleState:
-    def __init__(self, grid: HexGrid, units: List[Unit], first_team: int = 0):
+    def __init__(self, grid: HexGrid, units: List[Unit], first_team: int = 0,
+                 attacker_team: int = 0):
         self.grid = grid
         self.units = units
         self.round_num = 0
@@ -17,6 +18,11 @@ class BattleState:
         # Which team wins the initiative tie on equal speed. Arena flips this
         # per game to cancel any first-move advantage.
         self.first_team = first_team
+        # The attacking side (fheroes2: the army that initiated the battle).
+        # On a death-free stalemate the attacker is forced to retreat.
+        self.attacker_team = attacker_team
+        # Consecutive completed rounds in which no unit died (anti-stalemate).
+        self._stale_rounds = 0
 
     def alive(self, team: Optional[int] = None) -> List[Unit]:
         u = [u for u in self.units if u.is_alive]
@@ -40,8 +46,37 @@ class BattleState:
         return None
 
     def turn_order(self) -> List[Unit]:
-        return sorted(self.alive(), key=lambda u: (
-            -u.speed, 0 if u.team == self.first_team else 1, u.name))
+        """Activation order for one round, faithful to fheroes2.
+
+        Each army is speed-sorted, then the two queues are merged: the fastest
+        available unit acts; on equal speed the "preferred" side goes, and the
+        preference then flips to the other side. Equal-speed units therefore
+        alternate between armies (A, B, A, B …) rather than one whole army
+        acting before the other. (battle_arena.cpp GetCurrentUnit)
+        """
+        queues = {0: [], 1: []}
+        for u in self.alive():
+            queues[u.team].append(u)
+        for team in queues:
+            queues[team].sort(key=lambda u: (-u.speed, u.name))
+
+        idx = {0: 0, 1: 0}
+        preferred = self.first_team
+        order: List[Unit] = []
+        while idx[0] < len(queues[0]) or idx[1] < len(queues[1]):
+            front0 = queues[0][idx[0]] if idx[0] < len(queues[0]) else None
+            front1 = queues[1][idx[1]] if idx[1] < len(queues[1]) else None
+            if front0 and front1:
+                if front0.speed == front1.speed:
+                    pick = preferred
+                else:
+                    pick = 0 if front0.speed > front1.speed else 1
+            else:
+                pick = 0 if front0 else 1
+            order.append(queues[pick][idx[pick]])
+            idx[pick] += 1
+            preferred = 1 - pick  # next activation prefers the other army
+        return order
 
     # ── damage ──────────────────────────────────────────────
     #
@@ -132,10 +167,17 @@ class BattleState:
 
     # ── victory ─────────────────────────────────────────────
 
+    # fheroes2 MAX_TURNS_WITHOUT_DEATHS: the attacker retreats after this many
+    # death-free rounds, breaking stalemates. MAX_ROUNDS is an absolute backstop.
+    MAX_TURNS_WITHOUT_DEATHS = 50
     MAX_ROUNDS = 200
+
+    def is_stalemate(self) -> bool:
+        return self._stale_rounds >= self.MAX_TURNS_WITHOUT_DEATHS
 
     def is_over(self) -> bool:
         return (len(self.alive(0)) == 0 or len(self.alive(1)) == 0
+                or self.is_stalemate()
                 or self.round_num >= self.MAX_ROUNDS)
 
     def winner(self) -> int:
@@ -143,12 +185,21 @@ class BattleState:
             return 1
         if not self.alive(1):
             return 0
-        # max rounds reached — winner by remaining army strength
+        # Death-free stalemate: the attacking side gives up (fheroes2 retreat).
+        if self.is_stalemate():
+            return 1 - self.attacker_team
+        # Absolute backstop reached — winner by remaining army strength.
         s0 = sum(u.strength for u in self.alive(0))
         s1 = sum(u.strength for u in self.alive(1))
         return 0 if s0 >= s1 else 1
 
     def start_round(self):
+        # Update the death-free streak based on the round that just finished.
+        if self.round_num >= 1:
+            if self.deaths_this_round == 0:
+                self._stale_rounds += 1
+            else:
+                self._stale_rounds = 0
         self.round_num += 1
         self.deaths_this_round = 0
         for u in self.alive():

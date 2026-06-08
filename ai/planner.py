@@ -81,7 +81,7 @@ class BattleAI:
         # free to shoot
         best_e, best_t = None, float('-inf')
         for e in enemies:
-            t = threat(unit, e)
+            t = threat(battle, unit, e)
             if t > best_t:
                 best_t, best_e = t, e
         if best_e:
@@ -188,7 +188,7 @@ class BattleAI:
             dist = len(path) - 1
             if dist <= 0:
                 continue
-            pri = threat(unit, e) / dist
+            pri = threat(battle, unit, e) / dist
             if pri > best_pri:
                 best_pri, best_e, best_path = pri, e, path
 
