@@ -121,12 +121,29 @@ class BattleScreen:
             unit = self._round_order[self._order_idx]
             self._order_idx += 1
             if unit.is_alive:
+                cast = self.ai.maybe_cast_spell(self.battle, unit)
+                if cast is not None:
+                    self._do_cast(cast)
                 action, desc = self.ai.decide(self.battle, unit)
                 self.b_action = action; self.b_desc = desc
                 self._start_anim(action)
                 return
         # all units in this round processed — reset order so next call starts a new round
         self._round_order = None
+
+    def _do_cast(self, cast):
+        """Execute a hero spellcast instantly (no movement animation), with a popup."""
+        action, desc = cast
+        result = self.battle.execute(action)
+        self.b_log.append(result['desc'])
+        if len(self.b_log) > 5:
+            self.b_log.pop(0)
+        self.logger.action(desc, result['desc'])
+        g = self.game; s = g._s
+        tx, ty = g.hex_renderer.center(*action.target.pos)
+        text = f"-{result['dmg']}" if result.get('dmg') else action.spell.name
+        self._popups.append(Popup(tx, ty - s(12), text, config.CYAN, speed=g._rs))
+        self._flash = (action.target.pos, 0.15)
 
     def _fast_forward(self):
         """Skip all animations, resolve battle to completion, log and return."""
@@ -143,6 +160,12 @@ class BattleScreen:
                     continue
                 if self.battle.is_over():
                     break
+                cast = self.ai.maybe_cast_spell(self.battle, unit)
+                if cast is not None:
+                    cr = self.battle.execute(cast[0])
+                    self.logger.action(cast[1], cr['desc'])
+                    if self.battle.is_over() or not unit.is_alive:
+                        continue
                 action, desc = self.ai.decide(self.battle, unit)
                 result = self.battle.execute(action)
                 self.logger.action(desc, result['desc'])

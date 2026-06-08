@@ -17,7 +17,7 @@ class Unit:
         self.attack = kwargs["attack"]
         self.defense = kwargs["defense"]
         self.max_hp = kwargs["hp"]
-        self.speed = kwargs["speed"]
+        self.base_speed = kwargs["speed"]
         self.damage = kwargs["damage"]
         self.is_archer = kwargs["is_archer"]
         self.is_flying = kwargs["is_flying"]
@@ -28,6 +28,9 @@ class Unit:
         self._max_total_hp = self._total_hp
         self.is_alive = True
         self.retaliated = False  # can retaliate once per round
+
+        # Active timed spell effects (Haste / Slow / Bless / Curse …).
+        self.effects = []
 
         # Per-type base strength (fheroes2 getMonsterBaseStrength), computed once.
         self._base_strength = self._compute_base_strength()
@@ -54,6 +57,36 @@ class Unit:
             return 0
         return self._total_hp - (self.count - 1) * self.max_hp
 
+    @property
+    def speed(self) -> int:
+        """Effective speed = base plus active Haste/Slow effects (min 1)."""
+        delta = sum(e.speed_delta for e in self.effects)
+        return max(1, self.base_speed + delta)
+
+    @property
+    def damage_factor(self) -> float:
+        """Combined damage multiplier from Bless / Curse effects."""
+        factor = 1.0
+        for e in self.effects:
+            factor *= e.damage_mult
+        return factor
+
+    # ── spell effects ───────────────────────────────────────
+
+    def has_effect(self, name: str) -> bool:
+        return any(e.name == name for e in self.effects)
+
+    def add_effect(self, effect) -> None:
+        """Apply (or refresh) a timed effect; one of each name at a time."""
+        self.effects = [e for e in self.effects if e.name != effect.name]
+        self.effects.append(effect)
+
+    def tick_effects(self) -> None:
+        """Count down effects at the start of a round, dropping expired ones."""
+        for e in self.effects:
+            e.remaining -= 1
+        self.effects = [e for e in self.effects if e.remaining > 0]
+
     def _compute_base_strength(self) -> float:
         """fheroes2 getMonsterBaseStrength() — depends only on the unit type.
 
@@ -68,7 +101,7 @@ class Unit:
             special += 0.4
         if self.is_flying:
             special += 0.3
-        diff = self.speed - SPEED_AVERAGE
+        diff = self.base_speed - SPEED_AVERAGE
         special += diff * (0.1 if diff < 0 else 0.05)
         return math.sqrt(damage_potential * effective_hp) * special
 

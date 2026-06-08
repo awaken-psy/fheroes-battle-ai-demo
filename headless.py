@@ -17,19 +17,27 @@ from ai.planner import BattleAI
 
 
 def simulate(units: List[Unit], seed: Optional[int] = None,
-             first_team: int = 0, attacker_team: int = 0) -> Tuple[int, int, bool]:
+             first_team: int = 0, attacker_team: int = 0,
+             hero_configs: Optional[dict] = None) -> Tuple[int, int, bool]:
     """Run one battle to completion with no logging or IO.
 
     Returns ``(winner_team, rounds, ended_early)`` where ``ended_early`` means
     the battle stopped on a stalemate or the absolute round cap rather than by
-    elimination. Reused by ``scripts/arena.py``; the given ``units`` are
-    mutated, so pass a fresh list per game.
+    elimination. ``hero_configs`` is an optional {team: dict} of hero configs.
+    Reused by ``scripts/arena.py``; the given ``units`` are mutated, so pass a
+    fresh list (and fresh heroes are built here) per game.
     """
+    from engine.hero import Hero
+
     if seed is not None:
         random.seed(seed)
+    heroes = {0: None, 1: None}
+    if hero_configs:
+        heroes = {0: Hero.from_config(hero_configs.get(0)),
+                  1: Hero.from_config(hero_configs.get(1))}
     grid = HexGrid()
     battle = BattleState(grid, units, first_team=first_team,
-                         attacker_team=attacker_team)
+                         attacker_team=attacker_team, heroes=heroes)
     ai = BattleAI()
     while not battle.is_over():
         order = battle.turn_order()
@@ -41,6 +49,11 @@ def simulate(units: List[Unit], seed: Optional[int] = None,
                 continue
             if battle.is_over():
                 break
+            cast = ai.maybe_cast_spell(battle, unit)
+            if cast is not None:
+                battle.execute(cast[0])
+                if battle.is_over() or not unit.is_alive:
+                    continue
             battle.execute(ai.decide(battle, unit)[0])
     ended_early = battle.is_stalemate() or battle.round_num >= BattleState.MAX_ROUNDS
     return battle.winner(), battle.round_num, ended_early
@@ -48,10 +61,20 @@ def simulate(units: List[Unit], seed: Optional[int] = None,
 
 def run_battle(config_path: str, output_path: str | None = None) -> str:
     """Run a battle from config file, return the log file path."""
-    with open(config_path, encoding="utf-8") as f:
-        placements = json.load(f)
+    from engine.hero import Hero
 
-    # build units
+    with open(config_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Config is either a bare list of placements (legacy) or a dict with
+    # "units" and optional "heroes": {"0": {...}, "1": {...}}.
+    if isinstance(data, dict):
+        placements = data.get("units", [])
+        hero_cfg = data.get("heroes", {})
+    else:
+        placements = data
+        hero_cfg = {}
+
     units = []
     for p in placements:
         try:
@@ -60,9 +83,12 @@ def run_battle(config_path: str, output_path: str | None = None) -> str:
             print(f"Invalid entry in {config_path}: missing {e}", file=sys.stderr)
             sys.exit(1)
 
+    heroes = {0: Hero.from_config(hero_cfg.get("0") or hero_cfg.get(0)),
+              1: Hero.from_config(hero_cfg.get("1") or hero_cfg.get(1))}
+
     # run battle
     grid = HexGrid()
-    battle = BattleState(grid, units)
+    battle = BattleState(grid, units, heroes=heroes)
     ai = BattleAI()
     logger = BattleLogger()
     logger.start(units)
@@ -78,6 +104,12 @@ def run_battle(config_path: str, output_path: str | None = None) -> str:
                 continue
             if battle.is_over():
                 break
+            cast = ai.maybe_cast_spell(battle, unit)
+            if cast is not None:
+                result = battle.execute(cast[0])
+                logger.action(cast[1], result["desc"])
+                if battle.is_over() or not unit.is_alive:
+                    continue
             action, desc = ai.decide(battle, unit)
             result = battle.execute(action)
             logger.action(desc, result["desc"])

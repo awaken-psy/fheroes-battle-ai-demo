@@ -8,6 +8,7 @@ from . import fonts
 from engine.hex_grid import HexGrid
 from .hex_renderer import HexRenderer
 from engine.battle_state import BattleState
+from engine.hero import Hero
 from .screens.setup import SetupScreen
 from .screens.battle import BattleScreen
 
@@ -132,7 +133,9 @@ class Game:
     # ── game logic ───────────────────────────────────────────
 
     def start_battle(self):
-        self.screen_battle.battle = BattleState(self.grid, self.units)
+        # Both sides get a default spellcasting hero so the demo shows spells.
+        heroes = {0: Hero(), 1: Hero()}
+        self.screen_battle.battle = BattleState(self.grid, self.units, heroes=heroes)
         self.screen_battle.b_log = []
         self.screen_battle._popups = []
         self.screen_battle._round_order = None

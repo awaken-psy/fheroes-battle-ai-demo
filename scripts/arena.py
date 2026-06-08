@@ -82,6 +82,11 @@ def run(args):
     if args.mirror:
         spec = mirror_spec(spec)
 
+    default_hero = {"power": 3, "spell_points": 15}
+    hero_configs = {0: default_hero if args.hero0 else None,
+                    1: default_hero if args.hero1 else None}
+    use_heroes = args.hero0 or args.hero1
+
     wins = {0: 0, 1: 0}
     early = 0
     total_rounds = 0
@@ -91,7 +96,8 @@ def run(args):
         # first-move / attacker-retreat bias across the batch
         side = i % 2
         winner, rounds, ended_early = simulate(
-            build_units(spec), seed=seed, first_team=side, attacker_team=side)
+            build_units(spec), seed=seed, first_team=side, attacker_team=side,
+            hero_configs=hero_configs if use_heroes else None)
         wins[winner] += 1
         total_rounds += rounds
         if ended_early:
@@ -145,6 +151,8 @@ def main():
                     help="mirror team 0 onto team 1 (identical armies; expect ~50%%)")
     ap.add_argument("--seed", type=int, default=None,
                     help="base RNG seed for reproducibility (game i uses seed+i)")
+    ap.add_argument("--hero0", action="store_true", help="give team 0 a default spellcasting hero")
+    ap.add_argument("--hero1", action="store_true", help="give team 1 a default spellcasting hero")
     ap.add_argument("--json", help="also write the summary to this JSON file")
     run(ap.parse_args())
 

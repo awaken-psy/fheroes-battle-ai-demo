@@ -10,15 +10,33 @@ Original source:
 from typing import Optional, Tuple, List, Set
 
 from engine.battle_state import BattleState
-from engine.actions import Action, MoveAction, AttackAction, SkipAction
+from engine.actions import Action, MoveAction, AttackAction, SkipAction, CastAction
 from engine.unit import Unit
 
 from .evaluation import AIState, analyze
 from .scoring import threat, pos_value
+from .spells import select_best_spell
 
 
 class BattleAI:
     """Core tactical AI, faithful to fheroes2's decision logic."""
+
+    def maybe_cast_spell(self, battle: BattleState, unit: Unit
+                         ) -> Optional[Tuple[CastAction, str]]:
+        """Before a unit acts, let its hero cast one spell this round.
+
+        Returns (CastAction, description) or None. — ai_battle.cpp Step 3
+        """
+        team = unit.team
+        hero = battle.heroes.get(team)
+        if hero is None or hero._cast_this_round:
+            return None
+        state = analyze(battle, unit)
+        choice = select_best_spell(battle, team, state)
+        if choice is None:
+            return None
+        spell, target = choice
+        return CastAction(team, spell, target), f"[CAST] {spell.name} -> {target.name}"
 
     def decide(self, battle: BattleState, unit: Unit) -> Tuple[Action, str]:
         """planUnitTurn() — ai_battle.cpp:689
