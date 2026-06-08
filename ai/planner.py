@@ -68,8 +68,8 @@ class BattleAI:
             for e in enemies:
                 if battle.grid.distance(unit.pos, e.pos) != 1:
                     continue
-                my_d = battle.calc_damage(unit, e, ranged=False)
-                ret_d = battle.calc_damage(e, unit, ranged=False)
+                my_d = battle.expected_damage(unit, e, ranged=False)
+                ret_d = battle.expected_damage(e, unit, ranged=False)
                 diff = my_d - ret_d
                 if diff > best_d:
                     best_d, best_e = diff, e

@@ -38,7 +38,7 @@ class SetupScreen:
 
     def handle(self, ev):
         if ev.type == pygame.MOUSEMOTION:
-            self.hover = self.game.grid.pixel_to_hex(*ev.pos)
+            self.hover = self.game.hex_renderer.pixel_to_hex(*ev.pos)
         elif ev.type == pygame.MOUSEBUTTONDOWN:
             mx, my = ev.pos
             s = self.game._s
@@ -57,7 +57,7 @@ class SetupScreen:
                     if self._can_start():
                         self.game.start_battle()
                     return
-                hex_pos = self.game.grid.pixel_to_hex(mx, my)
+                hex_pos = self.game.hex_renderer.pixel_to_hex(mx, my)
                 if hex_pos and self.sel_type:
                     col, row = hex_pos
                     if self.game.grid.half_of(col) == self.sel_team:
@@ -65,7 +65,7 @@ class SetupScreen:
                         self.game.units.append(
                             Unit.from_type(self.sel_type, self.sel_team, col, row))
             elif ev.button == 3:
-                hex_pos = self.game.grid.pixel_to_hex(mx, my)
+                hex_pos = self.game.hex_renderer.pixel_to_hex(mx, my)
                 if hex_pos:
                     self.game.units = [u for u in self.game.units if u.pos != hex_pos]
 
@@ -78,9 +78,9 @@ class SetupScreen:
 
         # Reposition grid to centre in available space after left panel
         panel_right = s(228)
-        grid_w = g.grid.cols * g.grid.hex_w
+        grid_w = g.grid.cols * g.hex_renderer.hex_w
         avail = g.win_w - panel_right
-        g.grid.reposition(panel_right + (avail - grid_w) / 2, s(config.GRID_OFFSET_Y))
+        g.hex_renderer.reposition(panel_right + (avail - grid_w) / 2, s(config.GRID_OFFSET_Y))
 
         # left panel background
         panel = pygame.Rect(int(s(4)), int(s(4)), int(s(216)),
@@ -129,7 +129,7 @@ class SetupScreen:
         if self.hover and self.sel_type:
             if g.grid.half_of(self.hover[0]) == self.sel_team:
                 highlights[self.hover] = fonts.team_color(self.sel_team)
-        g.grid.draw_grid(canvas, highlights)
+        g.hex_renderer.draw_grid(canvas, highlights)
         self._draw_units()
 
         # start button
@@ -151,9 +151,9 @@ class SetupScreen:
             txt = fonts.BODY.render(f"{fonts.team_name(team)}: {n} units",
                                     True, fonts.team_light(team))
             if team == 0:
-                canvas.blit(txt, (int(g.grid.ox) + int(s(10)), int(s(56))))
+                canvas.blit(txt, (int(g.hex_renderer.ox) + int(s(10)), int(s(56))))
             else:
-                canvas.blit(txt, (int(g.grid.ox) + int(grid_w)
+                canvas.blit(txt, (int(g.hex_renderer.ox) + int(grid_w)
                                   - txt.get_width() - int(s(10)), int(s(56))))
 
     def _draw_units(self):
@@ -161,8 +161,8 @@ class SetupScreen:
         for u in g.units:
             if not u.is_alive:
                 continue
-            cx, cy = g.grid.center(*u.pos)
-            draw_unit(g.canvas, g._s, g.grid, u, cx, cy)
+            cx, cy = g.hex_renderer.center(*u.pos)
+            draw_unit(g.canvas, g._s, g.hex_renderer, u, cx, cy)
 
     # ── game logic helpers ────────────────────────────────────
 

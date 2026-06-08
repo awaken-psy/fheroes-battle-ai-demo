@@ -9,3 +9,12 @@ dependencies = [
 
 [project.scripts]
 fheroes-battle-ai-demo = "main:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

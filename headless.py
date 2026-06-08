@@ -5,13 +5,42 @@ Called from main.py when config files are provided as arguments.
 
 import json
 import os
+import random
 import sys
+from typing import List, Optional, Tuple
 
 from engine.hex_grid import HexGrid
 from engine.unit import Unit
 from engine.battle_state import BattleState
 from engine.battle_logger import BattleLogger
 from ai.planner import BattleAI
+
+
+def simulate(units: List[Unit], seed: Optional[int] = None,
+             first_team: int = 0) -> Tuple[int, int, bool]:
+    """Run one battle to completion with no logging or IO.
+
+    Returns ``(winner_team, rounds, timed_out)``. Reused by ``scripts/arena.py``.
+    The given ``units`` are mutated, so pass a fresh list per game.
+    """
+    if seed is not None:
+        random.seed(seed)
+    grid = HexGrid()
+    battle = BattleState(grid, units, first_team=first_team)
+    ai = BattleAI()
+    while not battle.is_over():
+        order = battle.turn_order()
+        if not order:
+            break
+        battle.start_round()
+        for unit in order:
+            if not unit.is_alive:
+                continue
+            if battle.is_over():
+                break
+            battle.execute(ai.decide(battle, unit)[0])
+    timed_out = battle.round_num >= BattleState.MAX_ROUNDS
+    return battle.winner(), battle.round_num, timed_out
 
 
 def run_battle(config_path: str, output_path: str | None = None) -> str:
@@ -29,7 +58,7 @@ def run_battle(config_path: str, output_path: str | None = None) -> str:
             sys.exit(1)
 
     # run battle
-    grid = HexGrid(scale=1.0)
+    grid = HexGrid()
     battle = BattleState(grid, units)
     ai = BattleAI()
     logger = BattleLogger()

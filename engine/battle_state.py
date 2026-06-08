@@ -9,11 +9,14 @@ from .hex_grid import HexGrid
 
 
 class BattleState:
-    def __init__(self, grid: HexGrid, units: List[Unit]):
+    def __init__(self, grid: HexGrid, units: List[Unit], first_team: int = 0):
         self.grid = grid
         self.units = units
         self.round_num = 0
         self.deaths_this_round = 0
+        # Which team wins the initiative tie on equal speed. Arena flips this
+        # per game to cancel any first-move advantage.
+        self.first_team = first_team
 
     def alive(self, team: Optional[int] = None) -> List[Unit]:
         u = [u for u in self.units if u.is_alive]
@@ -37,20 +40,39 @@ class BattleState:
         return None
 
     def turn_order(self) -> List[Unit]:
-        return sorted(self.alive(), key=lambda u: (-u.speed, u.team, u.name))
+        return sorted(self.alive(), key=lambda u: (
+            -u.speed, 0 if u.team == self.first_team else 1, u.name))
 
     # ── damage ──────────────────────────────────────────────
+    #
+    # Split mirrors fheroes2: the AI reasons about *expected* (average)
+    # damage — deterministic — while actual combat rolls a random spread.
+    # Keeping these apart makes AI decisions and tests reproducible.
 
-    def calc_damage(self, atk: Unit, dfn: Unit, ranged: bool = False) -> int:
-        base = atk.count * atk.damage
+    @staticmethod
+    def _damage_mult(atk: Unit, dfn: Unit, ranged: bool = False) -> float:
+        """Deterministic damage multiplier (attack/defense + archer penalty)."""
         if atk.attack > dfn.defense:
             mult = min(1 + 0.1 * (atk.attack - dfn.defense), 3.0)
         else:
             mult = max(1 - 0.05 * (dfn.defense - atk.attack), 0.3)
         if atk.is_archer and not ranged:
             mult *= 0.5  # archer melee penalty
-        mult *= random.uniform(0.85, 1.15)
+        return mult
+
+    def expected_damage(self, atk: Unit, dfn: Unit, ranged: bool = False) -> int:
+        """Average damage — used by the AI for decisions and by tests."""
+        base = atk.count * atk.damage
+        return max(1, int(base * self._damage_mult(atk, dfn, ranged)))
+
+    def roll_damage(self, atk: Unit, dfn: Unit, ranged: bool = False) -> int:
+        """Actual damage with random spread — used when executing an attack."""
+        base = atk.count * atk.damage
+        mult = self._damage_mult(atk, dfn, ranged) * random.uniform(0.85, 1.15)
         return max(1, int(base * mult))
+
+    # Backwards-compatible alias: callers that want a real (rolled) hit.
+    calc_damage = roll_damage
 
     # ── execute ─────────────────────────────────────────────
 
@@ -70,7 +92,7 @@ class BattleState:
             if not action.ranged and action.from_pos:
                 atk.pos = action.from_pos
 
-            dmg = self.calc_damage(atk, tgt, action.ranged)
+            dmg = self.roll_damage(atk, tgt, action.ranged)
             actual, killed = tgt.take_damage(dmg)
             r['dmg'] = actual
             r['killed'] = killed
@@ -86,7 +108,7 @@ class BattleState:
 
             # retaliation (melee only, once per round)
             if not action.ranged and not tgt.retaliated and tgt.is_alive:
-                ret = self.calc_damage(tgt, atk)
+                ret = self.roll_damage(tgt, atk)
                 ret_actual, ret_killed = atk.take_damage(ret)
                 tgt.retaliated = True
                 r['ret_dmg'] = ret_actual

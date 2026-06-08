@@ -6,6 +6,7 @@ import pygame
 import config
 from . import fonts
 from engine.hex_grid import HexGrid
+from .hex_renderer import HexRenderer
 from engine.battle_state import BattleState
 from .screens.setup import SetupScreen
 from .screens.battle import BattleScreen
@@ -47,7 +48,8 @@ class Game:
         return v * self._rs
 
     def _init_grid(self):
-        self.grid = HexGrid(self._rs)
+        self.grid = HexGrid()
+        self.hex_renderer = HexRenderer(self.grid, self._rs)
 
     def _rebuild_canvas(self):
         self._rs = self.win_w / VW
@@ -138,8 +140,8 @@ class Game:
         self.screen_battle._round_num = 0
         self.screen_battle._ph = 0
         # Position grid for battle screen before first update runs
-        grid_w = self.grid.cols * self.grid.hex_w
-        self.grid.reposition((self.win_w - grid_w) / 2, self._s(config.GRID_OFFSET_Y))
+        grid_w = self.grid.cols * self.hex_renderer.hex_w
+        self.hex_renderer.reposition((self.win_w - grid_w) / 2, self._s(config.GRID_OFFSET_Y))
         self.screen_battle.logger.start(self.units)
         self.state = BATTLE
 
