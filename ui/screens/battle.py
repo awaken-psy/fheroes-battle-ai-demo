@@ -158,14 +158,14 @@ class BattleScreen:
 
         if isinstance(action, SkipAction):
             self._anim_unit = action.unit
-            self._anim_px = self.game.grid.center(*action.unit.pos)
+            self._anim_px = self.game.hex_renderer.center(*action.unit.pos)
             self.logger.action(self.b_desc, "skip")
             self._ph = PH_AFTER; self._ph_t = 0
             return
 
         if isinstance(action, MoveAction):
             self._anim_unit = action.unit
-            self._move_px = [self.game.grid.center(*p) for p in action.path]
+            self._move_px = [self.game.hex_renderer.center(*p) for p in action.path]
             self._move_idx = 0; self._move_frac = 0.0
             self._anim_px = self._move_px[0]
             self.b_path = set(action.path)
@@ -176,7 +176,7 @@ class BattleScreen:
             self._anim_unit = action.attacker
             self.b_target = action.target
             if action.ranged:
-                self._anim_px = self.game.grid.center(*action.attacker.pos)
+                self._anim_px = self.game.hex_renderer.center(*action.attacker.pos)
                 self._ph = PH_STRIKE; self._ph_t = 0
             else:
                 if action.from_pos and action.from_pos != action.attacker.pos:
@@ -185,13 +185,13 @@ class BattleScreen:
                         action.attacker.pos, action.from_pos, occ,
                         action.attacker.is_flying, action.attacker.speed)
                     self._move_px = (
-                        [self.game.grid.center(*p) for p in path]
+                        [self.game.hex_renderer.center(*p) for p in path]
                         if path
-                        else [self.game.grid.center(*action.attacker.pos),
-                              self.game.grid.center(*action.from_pos)])
+                        else [self.game.hex_renderer.center(*action.attacker.pos),
+                              self.game.hex_renderer.center(*action.from_pos)])
                     self.b_path = {action.from_pos}
                 else:
-                    self._move_px = [self.game.grid.center(*action.attacker.pos)]
+                    self._move_px = [self.game.hex_renderer.center(*action.attacker.pos)]
                 self._move_idx = 0; self._move_frac = 0.0
                 self._anim_px = self._move_px[0]
                 self._ph = PH_MOVE; self._ph_t = 0
@@ -236,8 +236,8 @@ class BattleScreen:
 
         if action.ranged:
             lunge_dur = 0.25 * spd
-            src = self.game.grid.center(*action.attacker.pos)
-            dst = self.game.grid.center(*action.target.pos)
+            src = self.game.hex_renderer.center(*action.attacker.pos)
+            dst = self.game.hex_renderer.center(*action.target.pos)
             prog = min(1.0, self._ph_t / lunge_dur)
             self._projectile = (src, dst, prog)
 
@@ -259,8 +259,8 @@ class BattleScreen:
             lunge_dur = 0.15 * spd
             ret_dur = 0.12 * spd
             atk_px = (self._move_px[-1] if self._move_px
-                      else self.game.grid.center(*action.attacker.pos))
-            tgt_px = self.game.grid.center(*action.target.pos)
+                      else self.game.hex_renderer.center(*action.attacker.pos))
+            tgt_px = self.game.hex_renderer.center(*action.target.pos)
             dx = tgt_px[0] - atk_px[0]
             dy = tgt_px[1] - atk_px[1]
 
@@ -294,7 +294,7 @@ class BattleScreen:
         r = self._exec_result
         if r and r['ret_dmg'] > 0:
             atk = self.b_action.attacker
-            ax, ay = self.game.grid.center(*atk.pos)
+            ax, ay = self.game.hex_renderer.center(*atk.pos)
             s = self.game._s
             self._popups.append(
                 Popup(ax, ay - s(12), f"-{r['ret_dmg']}", config.ORANGE, speed=self.game._rs))
@@ -314,8 +314,8 @@ class BattleScreen:
         canvas = g.canvas
 
         # centre grid
-        grid_w = g.grid.cols * g.grid.hex_w
-        g.grid.reposition((g.win_w - grid_w) / 2, s(config.GRID_OFFSET_Y))
+        grid_w = g.grid.cols * g.hex_renderer.hex_w
+        g.hex_renderer.reposition((g.win_w - grid_w) / 2, s(config.GRID_OFFSET_Y))
 
         # top bar
         top_bar = pygame.Rect(0, 0, s(config.WINDOW_WIDTH), s(42))
@@ -361,12 +361,12 @@ class BattleScreen:
         if self._flash and self._flash[1] > 0:
             intensity = int(min(255, 160 * self._flash[1] / 0.15))
             highlights[self._flash[0]] = (intensity, 40, 40)
-        g.grid.draw_grid(canvas, highlights)
+        g.hex_renderer.draw_grid(canvas, highlights)
 
         if self.b_target and self.b_action and isinstance(self.b_action, AttackAction):
-            g.grid.draw_dashed_line(canvas, self.b_action.attacker.pos,
-                                    self.b_target.pos, config.TARGET_COLOR, 2)
-            g.grid.draw_overlay(canvas, self.b_target.pos, config.TARGET_COLOR, 3)
+            g.hex_renderer.draw_dashed_line(canvas, self.b_action.attacker.pos,
+                                            self.b_target.pos, config.TARGET_COLOR, 2)
+            g.hex_renderer.draw_overlay(canvas, self.b_target.pos, config.TARGET_COLOR, 3)
 
         if self._projectile:
             src, dst, prog = self._projectile
@@ -401,8 +401,8 @@ class BattleScreen:
             if u is self._anim_unit and self._anim_px:
                 cx, cy = self._anim_px
             else:
-                cx, cy = g.grid.center(*u.pos)
-            draw_unit(g.canvas, g._s, g.grid, u, cx, cy, current=(u is current))
+                cx, cy = g.hex_renderer.center(*u.pos)
+            draw_unit(g.canvas, g._s, g.hex_renderer, u, cx, cy, current=(u is current))
 
     def _draw_debug(self, canvas, s):
         vw, vh = config.WINDOW_WIDTH, config.WINDOW_HEIGHT

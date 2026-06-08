@@ -46,7 +46,8 @@ jobs:
           --hidden-import=ai.evaluation --hidden-import=ai.scoring
           --hidden-import=ai.strategy
           --hidden-import=ui --hidden-import=ui.fonts
-          --hidden-import=ui.renderer --hidden-import=ui.game
+          --hidden-import=ui.renderer --hidden-import=ui.hex_renderer
+          --hidden-import=ui.game
           --hidden-import=ui.screens --hidden-import=ui.screens.setup
           --hidden-import=ui.screens.battle
           main.py

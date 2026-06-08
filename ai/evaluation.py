@@ -64,8 +64,12 @@ def analyze(battle: BattleState, unit: Unit) -> AIState:
 def should_defend(unit: Unit, s: AIState, battle: BattleState) -> bool:
     """_defensiveTactics logic — ai_battle.cpp:1124"""
     grid = battle.grid
-    # already past center -> keep attacking
-    if unit.col >= grid.cols // 2:
+    # already advanced past the midline into enemy territory -> keep attacking.
+    # Orientation depends on the unit's team: team 0 attacks rightward
+    # (start low col), team 1 attacks leftward (start high col).
+    mid = grid.cols // 2
+    advanced = unit.col >= mid if unit.team == 0 else unit.col <= mid
+    if advanced:
         return False
     # overwhelming power -> no need to defend
     over = 6 if unit.is_flying else 10

@@ -7,21 +7,21 @@ from engine.hex_grid import HexGrid
 
 
 def test_distance():
-    grid = HexGrid(1.0)
+    grid = HexGrid()
     assert grid.distance((0, 0), (0, 0)) == 0
     assert grid.distance((0, 0), (1, 0)) == 1
     assert grid.distance((0, 0), (5, 4)) > 0
 
 
 def test_neighbors():
-    grid = HexGrid(1.0)
+    grid = HexGrid()
     nb = grid.neighbors(5, 4)
     assert len(nb) > 0
     assert all(grid.is_valid(c, r) for c, r in nb)
 
 
 def test_find_path():
-    grid = HexGrid(1.0)
+    grid = HexGrid()
     path = grid.find_path((0, 0), (3, 0), set())
     assert path is not None
     assert path[0] == (0, 0)
