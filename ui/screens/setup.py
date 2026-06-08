@@ -11,17 +11,46 @@ from engine.unit import Unit
 class SetupScreen:
     """Handles the pre-battle setup phase."""
 
+    VISIBLE_UNITS = 5   # palette shows this many rows; the rest scroll
+
     def __init__(self, game):
         self.game = game
         self.sel_type: str | None = None
         self.sel_team = 0
         self.hover: tuple | None = None
+        self.palette_scroll = 0      # index of the first visible unit
+        self._sb_drag = False        # dragging the scrollbar thumb
 
     # ── layout rects ──────────────────────────────────────────
 
-    def _palette_rect(self, i):
+    def _palette_rect(self, slot):
+        """Screen rect for visible row `slot` (0..VISIBLE_UNITS-1)."""
         s = self.game._s
-        return pygame.Rect(s(12), s(74 + i * 56), s(200), s(50))
+        return pygame.Rect(s(12), s(74 + slot * 56), s(200), s(50))
+
+    def _max_scroll(self):
+        return max(0, len(config.UNIT_TYPES) - self.VISIBLE_UNITS)
+
+    def _scrollbar_track(self):
+        s = self.game._s
+        return pygame.Rect(int(s(214)), int(s(74)), int(s(7)),
+                           int(s(self.VISIBLE_UNITS * 56 - 6)))
+
+    def _scrollbar_thumb(self):
+        track = self._scrollbar_track()
+        n = len(config.UNIT_TYPES)
+        th = max(int(track.h * self.VISIBLE_UNITS / n), int(self.game._s(24)))
+        ms = self._max_scroll()
+        off = int((track.h - th) * (self.palette_scroll / ms)) if ms else 0
+        return pygame.Rect(track.x, track.y + off, track.w, th)
+
+    def _scroll_to_pixel(self, my):
+        track = self._scrollbar_track()
+        ms = self._max_scroll()
+        if ms <= 0:
+            return
+        frac = (my - track.y) / max(track.h, 1)
+        self.palette_scroll = max(0, min(ms, round(frac * ms)))
 
     def _start_btn_rect(self):
         s = self.game._s
@@ -37,15 +66,31 @@ class SetupScreen:
     # ── event handling ────────────────────────────────────────
 
     def handle(self, ev):
+        if ev.type == pygame.MOUSEWHEEL:
+            self.palette_scroll = max(0, min(self._max_scroll(),
+                                             self.palette_scroll - ev.y))
+            return
+        if ev.type == pygame.MOUSEBUTTONUP:
+            self._sb_drag = False
+            return
         if ev.type == pygame.MOUSEMOTION:
+            if self._sb_drag:
+                self._scroll_to_pixel(ev.pos[1]); return
             self.hover = self.game.hex_renderer.pixel_to_hex(*ev.pos)
         elif ev.type == pygame.MOUSEBUTTONDOWN:
             mx, my = ev.pos
             s = self.game._s
             if ev.button == 1:
-                for i, name in enumerate(config.UNIT_TYPES):
-                    if self._palette_rect(i).collidepoint(mx, my):
-                        self.sel_type = name; return
+                # scrollbar: drag the thumb or click the track to jump
+                if self._max_scroll() > 0:
+                    if self._scrollbar_thumb().collidepoint(mx, my):
+                        self._sb_drag = True; return
+                    if self._scrollbar_track().collidepoint(mx, my):
+                        self._scroll_to_pixel(my); return
+                names = list(config.UNIT_TYPES)
+                for slot in range(min(self.VISIBLE_UNITS, len(names))):
+                    if self._palette_rect(slot).collidepoint(mx, my):
+                        self.sel_type = names[self.palette_scroll + slot]; return
                 team_rect = pygame.Rect(int(s(14)), int(s(12)),
                                         int(s(100)), int(s(32)))
                 if team_rect.collidepoint(mx, my):
@@ -99,8 +144,10 @@ class SetupScreen:
         # UNITS section
         canvas.blit(fonts.TITLE.render("UNITS", True, config.WHITE), (s(18), s(52)))
 
-        for i, name in enumerate(config.UNIT_TYPES):
-            r = self._palette_rect(i)
+        names = list(config.UNIT_TYPES)
+        for slot in range(min(self.VISIBLE_UNITS, len(names))):
+            name = names[self.palette_scroll + slot]
+            r = self._palette_rect(slot)
             sel = self.sel_type == name
             bg = (50, 55, 78) if sel else (38, 45, 65)
             pygame.draw.rect(canvas, bg, r, border_radius=int(s(4)))
@@ -117,6 +164,13 @@ class SetupScreen:
             canvas.blit(fonts.DATA.render(
                 f"A{ut['attack']} D{ut['defense']} H{ut['hp']} S{ut['speed']} x{ut['count']}",
                 True, (170, 180, 200)), (r.x + s(28), r.y + s(24)))
+
+        # scrollbar (only when there are more units than visible rows)
+        if self._max_scroll() > 0:
+            track = self._scrollbar_track()
+            thumb = self._scrollbar_thumb()
+            pygame.draw.rect(canvas, (28, 34, 50), track, border_radius=int(s(3)))
+            pygame.draw.rect(canvas, (95, 108, 140), thumb, border_radius=int(s(3)))
 
         # separator
         sep_y = self._preset_rect(0).y - s(8)
