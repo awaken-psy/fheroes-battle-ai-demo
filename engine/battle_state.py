@@ -169,18 +169,33 @@ class BattleState:
             actual, killed = tgt.take_damage(dmg)
             r['dmg'] = actual
             r['killed'] = killed
-            r['target_alive'] = tgt.is_alive
 
             verb = "shoots" if action.ranged else "attacks"
             desc = f"{atk.name} {verb} {tgt.name}: {actual} dmg"
             if killed > 0:
                 desc += f" ({killed} killed)"
+
+            # death gaze: outright kills a few extra creatures, ignoring HP
+            if atk.has_ability("death_gaze") and tgt.is_alive:
+                _, gaze_killed = tgt.take_damage(max(1, tgt.count // 10) * tgt.max_hp)
+                if gaze_killed:
+                    r['killed'] += gaze_killed
+                    desc += f" + gaze kills {gaze_killed}"
+            r['target_alive'] = tgt.is_alive
             if not tgt.is_alive:
                 self.deaths_this_round += 1
                 desc += " [DEAD]"
 
-            # retaliation (melee only, once per round)
-            if not action.ranged and not tgt.retaliated and tgt.is_alive:
+            # hp drain (vampirism): the attacker heals by the damage it dealt,
+            # before any retaliation so it can survive the counterattack
+            if atk.has_ability("hp_drain") and atk.is_alive and actual > 0:
+                drained = atk.heal(actual)
+                if drained > 0:
+                    desc += f" -> {atk.name} drains {drained}"
+
+            # retaliation (melee only; once per round, or always if unlimited)
+            can_retaliate = tgt.has_ability("unlimited_retaliation") or not tgt.retaliated
+            if not action.ranged and can_retaliate and tgt.is_alive:
                 ret = self.roll_damage(tgt, atk)
                 ret_actual, ret_killed = atk.take_damage(ret)
                 tgt.retaliated = True
@@ -290,6 +305,8 @@ class BattleState:
         for u in self.alive():
             u.new_round()
             u.tick_effects()
+            if u.has_ability("self_heal"):   # regeneration (Troll-like)
+                u.heal(u.max_hp)
         for hero in self.heroes.values():
             if hero is not None:
                 hero.reset_round()

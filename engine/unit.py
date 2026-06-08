@@ -21,6 +21,7 @@ class Unit:
         self.damage = kwargs["damage"]
         self.is_archer = kwargs["is_archer"]
         self.is_flying = kwargs["is_flying"]
+        self.abilities = set(kwargs.get("abilities", ()))
         self.symbol = kwargs.get("symbol", name[0])
 
         self.count = kwargs["count"]
@@ -73,6 +74,9 @@ class Unit:
 
     # ── spell effects ───────────────────────────────────────
 
+    def has_ability(self, name: str) -> bool:
+        return name in self.abilities
+
     def has_effect(self, name: str) -> bool:
         return any(e.name == name for e in self.effects)
 
@@ -91,15 +95,21 @@ class Unit:
         """fheroes2 getMonsterBaseStrength() — depends only on the unit type.
 
         sqrt(damage * effectiveHP) * special, where special adds bonuses for
-        being a shooter / flyer and a speed remap around Speed::AVERAGE.
-        The demo has no special abilities, so those multipliers are omitted.
+        being a shooter / flyer, a speed remap around Speed::AVERAGE, and the
+        special-ability terms from getMonsterBaseStrength.
         """
         damage_potential = float(self.damage)
         effective_hp = float(self.max_hp)
+        if "unlimited_retaliation" in self.abilities:
+            damage_potential *= 1.25
         special = 1.0
         if self.is_archer:
             special += 0.4
         if self.is_flying:
+            special += 0.3
+        if "death_gaze" in self.abilities:  # enemy-halving
+            special += 1.0
+        if "hp_drain" in self.abilities:
             special += 0.3
         diff = self.base_speed - SPEED_AVERAGE
         special += diff * (0.1 if diff < 0 else 0.05)
@@ -130,6 +140,15 @@ class Unit:
         else:
             self.count = (self._total_hp + self.max_hp - 1) // self.max_hp
         return actual, old_count - self.count
+
+    def heal(self, amount: int) -> int:
+        """Top off living creatures by `amount` (no resurrection). Returns healed."""
+        if not self.is_alive:
+            return 0
+        cap = self.count * self.max_hp          # living capacity, never resurrects
+        healed = max(0, min(amount, cap - self._total_hp))
+        self._total_hp += healed
+        return healed
 
     def new_round(self):
         self.retaliated = False

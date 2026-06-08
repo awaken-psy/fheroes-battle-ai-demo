@@ -14,8 +14,7 @@ def threat(battle: BattleState, attacker: Unit, defender: Unit) -> float:
 
     Core of fheroes2's Unit::evaluateThreatForUnit (battle_troop.cpp:1007):
     the expected damage the attacker deals, discounted by how far it has to
-    travel to land the hit. The double-attack / special-ability / faction-sign
-    terms are omitted here — the demo has no units that trigger them yet (M3/M4).
+    travel to land the hit, then scaled up by the attacker's special abilities.
     """
     dmg = float(battle.expected_damage(attacker, defender, ranged=attacker.is_archer))
 
@@ -28,7 +27,15 @@ def threat(battle: BattleState, attacker: Unit, defender: Unit) -> float:
         dist = battle.grid.distance(attacker.pos, defender.pos)
         dist_mod = 1.0 if dist <= attack_range else 1.5 * dist / attacker.speed
 
-    return dmg / dist_mod
+    threat_value = dmg / dist_mod
+
+    # Special-ability multipliers (evaluateThreatForUnit ability terms).
+    if attacker.has_ability("death_gaze"):   # enemy-halving
+        threat_value *= 2
+    if attacker.has_ability("hp_drain"):
+        threat_value *= 1.3
+
+    return threat_value
 
 
 def pos_value(battle: BattleState, unit: Unit,
