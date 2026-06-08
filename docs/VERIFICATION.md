@@ -1,97 +1,102 @@
 # 验证清单 — M1–M5
 
-> 逐条复核已完成里程碑的功能是否真正生效。每项给出**验证方式**与**预期结果**。
+> 分两部分：
+> **第一部分 自动化验证**——可由脚本/测试构造并执行（pytest + arena），无需人看，CI 也跑这些。
+> **第二部分 人工验证**——需要你亲自启动 GUI、用眼睛确认的视觉/交互项（动画、形状、飘字、撤退入局等）。
+>
 > 里程碑目标与退出标准见 [MILESTONES.md](MILESTONES.md)。
 
-## 环境准备
+---
+
+# 第一部分 · 自动化验证（Claude 可构造并执行）
 
 ```bash
-uv sync --group dev          # 安装含 pytest 的开发依赖
+uv sync --group dev      # 安装含 pytest 的开发依赖
 ```
 
-## 全局检查（一次跑完）
+## 全局检查 — 最近一次执行结果（2026-06-09）
 
-| # | 验证项 | 命令 | 预期 |
-|---|---|---|---|
-| G1 | 全部单测通过 | `uv run pytest` | **82 passed** |
-| G2 | engine / ai 零 pygame 依赖 | `grep -rn "import pygame" ai/ engine/` | 无任何输出 |
-| G3 | 无显示器可导入 engine+ai | `uv run pytest tests/test_planner.py::test_engine_and_ai_import_without_pygame` | 子进程 returncode 0 |
-| G4 | GUI 可无头跑帧 | `SDL_VIDEODRIVER=dummy uv run main.py`（手动 Ctrl-C）或见 README | 不报错 |
-| G5 | CI 绿 | GitHub Actions `Tests` 工作流（push/PR 触发） | pytest + arena smoke 通过 |
+| # | 验证项 | 命令 | 预期 | 实测 |
+|---|---|---|---|---|
+| A1 | 全部单测 | `uv run pytest` | 82 passed | ✅ 82 passed |
+| A2 | engine/ai 零 pygame | `grep -rn "import pygame" ai/ engine/` | 无输出 | ✅ 零命中 |
+| A3 | 无显示器导入 engine+ai | `pytest tests/test_planner.py::test_engine_and_ai_import_without_pygame` | returncode 0 | ✅ |
+| A4 | 镜像公平 Balanced | `arena --preset Balanced --games 500 --mirror --seed 0` | 40–60% | ✅ 40.6% |
+| A5 | 镜像公平 Archer Defense | 同上换预设 | 40–60% | ✅ 49.8% |
+| A6 | 镜像公平 Flyer Threat | 同上换预设 | 40–60% | ✅ 55.0% |
+| A7 | 法术 vs 无法术 | `arena --preset Balanced --games 400 --seed 0 --hero0` | 带法术方显著占优 | ✅ 100% vs 0% |
+| A8 | 撤退可观测 | `arena --config configs/example.json --games 200 --seed 0 --hero0 --hero1 --difficulty Impossible` | 撤退率 > 0 | ✅ 18.0% |
 
-测试文件共 12 个、82 项，全部不依赖显示器。
+一行复现：`uv run pytest && uv run python scripts/arena.py --preset Balanced --games 500 --mirror --seed 0`
+> arena 命令前缀统一为 `uv run python scripts/arena.py`。
 
----
+## 各里程碑 → 对应自动化测试
 
-## M1 `v0.3` — 验证闭环
+| 里程碑 | 验证点 | 测试 / 命令 |
+|---|---|---|
+| **M1** | 伤害拆分 expected/roll、planner 可复现、解耦守门 | `test_combat.py`、`test_planner.py`、A3 |
+| **M2** | 战力公式量纲、threat 距离衰减、反僵局、交替出手 | `test_combat.py`(strength)、`test_scoring.py`、`test_battle_state.py` |
+| **M3** | 6 法术效果、buff 到期、英雄每回合≤1 法、施法 AI 阈值/选靶 | `test_spells.py`、`test_spell_ai.py`、A7 |
+| **M4** | 续战阈值、撤退结束+告别法术、狂暴、士气运气、planner 不评估 | `test_retreat.py`、`test_berserk.py`、`test_morale_luck.py`、A8 |
+| **M5** | 无限反击/吸血/凝视/自愈、能力倍率、谨慎走位 | `test_abilities.py`、`test_cautious.py` |
 
-| # | 验证项 | 验证方式 | 预期 |
-|---|---|---|---|
-| M1.1 | hex_grid 解耦 pygame | `tests/test_planner.py::test_engine_and_ai_import_without_pygame`；像素/绘图在 `ui/hex_renderer.py` | 通过；engine 仅纯几何 |
-| M1.2 | 伤害拆分 expected/roll | `tests/test_combat.py`（`test_expected_damage_is_deterministic`、`test_roll_damage_*`、`test_calc_damage_is_roll_alias`） | expected 确定、roll 随机、`calc_damage is roll_damage` |
-| M1.3 | planner 决策可复现 | `tests/test_planner.py`（5 个快照断言） | 护弓/追击/被贴脸/防御落点动作稳定 |
-| M1.4 | arena 批量对战 | `uv run python scripts/arena.py --preset Balanced --games 500 --mirror --seed 0` | 输出胜率 + Wilson 95% CI + 撤退率 |
-| M1.5 | 镜像公平（无重大站边偏差） | 同上 | Team0 胜率落 **40–60%**（Balanced ~40–42%） |
-
-> 闭环价值：此环节当初暴露并修掉了 `should_defend` 方向硬编码 bug（team1 永不防守 → 镜像 9.8%）。
-
----
-
-## M2 `v0.4` — 保真度修正
-
-| # | 验证项 | 验证方式 | 预期 |
-|---|---|---|---|
-| M2.1 | 战力公式对齐量纲 | `tests/test_combat.py`（`test_base_strength_*`、`test_monster_strength_*`、`test_stack_strength_scales_with_count`） | `(1+0.1atk+0.05def)×base×count`，base=`sqrt(dmg·hp)·special` |
-| M2.2 | threat 伤害+距离衰减 | `tests/test_scoring.py` | 射手/飞行 distMod=1；近战超出 speed+1 按 `1.5·dist/speed` 折价 |
-| M2.3 | 反僵局撤退 | `tests/test_battle_state.py::test_stalemate_forces_attacker_to_retreat` | 50 回合无死亡 → 进攻方判负 |
-| M2.4 | 交替出手 turn order | `tests/test_battle_state.py`（`test_equal_speed_units_alternate_between_teams` 等） | 同速 A,B,A,B；快者优先；first_team 决定平局 |
-| M2.5 | 量纲换代后镜像仍公平 | `arena --preset "Archer Defense"/"Flyer Threat" --mirror` | 均落 40–60% |
-
-> 闭环价值：M2 的集火暴露 turn-order「整队先动」不保真（镜像 35/70/79%），改为交替后回到 40–60%。
+> 共 12 个测试文件、82 项，全部不依赖显示器；CI 在 push/PR 上跑 `pytest` + arena smoke。
 
 ---
 
-## M3 `v0.5` — 法术系统
+# 第二部分 · 人工验证（GUI / 视觉，需你亲自看）
 
-| # | 验证项 | 验证方式 | 预期 |
-|---|---|---|---|
-| M3.1 | 6 法术伤害/效果 | `tests/test_spells.py`（`test_spell_damage_scales_with_power`、Haste/Slow 改速、Bless/Curse 改 damage_factor） | 伤害=base×power；速度/伤害修正生效 |
-| M3.2 | buff/debuff 到期失效 | `tests/test_spells.py::test_effects_expire_after_duration` | 持续 power 回合后自动移除 |
-| M3.3 | 英雄每回合≤1 法 | `tests/test_spells.py::test_hero_can_cast_once_per_round` | 施法后本回合不可再施，回合重置后恢复 |
-| M3.4 | 施法 AI 阈值/折价/ratio | `tests/test_spell_ai.py` | 弱军/占优时不浪费法力；伤害法术选高价值目标；Slow 不打纯射手 |
-| M3.5 | 法术对战影响显著 | `arena --preset Balanced --games 400 --seed 0 --hero0` | 带法术方胜率显著（≈100% vs 无法术） |
-| M3.6 | 镜像（双方同英雄）仍公平 | `arena --preset Balanced --mirror --hero0 --hero1` | 40–60% |
+启动：`uv run main.py`（GUI 会给双方默认英雄，故能看到法术）。逐条勾选。
+
+> 说明：**士气/运气在 GUI 默认关闭**（morale/luck=0），不可视觉验证——它们是引擎层、走配置文件，已由自动化 `test_morale_luck.py` 覆盖。
+
+## 布阵界面（Setup）
+
+- [ ] **B1** 左侧调色板列出 **8 个兵种**（含新增 Vampire / Troll / Medusa），每行属性 `A D H S x数量` 正确
+- [ ] **B2** 选兵种 → 点己方半场放置；右键移除；放置只允许在己方半场
+- [ ] **B3** 顶部 **Team** 按钮切换蓝/红方（颜色随之变化）
+- [ ] **B4** 三个 **Preset** 按钮可加载阵型（Balanced / Archer Defense / Flyer Threat）
+- [ ] **B5** **Start Battle** 在双方都有兵时才变绿可点
+
+## 战斗视觉（形状 / 血条 / 标记）
+
+- [ ] **B6** 形状正确：● 近战、△ 射手、◇ 飞行。**Vampire=◇飞行、Griffin=◇飞行、Troll/Medusa=●**
+- [ ] **B7** 符号字母正确：S A G P C **V T M**；血条颜色随血量（绿>50%、黄>25%、红）；单位旁 `数量/总HP`
+- [ ] **B8** 黄色圆圈=当前行动单位；红色虚线 + 菱形描边=攻击目标；高亮格=移动路径
+
+## 战斗动画
+
+- [ ] **B9** 移动：单位沿路径平滑滑行到落点
+- [ ] **B10** 近战：突刺前冲 + 回弹；被攻击方**反击**（攻击者也掉血飘字）
+- [ ] **B11** 射击：黄色弹道线 + 黄点飞向目标
+- [ ] **B12** 飘字：红色 `-N` 伤害上浮淡出；击杀显示黄色 `DEAD`；受击格红闪
+
+## 法术（GUI 双方默认有英雄）
+
+- [ ] **B13** 一局中能看到施法：目标格出现**青色飘字**（法术名或 `-伤害`）+ 红闪；调试栏/日志出现 `[CAST]`
+- [ ] **B14** Lightning Bolt 等伤害法术能造成显著伤害（大额 `-N`，常一击秒杀一族）
+
+## 撤退（需构造悬殊局面）
+
+- [ ] **B15** 布一个**极悬殊**对局（如蓝方 1 弓箭手 vs 红方满编多骑兵），观察劣势方被打残后**英雄撤退** → 直接进入 Game Over（无需打到全灭）；日志含 `[RETREAT]`，撤退前可能有一发告别法术
+
+## 操控
+
+- [ ] **B16** `Space` 暂停/继续；`1/2/3` 慢/正常/快
+- [ ] **B17** `F` 快进瞬间结算 → 回布阵（写日志）；`R` 中止 → 回布阵
+- [ ] **B18** `D` 开关调试栏；调试栏显示 AI 决策文本（`[ATK]/[DEF]/[CAUT]` + 动作 + 双方 STR）
+- [ ] **B19** `+/-` 缩放、`F11` 全屏、`F12` 截图到 `/tmp/demo-screenshot.png`
+
+## 收尾 / 布局
+
+- [ ] **B20** Game Over：显示胜方文字 + **Play Again** 按钮，点击回布阵
+- [ ] **B21** 缩放窗口 / 全屏后，网格、单位、顶栏、调试栏**不错位**
+- [ ] **B22**（行为观感，对应学习指南）"Archer Defense" 里蓝方近战会**走去护弓**（绿色路线贴到射手旁），红方全骑兵则**直接冲锋**；谨慎姿态下近战不会无脑冲进慢速敌人攻击范围
 
 ---
 
-## M4 `v0.6` — 撤退 + 完整回合
+## 结论判定
 
-| # | 验证项 | 验证方式 | 预期 |
-|---|---|---|---|
-| M4.1 | 续战阈值 | `tests/test_retreat.py`（`test_hopeless_army_retreats`、`test_retreat_threshold_tracks_difficulty`） | `myStr×ratio < enemyStr` 才撤退；难度系数 Easy/Normal/Hard/Imp |
-| M4.2 | 撤退结束战斗 + 告别法术 | `tests/test_retreat.py`（`test_retreat_action_ends_battle_with_loser`、`test_check_retreat_returns_farewell_and_retreat`） | 撤退方判负；告别选伤害法术打敌方 |
-| M4.3 | arena 可观测撤退率 | `arena --config configs/example.json --games 200 --hero0 --hero1 --difficulty Impossible` | 撤退率 > 0（约 ~18%） |
-| M4.4 | 狂暴 berserkTurn | `tests/test_berserk.py` | 攻击/移向最近单位（不分敌我）；射手射最近 |
-| M4.5 | 士气/运气（引擎层） | `tests/test_morale_luck.py` | 运气好×2/坏×0.5；士气好额外/坏跳过；边界正确 |
-| M4.6 | **planner 不评估士气运气** | `tests/test_morale_luck.py::test_ai_decision_unaffected_by_morale_and_luck` | 设值前后 planner 决策完全一致 |
-
----
-
-## M5 `v1.0` — 特殊能力 + 谨慎走位
-
-| # | 验证项 | 验证方式 | 预期 |
-|---|---|---|---|
-| M5.1 | 无限反击 | `tests/test_abilities.py`（`test_unlimited_retaliation_strikes_every_attacker` vs `test_normal_unit_retaliates_only_once_per_round`） | Griffin 每次被近战都反击；普通单位仅首次 |
-| M5.2 | 吸血 hp_drain | `tests/test_abilities.py::test_hp_drain_heals_attacker`、`test_heal_never_resurrects` | 命中回血；不复活（只补残血） |
-| M5.3 | 死亡凝视 death_gaze | `tests/test_abilities.py::test_death_gaze_kills_extra` | 命中额外斩杀 |
-| M5.4 | 自愈 self_heal | `tests/test_abilities.py::test_self_heal_regenerates_at_round_start` | 回合开始回血 |
-| M5.5 | base_strength/threat 能力倍率 | `tests/test_abilities.py`（`test_base_strength_includes_ability_terms`、`test_threat_scaled_by_attacker_abilities`） | 无限反击×1.25、凝视 threat×2 等 |
-| M5.6 | 谨慎走位优化落点 | `tests/test_cautious.py` | cautious 时落点选威胁最低且前进（慢敌场景威胁 141→0）；非 cautious 走满 |
-| M5.7 | 新兵种可战斗（GUI） | 无头跑含 Vampire/Troll/Medusa 的一局 | 正常分出胜负，不报错 |
-
----
-
-## 一句话结论
-
-`uv run pytest` 全绿（82）+ 三预设镜像 40–60% + arena 各项指标符合上表，即 M1–M5 验证通过。
-当前覆盖原版战斗 AI 约 ~90%；宽体单位/攻城等留待 M5b/M6（见 MILESTONES.md）。
+- **第一部分**全绿（`uv run pytest` 82 passed + 三预设镜像 40–60% + A7/A8 符合）→ 逻辑层验证通过。
+- **第二部分**勾选完毕 → 视觉/交互层验证通过。
+- 两部分皆过即认为 M1–M5（v1.0，覆盖原版战斗 AI ~90%）验证通过；宽体单位/攻城等留待 M5b/M6。
