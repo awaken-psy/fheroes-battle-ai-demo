@@ -113,3 +113,43 @@ def test_roll_damage_reproducible_with_seed():
 
 def test_calc_damage_is_roll_alias():
     assert BattleState.calc_damage is BattleState.roll_damage
+
+
+# ── strength formula (fheroes2 GetMonsterStrength / GetStrength) ─────
+
+def test_base_strength_plain_unit():
+    # damage 2, hp 8 -> sqrt(16)=4; speed=AVERAGE, not archer/flyer -> special 1.0
+    u = _unit("P", 0, 0, 0, damage=2, hp=8, speed=4, is_archer=False, is_flying=False)
+    assert abs(u._base_strength - 4.0) < 1e-9
+
+
+def test_base_strength_archer_and_speed_remap():
+    # damage 2, hp 10 -> sqrt(20); archer +0.4; speed 3 (diff -1) -> -0.1 => special 1.3
+    import math
+    u = _unit("Arc", 0, 0, 0, damage=2, hp=10, speed=3, is_archer=True)
+    assert abs(u._base_strength - math.sqrt(20) * 1.3) < 1e-9
+
+
+def test_base_strength_flyer_bonus_and_fast():
+    # flying +0.3; speed 6 (diff +2) -> +0.10 => special 1.4
+    import math
+    u = _unit("Gr", 0, 0, 0, damage=3, hp=12, speed=6, is_flying=True)
+    assert abs(u._base_strength - math.sqrt(36) * 1.4) < 1e-9
+
+
+def test_monster_strength_applies_attack_defense():
+    # base 4.0 (as above) ; atk 10 def 0 -> (1 + 1.0 + 0) * 4 = 8.0
+    u = _unit("P", 0, 0, 0, damage=2, hp=8, speed=4, attack=10, defense=0)
+    assert abs(u.monster_strength - 8.0) < 1e-9
+
+
+def test_stack_strength_scales_with_count():
+    u = _unit("P", 0, 0, 0, damage=2, hp=8, speed=4, attack=10, defense=0, count=5)
+    assert abs(u.strength - 8.0 * 5) < 1e-9
+
+
+def test_dead_unit_has_zero_strength():
+    u = _unit("P", 0, 0, 0, count=3)
+    u.take_damage(10_000)
+    assert not u.is_alive
+    assert u.strength == 0

@@ -17,16 +17,19 @@ from ai.planner import BattleAI
 
 
 def simulate(units: List[Unit], seed: Optional[int] = None,
-             first_team: int = 0) -> Tuple[int, int, bool]:
+             first_team: int = 0, attacker_team: int = 0) -> Tuple[int, int, bool]:
     """Run one battle to completion with no logging or IO.
 
-    Returns ``(winner_team, rounds, timed_out)``. Reused by ``scripts/arena.py``.
-    The given ``units`` are mutated, so pass a fresh list per game.
+    Returns ``(winner_team, rounds, ended_early)`` where ``ended_early`` means
+    the battle stopped on a stalemate or the absolute round cap rather than by
+    elimination. Reused by ``scripts/arena.py``; the given ``units`` are
+    mutated, so pass a fresh list per game.
     """
     if seed is not None:
         random.seed(seed)
     grid = HexGrid()
-    battle = BattleState(grid, units, first_team=first_team)
+    battle = BattleState(grid, units, first_team=first_team,
+                         attacker_team=attacker_team)
     ai = BattleAI()
     while not battle.is_over():
         order = battle.turn_order()
@@ -39,8 +42,8 @@ def simulate(units: List[Unit], seed: Optional[int] = None,
             if battle.is_over():
                 break
             battle.execute(ai.decide(battle, unit)[0])
-    timed_out = battle.round_num >= BattleState.MAX_ROUNDS
-    return battle.winner(), battle.round_num, timed_out
+    ended_early = battle.is_stalemate() or battle.round_num >= BattleState.MAX_ROUNDS
+    return battle.winner(), battle.round_num, ended_early
 
 
 def run_battle(config_path: str, output_path: str | None = None) -> str:
