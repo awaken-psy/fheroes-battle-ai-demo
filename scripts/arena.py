@@ -11,6 +11,9 @@ Examples:
     # asymmetric matchup from a config file
     python scripts/arena.py --config configs/example.json --games 200
 
+    # siege scenario (fixed attacker/defender, no mirror)
+    python scripts/arena.py --preset "Siege: Assault" --games 200 --siege
+
     # reproducible run + machine-readable output
     python scripts/arena.py --preset Balanced --games 500 --mirror --seed 0 --json out.json
 """
@@ -34,8 +37,11 @@ from headless import simulate
 def spec_from_preset(name: str):
     if name not in config.PRESETS:
         sys.exit(f"Unknown preset '{name}'. Available: {', '.join(config.PRESETS)}")
+    preset = config.PRESETS[name]
     spec = []
-    for team, placements in config.PRESETS[name].items():
+    for team, placements in preset.items():
+        if team == "siege":
+            continue  # metadata, not a unit placement
         for type_name, col, row in placements:
             spec.append((type_name, team, col, row))
     return spec
@@ -79,8 +85,16 @@ def wilson_interval(wins: int, n: int, z: float = 1.96):
 def run(args):
     spec = (spec_from_config(args.config) if args.config
             else spec_from_preset(args.preset))
+
+    # Siege mode: fixed attacker/defender (team 0 attacks, team 1 defends).
+    is_siege = args.siege or (not args.config and not args.mirror
+                              and config.PRESETS.get(args.preset, {}).get("siege", False))
+
     if args.mirror:
         spec = mirror_spec(spec)
+        if is_siege:
+            print("Warning: --mirror overrides siege mode (siege incompatible with mirror)")
+            is_siege = False
 
     default_hero = {"power": 3, "spell_points": 15}
     hero_configs = {0: default_hero if args.hero0 else None,
@@ -99,7 +113,7 @@ def run(args):
         winner, rounds, ended_early, reason = simulate(
             build_units(spec), seed=seed, first_team=side, attacker_team=side,
             hero_configs=hero_configs if use_heroes else None,
-            difficulty=args.difficulty)
+            difficulty=args.difficulty, siege=is_siege)
         wins[winner] += 1
         total_rounds += rounds
         if ended_early:
@@ -113,6 +127,7 @@ def run(args):
         "games": n,
         "source": args.config or f"preset:{args.preset}",
         "mirror": args.mirror,
+        "siege": is_siege,
         "seed": args.seed,
         "team0_wins": wins[0],
         "team1_wins": wins[1],
@@ -124,9 +139,15 @@ def run(args):
     }
 
     print(f"Games:        {n}")
-    print(f"Source:       {result['source']}{'  (mirror)' if args.mirror else ''}")
-    print(f"Team 0 wins:  {wins[0]}  ({p*100:.1f}%)")
-    print(f"Team 1 wins:  {wins[1]}  ({wins[1]/n*100:.1f}%)")
+    print(f"Source:       {result['source']}"
+          f"{'  (mirror)' if args.mirror else ''}"
+          f"{'  (siege)' if is_siege else ''}")
+    if is_siege:
+        print(f"Attacker (0) wins: {wins[0]}  ({wins[0]/n*100:.1f}%)")
+        print(f"Defender (1) wins: {wins[1]}  ({wins[1]/n*100:.1f}%)")
+    else:
+        print(f"Team 0 wins:  {wins[0]}  ({wins[0]/n*100:.1f}%)")
+        print(f"Team 1 wins:  {wins[1]}  ({wins[1]/n*100:.1f}%)")
     print(f"95% CI:       [{lo*100:.1f}%, {hi*100:.1f}%]")
     print(f"Ended early:  {early}  ({early/n*100:.1f}%)  (stalemate / round cap / retreat)")
     print(f"Retreats:     {retreats}  ({retreats/n*100:.1f}%)")
@@ -155,6 +176,8 @@ def main():
     ap.add_argument("--games", type=int, default=100, help="number of games")
     ap.add_argument("--mirror", action="store_true",
                     help="mirror team 0 onto team 1 (identical armies; expect ~50%%)")
+    ap.add_argument("--siege", action="store_true",
+                    help="enable siege mode (team 0 attacks castle)")
     ap.add_argument("--seed", type=int, default=None,
                     help="base RNG seed for reproducibility (game i uses seed+i)")
     ap.add_argument("--hero0", action="store_true", help="give team 0 a default spellcasting hero")

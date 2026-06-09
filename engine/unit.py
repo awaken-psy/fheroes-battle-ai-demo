@@ -41,6 +41,7 @@ class Unit:
         self._max_total_hp = self._total_hp
         self.is_alive = True
         self.retaliated = False  # can retaliate once per round
+        self._acted = False     # has acted this round (fheroes2 TR_MOVED)
 
         # Active timed spell effects (Haste / Slow / Bless / Curse …).
         self.effects = []
@@ -214,3 +215,4 @@ class Unit:
 
     def new_round(self):
         self.retaliated = False
+        self._acted = False

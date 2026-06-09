@@ -35,6 +35,12 @@ def threat(battle: BattleState, attacker: Unit, defender: Unit) -> float:
     if attacker.has_ability("hp_drain"):
         threat_value *= 1.3
 
+    # Reduce the priority of enemies that have already got their turn
+    # this round — they can't act again until next round.
+    # fheroes2: battle_troop.cpp evaluateThreatForUnit, TR_MOVED check.
+    if defender._acted:
+        threat_value /= 1.25
+
     return threat_value
 
 

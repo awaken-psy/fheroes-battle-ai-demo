@@ -19,7 +19,8 @@ from ai import create_ai
 def simulate(units: List[Unit], seed: Optional[int] = None,
              first_team: int = 0, attacker_team: int = 0,
              hero_configs: Optional[dict] = None, difficulty: str = "Normal",
-             morale: Optional[dict] = None, luck: Optional[dict] = None
+             morale: Optional[dict] = None, luck: Optional[dict] = None,
+             siege: bool = False
              ) -> Tuple[int, int, bool, str]:
     """Run one battle to completion with no logging or IO.
 
@@ -29,6 +30,7 @@ def simulate(units: List[Unit], seed: Optional[int] = None,
     given ``units`` are mutated, so pass a fresh list per game.
     """
     from engine.hero import Hero
+    from engine.castle import Castle
 
     if seed is not None:
         random.seed(seed)
@@ -36,10 +38,12 @@ def simulate(units: List[Unit], seed: Optional[int] = None,
     if hero_configs:
         heroes = {0: Hero.from_config(hero_configs.get(0)),
                   1: Hero.from_config(hero_configs.get(1))}
+    castle = Castle() if siege else None
     grid = HexGrid()
     battle = BattleState(grid, units, first_team=first_team,
                          attacker_team=attacker_team, heroes=heroes,
-                         difficulty=difficulty, morale=morale, luck=luck)
+                         difficulty=difficulty, morale=morale, luck=luck,
+                         castle=castle)
     ai = create_ai("classic")
     while not battle.is_over():
         order = battle.turn_order()
@@ -76,6 +80,9 @@ def _take_unit_turn(battle, ai, unit, log=None):
         result = battle.execute(action)
         if log is not None:
             log(desc, result["desc"])
+
+    # Mark unit as having acted this round (fheroes2 TR_MOVED).
+    unit._acted = True
 
     # Step 2: retreat (with a farewell damage spell)
     retreat = ai.check_retreat(battle, unit)
