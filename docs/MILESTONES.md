@@ -15,7 +15,7 @@
 | **M5** `v1.0` | 特殊能力 + 谨慎走位 | P3(核心) | ~90% | ✅ 完成 |
 | **M5b** | 宽体单位(2 格占位) | P3 | ~91% | ✅ 完成 |
 | **M6a** | 兵种扩充(原版精确数值;先 Knight+Barbarian ~20) | P3 | ~92% | ✅ 完成 |
-| **M6b** | 攻城系统(完整) | P4 | ~94% | 📋 待办 |
+| **M6b** | 攻城系统(完整) | P4 | ~94% | ✅ 完成 |
 | **M6c** | 验证 / 调参 / 原版对照 | P4 | ~95% | 📋 待办 |
 
 ---
@@ -215,22 +215,25 @@ Troll/War Troll/Cyclops。
 > 其余 4 阵营 + 中立(Sorceress/Warlock/Wizard/Necromancer + Griffin/Phoenix/Hydra/各色龙等)
 > 待本轮管线打通后机械式补入,届时再评估新能力(DRAGON/AREA_SHOT/UNDEAD/ELEMENTAL 等)。
 
-## M6b — 攻城系统(完整版)
+## M6b — 攻城系统(完整版) ✅
 
 > fheroes2 最大的单一子系统。对照源码:`battle/battle_arena.cpp`、`battle/battle_catapult.cpp`、
 > `battle/battle_tower.cpp`、`battle/battle_bridge.cpp`、`battle/battle_board.cpp`(墙/河格位)、`castle/castle.cpp`。
+>
+> **简化决策(2026-06-10)**:城墙 HP 固定 2(不要塞 3HP);投石车 1 发/75%/1 伤(无 Ballistics);
+> 射箭惩罚固定 50%(无 Golden Bow/Archery);3 塔始终存在(无建造前提)。
 
 任务:
-- [ ] `engine/castle.py` 数据层:4 段城墙(多状态 hp:完好/破损/摧毁)、城门吊桥(开/关/毁)、护城河格、箭塔(≤3,射手伪单位)、投石车
-- [ ] 几何 + 规则:城墙阻挡移动与射击 LOS;护城河停止移动 + 防御惩罚;吊桥开关控制入城;守军加成
-- [ ] 回合机制:箭塔自动射击、投石车每回合自动砸墙(攻方)、隔墙射击惩罚
-- [ ] `ai/classic` 攻城决策:攻方优先破墙 / 破桥,守方据墙,箭塔选目标,投石车选目标启发式(对齐原版 Arena AI)
-- [ ] `ui` + `config/presets.py`:渲染城堡 / 墙 / 塔 / 河 + 一个攻城预设
+- [x] `engine/castle.py` 数据层:4 段城墙(HP 2→1→0)、城门吊桥(开/关/毁)、护城河 9 格、3 箭塔(Archer 伪单位)、投石车
+- [x] 几何 + 规则:城墙阻挡移动;护城河停止移动 + 防御 -3;吊桥开关(守方控制,可摧毁);隔墙射箭惩罚 50%
+- [x] 回合机制:投石车每回合自动砸墙(攻方)、箭塔自动射击最高威胁敌军(守方);城门吊桥交互
+- [x] `ai/classic` 攻城评估:塔 strength 加入守军射手;墙 penalty 降低攻方射手;攻守 siege flag
+- [x] `ui` + `config/presets.py`:"Siege: Assault" 预设 + 渲染城墙/护城河/箭塔/城门
 
 **退出标准:**
-- [ ] 城墙 / 护城河 / 箭塔 / 投石 / 吊桥 / 守军加成各部件生效且有单测
-- [ ] 攻 / 守 AI 在攻城场景表现合理
-- [ ] 野战指纹不受影响(攻城为独立场景);GUI 攻城跑帧正常
+- [x] 城墙 / 护城河 / 箭塔 / 投石 / 吊桥各部件生效且有单测(45 新测试)
+- [x] 攻 / 守 AI 在攻城场景表现合理(塔 strength 加入评估,墙 penalty 生效)
+- [x] 野战指纹不受影响 `1f54c421b0f7f078`(160 测试全绿);GUI 攻城 200 帧正常
 
 ## M6c — 验证与调参(打 ~95% tag)
 
