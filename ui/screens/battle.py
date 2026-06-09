@@ -395,6 +395,10 @@ class BattleScreen:
             highlights[self._flash[0]] = (intensity, 40, 40)
         g.hex_renderer.draw_grid(canvas, highlights)
 
+        # Siege structures (drawn between grid and units)
+        if self.battle and self.battle.castle:
+            g.hex_renderer.draw_siege(canvas, self.battle.castle)
+
         if self.b_target and self.b_action and isinstance(self.b_action, AttackAction):
             g.hex_renderer.draw_dashed_line(canvas, self.b_action.attacker.pos,
                                             self.b_target.pos, config.TARGET_COLOR, 2)

@@ -20,6 +20,9 @@ class AIState:
         self.enemy_avg_speed = 0.0
         self.defensive = False
         self.cautious = False
+        # Siege flags — set by analyze() when castle is present.
+        self.attacking_castle = False
+        self.defending_castle = False
 
 
 def analyze(battle: BattleState, unit: Unit) -> AIState:
@@ -54,6 +57,21 @@ def analyze(battle: BattleState, unit: Unit) -> AIState:
         f_sum += v
     if f_sum > 0:
         s.my_avg_speed /= f_sum
+
+    # ── Siege modifiers — ai_battle.cpp:1059-1106 ───────────
+    # Add tower strength to the defender's shooters and apply wall
+    # shooting penalty (50%) to the side firing across intact walls.
+    if battle.castle and battle.castle.towers_active():
+        tower_str = battle.castle.tower_strength()
+        # team 0 = attacker, team 1 = defender (siege convention).
+        if unit.team == 1:
+            s.defending_castle = True
+            s.my_shooters += tower_str
+            s.enemy_shooters /= 1.5   # wall penalty on enemy
+        else:
+            s.attacking_castle = True
+            s.enemy_shooters += tower_str
+            s.my_shooters /= 1.5      # wall penalty on self
 
     # tactical flags — ai_battle.cpp:1124-1164
     s.defensive = should_defend(unit, s, battle)

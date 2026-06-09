@@ -109,6 +109,11 @@ class ClassicAI(AIPlayer):
         return -1 if unit.team == 0 else 1
 
     @staticmethod
+    def _path_args(battle: BattleState, unit: Unit):
+        """Return (occupied, moat_cells) for siege-aware pathfinding."""
+        return battle._move_occupied(unit), battle._moat_cells()
+
+    @staticmethod
     def _dist(grid, a: Unit, b: Unit) -> int:
         """Min distance between two units' bodies (melee adjacency == 1)."""
         if not a.is_wide and not b.is_wide:
@@ -142,7 +147,7 @@ class ClassicAI(AIPlayer):
     def _berserk(self, battle: BattleState, unit: Unit) -> Tuple[Action, str]:
         """Attack / move toward the nearest unit, ignoring allegiance."""
         grid = battle.grid
-        occ = battle.occupied(exclude=unit)
+        occ, moat = self._path_args(battle, unit)
         others = [u for u in battle.alive() if u is not unit]
         if not others:
             return SkipAction(unit), "[BERSERK] no target"
@@ -155,7 +160,7 @@ class ClassicAI(AIPlayer):
             return AttackAction(unit, tgt, ranged=True), f"[BERSERK] shoots {tgt.name}"
 
         # melee: attack the nearest unit reachable this turn
-        reachable = grid.reachable(unit.pos, unit.speed, occ, unit.is_flying, td)
+        reachable = grid.reachable(unit.pos, unit.speed, occ, unit.is_flying, td, moat)
         for tgt in others:
             for nb in self._attack_cells(grid, tgt):
                 if nb in occ:
@@ -167,9 +172,9 @@ class ClassicAI(AIPlayer):
         # otherwise move toward the nearest unit
         tgt = others[0]
         tc = grid.nearest_cell_next_to(unit.pos, tgt.pos, occ,
-                                       unit.is_flying, unit.speed * 3, td)
+                                       unit.is_flying, unit.speed * 3, td, moat)
         if tc:
-            path = grid.find_path(unit.pos, tc, occ, unit.is_flying, unit.speed * 3, td)
+            path = grid.find_path(unit.pos, tc, occ, unit.is_flying, unit.speed * 3, td, moat)
             if path and len(path) > 1:
                 return (MoveAction(unit, path[:unit.speed + 1]),
                         f"[BERSERK] moves toward {tgt.name}")
@@ -182,16 +187,16 @@ class ClassicAI(AIPlayer):
     def _archer(self, battle: BattleState, unit: Unit, s: AIState
                 ) -> Tuple[Action, str]:
         enemies = battle.enemies_of(unit)
-        occ = battle.occupied(exclude=unit)
+        occ, moat = self._path_args(battle, unit)
         td = self._tail_dir(unit)
 
         # blocked by melee?
         blocked = any(self._dist(battle.grid, unit, e) == 1 for e in enemies)
 
         if blocked:
-            ret = self._retreat_pos(battle, unit, enemies, occ)
+            ret = self._retreat_pos(battle, unit, enemies, occ, moat)
             if ret:
-                path = battle.grid.find_path(unit.pos, ret, occ, unit.is_flying, unit.speed, td)
+                path = battle.grid.find_path(unit.pos, ret, occ, unit.is_flying, unit.speed, td, moat)
                 if path and len(path) > 1:
                     return MoveAction(unit, path[:unit.speed + 1]), \
                         f"[ARC] retreat -> {ret}"
@@ -222,7 +227,7 @@ class ClassicAI(AIPlayer):
         return SkipAction(unit), "[ARC] no target"
 
     def _retreat_pos(self, battle: BattleState, unit: Unit,
-                     enemies: List[Unit], occ: Set[tuple]
+                     enemies: List[Unit], occ: Set[tuple], moat=None
                      ) -> Optional[Tuple[int, int]]:
         """Archer retreat logic — ai_battle.cpp:1180-1379"""
         grid = battle.grid
@@ -230,7 +235,7 @@ class ClassicAI(AIPlayer):
             return None
 
         td = self._tail_dir(unit)
-        reachable = grid.reachable(unit.pos, unit.speed, occ, unit.is_flying, td)
+        reachable = grid.reachable(unit.pos, unit.speed, occ, unit.is_flying, td, moat)
         safe: list = []
         for pos in reachable:
             if pos in occ:
@@ -269,12 +274,12 @@ class ClassicAI(AIPlayer):
     def _offense(self, battle: BattleState, unit: Unit, s: AIState
                  ) -> Tuple[Action, str]:
         enemies = battle.enemies_of(unit)
-        occ = battle.occupied(exclude=unit)
+        occ, moat = self._path_args(battle, unit)
         grid = battle.grid
         td = self._tail_dir(unit)
 
         # tier 1: target in attack range
-        reachable = grid.reachable(unit.pos, unit.speed, occ, unit.is_flying, td)
+        reachable = grid.reachable(unit.pos, unit.speed, occ, unit.is_flying, td, moat)
         best_e, best_pos, best_val = None, None, float('-inf')
         for e in enemies:
             for nb in self._attack_cells(grid, e):
@@ -290,7 +295,7 @@ class ClassicAI(AIPlayer):
                 f"[ME] attacks {best_e.name} (in range)"
 
         # tier 2: chase distant target
-        result = self._chase(battle, unit, enemies, occ, s,
+        result = self._chase(battle, unit, enemies, occ, moat, s,
                              lambda e: (e.is_archer
                                         or e.speed == 0
                                         or (not e.is_flying and e.speed < unit.speed)),
@@ -298,13 +303,13 @@ class ClassicAI(AIPlayer):
         if result:
             return result
 
-        result = self._chase(battle, unit, enemies, occ, s,
+        result = self._chase(battle, unit, enemies, occ, moat, s,
                              lambda e: True,
                              "chasing any")
         return result or (SkipAction(unit), "[ME] no target")
 
     def _chase(self, battle: BattleState, unit: Unit,
-               enemies: List[Unit], occ: Set[tuple], s: AIState,
+               enemies: List[Unit], occ: Set[tuple], moat, s: AIState,
                predicate, reason: str) -> Optional[Tuple[Action, str]]:
         grid = battle.grid
         td = self._tail_dir(unit)
@@ -313,11 +318,11 @@ class ClassicAI(AIPlayer):
             if not predicate(e):
                 continue
             tgt_cell = grid.nearest_cell_next_to(unit.pos, e.pos, occ,
-                                                  unit.is_flying, unit.speed * 3, td)
+                                                  unit.is_flying, unit.speed * 3, td, moat)
             if not tgt_cell:
                 continue
             path = grid.find_path(unit.pos, tgt_cell, occ,
-                                  unit.is_flying, unit.speed * 3, td)
+                                  unit.is_flying, unit.speed * 3, td, moat)
             if not path:
                 continue
             dist = len(path) - 1
@@ -381,7 +386,7 @@ class ClassicAI(AIPlayer):
                  ) -> Tuple[Action, str]:
         enemies = battle.enemies_of(unit)
         friends = battle.friends_of(unit)
-        occ = battle.occupied(exclude=unit)
+        occ, moat = self._path_args(battle, unit)
         grid = battle.grid
         td = self._tail_dir(unit)
 
@@ -393,7 +398,7 @@ class ClassicAI(AIPlayer):
         best_arch, best_val, best_cover = None, float('-inf'), None
         for a in archers:
             blockers = [e for e in enemies if self._dist(grid, a, e) == 1]
-            cover = self._cover_pos(battle, unit, a, occ)
+            cover = self._cover_pos(battle, unit, a, occ, moat)
             if not cover and not blockers:
                 continue
 
@@ -408,17 +413,17 @@ class ClassicAI(AIPlayer):
                 if blockers:
                     tgt = min(blockers, key=lambda e: self._dist(grid, unit, e))
                     tc = grid.nearest_cell_next_to(unit.pos, tgt.pos, occ,
-                                                    unit.is_flying, unit.speed, td)
+                                                    unit.is_flying, unit.speed, td, moat)
                     if tc:
                         path = grid.find_path(unit.pos, tc, occ,
-                                              unit.is_flying, unit.speed, td)
+                                              unit.is_flying, unit.speed, td, moat)
                         if path:
                             return (AttackAction(unit, tgt, path[-1], ranged=False),
                                     f"[DEF] defends {a.name}, attacks {tgt.name}")
 
         if best_arch and best_cover:
             path = grid.find_path(unit.pos, best_cover, occ,
-                                  unit.is_flying, unit.speed, td)
+                                  unit.is_flying, unit.speed, td, moat)
             if path:
                 seg = path[:unit.speed + 1]
                 return (MoveAction(unit, seg),
@@ -427,10 +432,11 @@ class ClassicAI(AIPlayer):
         return self._offense(battle, unit, s)
 
     def _cover_pos(self, battle: BattleState, unit: Unit,
-                   archer: Unit, occ: Set[tuple]) -> Optional[Tuple[int, int]]:
+                   archer: Unit, occ: Set[tuple], moat=None
+                   ) -> Optional[Tuple[int, int]]:
         grid = battle.grid
         reachable = grid.reachable(unit.pos, unit.speed, occ, unit.is_flying,
-                                   self._tail_dir(unit))
+                                   self._tail_dir(unit), moat)
         best, best_d = None, float('inf')
         for nb in grid.neighbors(*archer.pos):
             if nb in occ:

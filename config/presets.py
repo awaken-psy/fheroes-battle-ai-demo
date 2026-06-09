@@ -33,4 +33,11 @@ PRESETS = {
         0: [("Paladin", 1, 4), ("Veteran Pikeman", 0, 2), ("Ranger", 0, 6)],
         1: [("Cyclops", 9, 4), ("Ogre Lord", 10, 2), ("War Troll", 10, 6)],
     },
+
+    # ── M6b: Siege ─────────────────────────────────────────────
+    "Siege: Assault": {
+        "siege": True,
+        0: [("Swordsman", 1, 3), ("Archer", 0, 5), ("Pikeman", 2, 7)],
+        1: [("Orc Chief", 9, 3), ("Orc", 10, 5), ("Ogre", 9, 7)],
+    },
 }

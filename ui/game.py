@@ -9,6 +9,7 @@ from engine.hex_grid import HexGrid
 from .hex_renderer import HexRenderer
 from engine.battle_state import BattleState
 from engine.hero import Hero
+from engine.castle import Castle
 from .screens.setup import SetupScreen
 from .screens.battle import BattleScreen
 
@@ -36,6 +37,7 @@ class Game:
         self._init_grid()
 
         self.units = []
+        self._siege = False
         self.state = SETUP
 
         # screens
@@ -135,7 +137,9 @@ class Game:
     def start_battle(self):
         # Both sides get a default spellcasting hero so the demo shows spells.
         heroes = {0: Hero(), 1: Hero()}
-        self.screen_battle.battle = BattleState(self.grid, self.units, heroes=heroes)
+        castle = Castle() if self._siege else None
+        self.screen_battle.battle = BattleState(self.grid, self.units, heroes=heroes,
+                                                 castle=castle)
         self.screen_battle.b_log = []
         self.screen_battle._popups = []
         self.screen_battle._round_order = None
@@ -152,4 +156,5 @@ class Game:
         self.state = SETUP
         self.screen_battle.reset()
         self.units = []
+        self._siege = False
         self._playagain_rect = None

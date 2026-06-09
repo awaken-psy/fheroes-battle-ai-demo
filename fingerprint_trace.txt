@@ -1,0 +1,1320 @@
+=== Archer Defense seed=0 ===
+R1
+  [ATK]  Me:644([ARC]0)  En:379([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 16 (1 killed)
+  [ATK]  Me:626([ARC]0)  En:365([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 17 (1 killed)
+  [ATK]  Me:609([ARC]0)  En:351([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 24 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:337([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 24 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:322([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 22 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 1)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 4)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:574([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 24 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:539([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (2 killed)
+R2
+  [ATK]  Me:504([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg -> Archer retaliates: 9
+  [ATK]  Me:504([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:264([ARC]208)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 40 dmg (4 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:225([ARC]168)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 42 dmg (4 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:185([ARC]129)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 40 dmg (4 killed)
+  [DEF]  Me:146([ARC]89)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 8 dmg -> Cavalry retaliates: 18 (2 killed)
+  [DEF]  Me:117([ARC]89)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 3 dmg -> Cavalry retaliates: 9 (1 killed) [DEAD]
+  [DEF]  Me:103([ARC]89)  En:504([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg -> Griffin retaliates: 3
+  [DEF]  Me:103([ARC]89)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 3 dmg
+  [DEF]  Me:103([ARC]89)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg -> Cavalry retaliates: 38 (4 killed) [DEAD]
+R3
+  [ATK]  Me:504([ARC]0)  En:64([ARC]49)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg -> Archer retaliates: 2 (1 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:64([ARC]49)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:486([ARC]0)  En:34([ARC]20)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 13 dmg (1 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 10 dmg (1 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 7 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=3
+=== Archer Defense seed=1 ===
+R1
+  [ATK]  Me:644([ARC]0)  En:379([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 14 (1 killed)
+  [ATK]  Me:626([ARC]0)  En:365([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 17 (1 killed)
+  [ATK]  Me:609([ARC]0)  En:351([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 20 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:337([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 23 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:322([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 26 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 1)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 4)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (1 killed)
+  [DEF]  Me:294([ARC]238)  En:591([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:556([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (2 killed)
+R2
+  [ATK]  Me:521([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 7 dmg -> Archer retaliates: 11 (1 killed)
+  [ATK]  Me:504([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:264([ARC]208)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 40 dmg (4 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:225([ARC]168)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 44 dmg (4 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:185([ARC]129)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 45 dmg (4 killed)
+  [DEF]  Me:146([ARC]89)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 8 dmg -> Cavalry retaliates: 27 (2 killed)
+  [DEF]  Me:117([ARC]89)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 2 dmg -> Cavalry retaliates: 6 (1 killed) [DEAD]
+  [DEF]  Me:103([ARC]89)  En:504([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg -> Griffin retaliates: 1 (1 killed) [DEAD]
+  [DEF]  Me:93([ARC]79)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 3 dmg
+  [DEF]  Me:93([ARC]79)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg -> Cavalry retaliates: 36 (4 killed) [DEAD]
+R3
+  [ATK]  Me:504([ARC]0)  En:54([ARC]40)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg -> Archer retaliates: 5
+  [ATK]  Me:504([ARC]0)  En:54([ARC]40)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:24([ARC]10)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 10 dmg (1 killed) [DEAD]
+  [CAUT]  Me:504([ARC]0)  En:14([ARC]0)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 8 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=3
+=== Archer Defense seed=2 ===
+R1
+  [ATK]  Me:644([ARC]0)  En:379([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 14 (1 killed)
+  [ATK]  Me:626([ARC]0)  En:365([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 15 (1 killed)
+  [ATK]  Me:609([ARC]0)  En:351([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 25 dmg (2 killed)
+  [ATK]  Me:609([ARC]0)  En:322([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 26 dmg (2 killed)
+  [ATK]  Me:609([ARC]0)  En:294([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 29 dmg (2 killed) [DEAD]
+  [DEF]  Me:266([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 1)
+  [DEF]  Me:266([ARC]238)  En:609([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 24 dmg (2 killed)
+  [DEF]  Me:266([ARC]238)  En:574([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 19 dmg (1 killed)
+  [DEF]  Me:266([ARC]238)  En:556([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 23 dmg (2 killed)
+R2
+  [ATK]  Me:521([ARC]0)  En:266([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 7 dmg -> Archer retaliates: 12 (1 killed)
+  [ATK]  Me:504([ARC]0)  En:266([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:236([ARC]208)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 40 dmg (4 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:197([ARC]168)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 47 dmg (4 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:157([ARC]129)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 42 dmg (4 killed)
+  [DEF]  Me:117([ARC]89)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 6 dmg -> Cavalry retaliates: 26 (1 killed)
+  [DEF]  Me:103([ARC]89)  En:504([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg -> Griffin retaliates: 3
+  [DEF]  Me:103([ARC]89)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg -> Cavalry retaliates: 40 (4 killed) [DEAD]
+  [DEF]  Me:64([ARC]49)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 3 dmg -> Cavalry retaliates: 33 (4 killed) [DEAD]
+R3
+  [ATK]  Me:504([ARC]0)  En:24([ARC]10)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 2 dmg -> Pikeman retaliates: 3 (1 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:24([ARC]10)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 2 dmg (1 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 1 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=3
+=== Archer Defense seed=3 ===
+R1
+  [ATK]  Me:644([ARC]0)  En:379([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 15 (1 killed)
+  [ATK]  Me:626([ARC]0)  En:365([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 15 (1 killed)
+  [ATK]  Me:609([ARC]0)  En:351([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 23 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:337([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 29 dmg (2 killed)
+  [ATK]  Me:609([ARC]0)  En:308([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 26 dmg (2 killed) [DEAD]
+  [DEF]  Me:280([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 1)
+  [DEF]  Me:280([ARC]238)  En:609([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 18 dmg (1 killed)
+  [DEF]  Me:280([ARC]238)  En:591([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 25 dmg (2 killed)
+  [DEF]  Me:280([ARC]238)  En:556([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (2 killed)
+R2
+  [ATK]  Me:521([ARC]0)  En:280([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 7 dmg -> Archer retaliates: 12 (1 killed)
+  [ATK]  Me:504([ARC]0)  En:280([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:250([ARC]208)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 37 dmg (3 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:221([ARC]178)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 28 dmg (2 killed) -> Archer retaliates: 6
+  [ATK]  Me:504([ARC]0)  En:201([ARC]158)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 30 dmg (3 killed)
+  [DEF]  Me:171([ARC]129)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Pikeman attacks Griffin: 6 dmg (1 killed) [DEAD]
+  [DEF]  Me:171([ARC]129)  En:486([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 7 dmg -> Griffin retaliates: 27 (3 killed)
+  [DEF]  Me:141([ARC]99)  En:486([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg -> Cavalry retaliates: 39 (4 killed)
+  [DEF]  Me:102([ARC]59)  En:486([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 2 dmg -> Cavalry retaliates: 22 (3 killed) [DEAD]
+R3
+  [ATK]  Me:486([ARC]0)  En:72([ARC]30)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 17 dmg (2 killed) -> Pikeman retaliates: 3 (1 killed)
+  [ATK]  Me:469([ARC]0)  En:44([ARC]30)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 19 dmg (2 killed) [DEAD]
+  [ATK]  Me:469([ARC]0)  En:24([ARC]10)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 4 dmg (1 killed) [DEAD]
+  [CAUT]  Me:469([ARC]0)  En:14([ARC]0)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 15 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=3
+=== Archer Defense seed=4 ===
+R1
+  [ATK]  Me:644([ARC]0)  En:379([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 15 (1 killed)
+  [ATK]  Me:626([ARC]0)  En:365([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 14 (1 killed)
+  [ATK]  Me:609([ARC]0)  En:351([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 24 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:337([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 19 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:322([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 27 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 1)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 4)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:574([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 23 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:539([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (1 killed)
+R2
+  [ATK]  Me:521([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 7 dmg -> Archer retaliates: 12 (1 killed)
+  [ATK]  Me:504([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:264([ARC]208)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 32 dmg (3 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:235([ARC]178)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 44 dmg (4 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:195([ARC]139)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 32 dmg (3 killed)
+  [DEF]  Me:165([ARC]109)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 8 dmg -> Cavalry retaliates: 27 (2 killed)
+  [DEF]  Me:137([ARC]109)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 3 dmg -> Cavalry retaliates: 9 (1 killed) [DEAD]
+  [DEF]  Me:123([ARC]109)  En:504([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 3
+  [DEF]  Me:123([ARC]109)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg
+  [DEF]  Me:123([ARC]109)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg -> Cavalry retaliates: 28 (3 killed)
+R3
+  [ATK]  Me:504([ARC]0)  En:93([ARC]79)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg -> Archer retaliates: 2 (1 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:93([ARC]79)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:486([ARC]0)  En:64([ARC]49)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 11 dmg (2 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:44([ARC]30)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 18 dmg (2 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:24([ARC]10)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 8 dmg (1 killed) [DEAD]
+  [CAUT]  Me:14([ARC]0)  En:486([ARC]0)  -> [ME] attacks Griffin (in range) || Pikeman attacks Griffin: 3 dmg -> Griffin retaliates: 4 (1 killed) [DEAD]
+WINNER=1 ROUNDS=3
+=== Archer Defense seed=5 ===
+R1
+  [ATK]  Me:644([ARC]0)  En:379([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 16 (1 killed)
+  [ATK]  Me:626([ARC]0)  En:365([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 13 (1 killed)
+  [ATK]  Me:609([ARC]0)  En:351([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 23 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:337([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 24 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:322([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 22 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 1)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 4)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:574([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 18 dmg (1 killed)
+  [DEF]  Me:294([ARC]238)  En:556([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (2 killed)
+R2
+  [ATK]  Me:521([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 7 dmg -> Archer retaliates: 11 (1 killed)
+  [ATK]  Me:504([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:264([ARC]208)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 39 dmg (3 killed) -> Archer retaliates: 5
+  [ATK]  Me:504([ARC]0)  En:235([ARC]178)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 42 dmg (4 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:195([ARC]139)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 35 dmg (3 killed)
+  [DEF]  Me:165([ARC]109)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 8 dmg -> Cavalry retaliates: 24 (2 killed)
+  [DEF]  Me:137([ARC]109)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 3 dmg -> Cavalry retaliates: 9 (1 killed) [DEAD]
+  [DEF]  Me:123([ARC]109)  En:504([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 3 (1 killed)
+  [DEF]  Me:113([ARC]99)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg
+  [DEF]  Me:113([ARC]99)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg -> Cavalry retaliates: 37 (3 killed)
+R3
+  [ATK]  Me:504([ARC]0)  En:83([ARC]69)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg (1 killed) -> Archer retaliates: 6
+  [ATK]  Me:504([ARC]0)  En:74([ARC]59)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (2 killed)
+  [ATK]  Me:504([ARC]0)  En:54([ARC]40)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 11 dmg (2 killed) [DEAD]
+  [ATK]  Me:504([ARC]0)  En:34([ARC]20)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 1 dmg (1 killed) [DEAD]
+  [ATK]  Me:504([ARC]0)  En:24([ARC]10)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 8 dmg (1 killed) [DEAD]
+  [DEF]  Me:10([ARC]10)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 1 dmg -> Cavalry retaliates: 8 (1 killed) [DEAD]
+WINNER=1 ROUNDS=3
+=== Archer Defense seed=6 ===
+R1
+  [ATK]  Me:644([ARC]0)  En:379([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 15 (1 killed)
+  [ATK]  Me:626([ARC]0)  En:365([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 15 (1 killed)
+  [ATK]  Me:609([ARC]0)  En:351([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 20 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:337([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 26 dmg (2 killed)
+  [ATK]  Me:609([ARC]0)  En:308([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 28 dmg (1 killed)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 1)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 4)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:574([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (1 killed)
+  [DEF]  Me:294([ARC]238)  En:556([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (2 killed)
+R2
+  [ATK]  Me:521([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 7 dmg -> Archer retaliates: 11 (1 killed)
+  [ATK]  Me:504([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:264([ARC]208)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 40 dmg (4 killed) -> Archer retaliates: 3
+  [ATK]  Me:504([ARC]0)  En:225([ARC]168)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 40 dmg (4 killed) -> Archer retaliates: 3
+  [ATK]  Me:504([ARC]0)  En:185([ARC]129)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 46 dmg (5 killed) [DEAD]
+  [DEF]  Me:136([ARC]79)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 9 dmg -> Cavalry retaliates: 26 (2 killed)
+  [DEF]  Me:107([ARC]79)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 2 dmg
+  [DEF]  Me:107([ARC]79)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg
+  [DEF]  Me:107([ARC]79)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg -> Cavalry retaliates: 40 (4 killed) [DEAD]
+R3
+  [ATK]  Me:504([ARC]0)  En:68([ARC]40)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg -> Archer retaliates: 4 (1 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:68([ARC]40)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:486([ARC]0)  En:38([ARC]10)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 9 dmg (1 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:24([ARC]10)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 1 dmg (1 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:10([ARC]10)  -> [ME] no target || Cavalry skips
+  [DEF]  Me:10([ARC]10)  En:486([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg -> Griffin retaliates: 10 (1 killed) [DEAD]
+WINNER=1 ROUNDS=3
+=== Archer Defense seed=7 ===
+R1
+  [ATK]  Me:644([ARC]0)  En:379([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 15 (1 killed)
+  [ATK]  Me:626([ARC]0)  En:365([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 14 (1 killed)
+  [ATK]  Me:609([ARC]0)  En:351([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 22 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:337([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 23 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:322([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 17 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 1)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 4)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 19 dmg (1 killed)
+  [DEF]  Me:294([ARC]238)  En:591([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:556([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 19 dmg (2 killed)
+R2
+  [ATK]  Me:521([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 7 dmg -> Archer retaliates: 12 (1 killed)
+  [ATK]  Me:504([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:264([ARC]208)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 35 dmg (3 killed) -> Archer retaliates: 6
+  [ATK]  Me:504([ARC]0)  En:235([ARC]178)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 32 dmg (3 killed) -> Archer retaliates: 5
+  [ATK]  Me:504([ARC]0)  En:205([ARC]148)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 39 dmg (4 killed)
+  [DEF]  Me:165([ARC]109)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 8 dmg -> Cavalry retaliates: 28 (2 killed)
+  [DEF]  Me:137([ARC]109)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 3 dmg -> Cavalry retaliates: 15 (1 killed) [DEAD]
+  [DEF]  Me:123([ARC]109)  En:504([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg -> Griffin retaliates: 3
+  [DEF]  Me:123([ARC]109)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 5 dmg
+  [DEF]  Me:123([ARC]109)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 5 dmg -> Cavalry retaliates: 35 (3 killed)
+R3
+  [ATK]  Me:504([ARC]0)  En:93([ARC]79)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg -> Archer retaliates: 6
+  [ATK]  Me:504([ARC]0)  En:93([ARC]79)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:64([ARC]49)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 15 dmg (2 killed) [DEAD]
+  [ATK]  Me:504([ARC]0)  En:44([ARC]30)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 13 dmg (2 killed) [DEAD]
+  [ATK]  Me:504([ARC]0)  En:24([ARC]10)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 5 dmg (1 killed) [DEAD]
+  [DEF]  Me:10([ARC]10)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 1 dmg -> Cavalry retaliates: 4 (1 killed) [DEAD]
+WINNER=1 ROUNDS=3
+=== Archer Defense seed=8 ===
+R1
+  [ATK]  Me:644([ARC]0)  En:379([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 15 (1 killed)
+  [ATK]  Me:626([ARC]0)  En:365([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 13 (1 killed)
+  [ATK]  Me:609([ARC]0)  En:351([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 23 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:337([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 25 dmg (2 killed)
+  [ATK]  Me:609([ARC]0)  En:308([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 26 dmg (1 killed)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 1)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 4)
+  [DEF]  Me:294([ARC]238)  En:609([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:574([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 23 dmg (2 killed)
+  [DEF]  Me:294([ARC]238)  En:539([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (1 killed)
+R2
+  [ATK]  Me:521([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 7 dmg -> Archer retaliates: 9 (1 killed)
+  [ATK]  Me:504([ARC]0)  En:294([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:264([ARC]208)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 45 dmg (4 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:225([ARC]168)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 34 dmg (3 killed) -> Archer retaliates: 5
+  [ATK]  Me:504([ARC]0)  En:195([ARC]139)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 37 dmg (4 killed)
+  [DEF]  Me:156([ARC]99)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 8 dmg -> Cavalry retaliates: 19 (2 killed)
+  [DEF]  Me:127([ARC]99)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Cavalry || Pikeman attacks Cavalry: 3 dmg -> Cavalry retaliates: 4 (1 killed) [DEAD]
+  [DEF]  Me:113([ARC]99)  En:504([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg -> Griffin retaliates: 3
+  [DEF]  Me:113([ARC]99)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg
+  [DEF]  Me:113([ARC]99)  En:504([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg -> Cavalry retaliates: 35 (3 killed)
+R3
+  [ATK]  Me:504([ARC]0)  En:83([ARC]69)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg -> Archer retaliates: 4 (1 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:83([ARC]69)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:486([ARC]0)  En:54([ARC]40)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 11 dmg (2 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:34([ARC]20)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 5 dmg (1 killed) [DEAD]
+  [ATK]  Me:486([ARC]0)  En:24([ARC]10)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 13 dmg (1 killed) [DEAD]
+  [DEF]  Me:10([ARC]10)  En:486([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 1 dmg -> Cavalry retaliates: 6 (1 killed) [DEAD]
+WINNER=1 ROUNDS=3
+=== Archer Defense seed=9 ===
+R1
+  [ATK]  Me:644([ARC]0)  En:379([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 16 (1 killed)
+  [ATK]  Me:626([ARC]0)  En:365([ARC]238)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 20 dmg (1 killed) -> Pikeman retaliates: 15 (1 killed)
+  [ATK]  Me:609([ARC]0)  En:351([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 23 dmg (1 killed)
+  [ATK]  Me:609([ARC]0)  En:337([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 30 dmg (2 killed)
+  [ATK]  Me:609([ARC]0)  En:308([ARC]238)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 25 dmg (2 killed) [DEAD]
+  [DEF]  Me:280([ARC]238)  En:609([ARC]0)  -> [DEF] covers Archer || Pikeman moves to (1, 1)
+  [DEF]  Me:280([ARC]238)  En:609([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 19 dmg (1 killed)
+  [DEF]  Me:280([ARC]238)  En:591([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (2 killed)
+  [DEF]  Me:280([ARC]238)  En:556([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (2 killed)
+R2
+  [ATK]  Me:521([ARC]0)  En:280([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 7 dmg -> Archer retaliates: 10 (1 killed)
+  [ATK]  Me:504([ARC]0)  En:280([ARC]238)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed)
+  [ATK]  Me:504([ARC]0)  En:250([ARC]208)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 39 dmg (3 killed) -> Archer retaliates: 4
+  [ATK]  Me:504([ARC]0)  En:221([ARC]178)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 27 dmg (2 killed) -> Archer retaliates: 5
+  [ATK]  Me:504([ARC]0)  En:201([ARC]158)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 40 dmg (4 killed)
+  [DEF]  Me:161([ARC]119)  En:504([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Pikeman attacks Griffin: 9 dmg (1 killed) [DEAD]
+  [DEF]  Me:161([ARC]119)  En:486([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 6 dmg -> Griffin retaliates: 27 (3 killed)
+  [DEF]  Me:131([ARC]89)  En:486([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg -> Cavalry retaliates: 39 (4 killed)
+  [DEF]  Me:92([ARC]49)  En:486([ARC]0)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 2 dmg -> Cavalry retaliates: 13 (2 killed) [DEAD]
+R3
+  [ATK]  Me:486([ARC]0)  En:72([ARC]30)  -> [ME] attacks Pikeman (in range) || Griffin attacks Pikeman: 17 dmg (2 killed) -> Pikeman retaliates: 4 (1 killed)
+  [ATK]  Me:469([ARC]0)  En:44([ARC]30)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 19 dmg (2 killed) [DEAD]
+  [ATK]  Me:469([ARC]0)  En:24([ARC]10)  -> [ME] attacks Archer (in range) || Cavalry attacks Archer: 2 dmg (1 killed) [DEAD]
+  [CAUT]  Me:469([ARC]0)  En:14([ARC]0)  -> [ME] attacks Pikeman (in range) || Cavalry attacks Pikeman: 15 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=3
+=== Balanced seed=0 ===
+R1
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 23 dmg -> Cavalry retaliates: 26
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Cavalry moves to (9, 5)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (9, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 24) || Archer shoots Archer: 25 dmg (2 killed)
+  [ATK]  Me:277([ARC]59)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 16 dmg (1 killed)
+R2
+  [ATK]  Me:287([ARC]69)  En:277([ARC]59)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 27 dmg (1 killed) -> Cavalry retaliates: 15 (1 killed)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 16 dmg -> Cavalry retaliates: 17 (1 killed)
+  [DEF]  Me:246([ARC]69)  En:196([ARC]59)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:196([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Swordsman attacks Cavalry: 18 dmg (1 killed)
+  [DEF]  Me:206([ARC]69)  En:196([ARC]59)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 20 dmg (2 killed)
+  [ATK]  Me:176([ARC]40)  En:206([ARC]69)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg
+R3
+  [ATK]  Me:206([ARC]69)  En:176([ARC]40)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 11 dmg -> Swordsman retaliates: 11 (1 killed) [DEAD]
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Cavalry moves to (3, 5)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Swordsman moves to (5, 3)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 20 dmg (2 killed)
+  [ATK]  Me:156([ARC]20)  En:165([ARC]69)  -> [ARC] shoots Archer (threat 6) || Archer shoots Archer: 6 dmg (1 killed)
+R4
+  [ATK]  Me:156([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 9 dmg -> Swordsman retaliates: 18
+  [DEF]  Me:156([ARC]59)  En:156([ARC]20)  -> [DEF] defends Archer, attacks Cavalry || Swordsman attacks Cavalry: 5 dmg (1 killed) [DEAD]
+  [ATK]  Me:116([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 19 dmg (1 killed)
+  [DEF]  Me:132([ARC]59)  En:116([ARC]20)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 15 dmg (2 killed) [DEAD]
+R5
+  [DEF]  Me:132([ARC]59)  En:96([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:96([ARC]0)  En:132([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 16 dmg -> Swordsman retaliates: 14 (1 killed)
+  [DEF]  Me:132([ARC]59)  En:72([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 4 dmg -> Swordsman retaliates: 25 (2 killed)
+R6
+  [DEF]  Me:112([ARC]40)  En:72([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 15 dmg -> Swordsman retaliates: 13 (1 killed)
+  [ATK]  Me:72([ARC]0)  En:88([ARC]40)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 14 dmg -> Swordsman retaliates: 9 (1 killed)
+  [DEF]  Me:88([ARC]40)  En:48([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 4 dmg
+R7
+  [DEF]  Me:88([ARC]40)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 8 dmg -> Swordsman retaliates: 9 (1 killed)
+  [ATK]  Me:48([ARC]0)  En:64([ARC]40)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 15 dmg (2 killed) -> Archer retaliates: 2
+  [DEF]  Me:44([ARC]20)  En:48([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg
+R8
+  [DEF]  Me:44([ARC]20)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 5 dmg -> Swordsman retaliates: 8
+  [ATK]  Me:48([ARC]0)  En:44([ARC]20)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 9 dmg -> Swordsman retaliates: 4 (1 killed)
+  [DEF]  Me:44([ARC]20)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+R9
+  [DEF]  Me:44([ARC]20)  En:24([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 4 dmg -> Swordsman retaliates: 3 (1 killed) [DEAD]
+  [ATK]  Me:24([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 5 dmg -> Archer retaliates: 1
+  [DEF]  Me:20([ARC]20)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg
+R10
+  [ATK]  Me:24([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 5 dmg (1 killed) -> Archer retaliates: 1
+  [DEF]  Me:10([ARC]10)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg -> Swordsman retaliates: 8 (1 killed) [DEAD]
+WINNER=1 ROUNDS=10
+=== Balanced seed=1 ===
+R1
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 22 dmg -> Cavalry retaliates: 22
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Cavalry moves to (9, 5)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (9, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 24) || Archer shoots Archer: 25 dmg (2 killed)
+  [ATK]  Me:277([ARC]59)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 18 dmg (1 killed)
+R2
+  [ATK]  Me:287([ARC]69)  En:277([ARC]59)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 18 dmg (1 killed) -> Cavalry retaliates: 16 (1 killed)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 15 dmg -> Cavalry retaliates: 19
+  [DEF]  Me:246([ARC]69)  En:236([ARC]59)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Swordsman attacks Cavalry: 17 dmg (1 killed)
+  [DEF]  Me:206([ARC]69)  En:236([ARC]59)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 20 dmg (2 killed)
+  [ATK]  Me:217([ARC]40)  En:206([ARC]69)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg
+R3
+  [ATK]  Me:206([ARC]69)  En:217([ARC]40)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 9 dmg -> Swordsman retaliates: 16 (1 killed) [DEAD]
+  [ATK]  Me:217([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Cavalry moves to (3, 5)
+  [DEF]  Me:165([ARC]69)  En:217([ARC]40)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:217([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Swordsman moves to (5, 3)
+  [DEF]  Me:165([ARC]69)  En:217([ARC]40)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 22 dmg (2 killed)
+  [ATK]  Me:197([ARC]20)  En:165([ARC]69)  -> [ARC] shoots Archer (threat 6) || Archer shoots Archer: 7 dmg (1 killed)
+R4
+  [ATK]  Me:197([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 15 dmg -> Swordsman retaliates: 18 (1 killed)
+  [DEF]  Me:156([ARC]59)  En:156([ARC]20)  -> [DEF] defends Archer, attacks Cavalry || Swordsman attacks Cavalry: 13 dmg (1 killed) [DEAD]
+  [ATK]  Me:116([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 21 dmg (1 killed)
+  [DEF]  Me:132([ARC]59)  En:116([ARC]20)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 13 dmg (2 killed) [DEAD]
+R5
+  [DEF]  Me:132([ARC]59)  En:96([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:96([ARC]0)  En:132([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 18 dmg (1 killed) -> Swordsman retaliates: 8
+  [DEF]  Me:107([ARC]59)  En:96([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 5 dmg -> Swordsman retaliates: 28 (3 killed)
+R6
+  [DEF]  Me:78([ARC]30)  En:96([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 9 dmg (1 killed) -> Swordsman retaliates: 14
+  [ATK]  Me:72([ARC]0)  En:78([ARC]30)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 14 dmg (1 killed) -> Swordsman retaliates: 5
+  [DEF]  Me:54([ARC]30)  En:72([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+R7
+  [DEF]  Me:54([ARC]30)  En:72([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 5 dmg -> Swordsman retaliates: 13
+  [ATK]  Me:72([ARC]0)  En:54([ARC]30)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 19 dmg (2 killed) -> Archer retaliates: 1
+  [DEF]  Me:34([ARC]10)  En:72([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg
+R8
+  [DEF]  Me:34([ARC]10)  En:72([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 4 dmg -> Swordsman retaliates: 5 (1 killed) [DEAD]
+  [ATK]  Me:72([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 8 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=8
+=== Balanced seed=2 ===
+R1
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 16 dmg -> Cavalry retaliates: 25
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Cavalry moves to (9, 5)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (9, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 24) || Archer shoots Archer: 25 dmg (2 killed)
+  [ATK]  Me:277([ARC]59)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 19 dmg (1 killed)
+R2
+  [ATK]  Me:287([ARC]69)  En:277([ARC]59)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 25 dmg (1 killed) -> Cavalry retaliates: 16 (1 killed)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 16 dmg -> Cavalry retaliates: 13
+  [DEF]  Me:246([ARC]69)  En:236([ARC]59)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Swordsman attacks Cavalry: 15 dmg (1 killed)
+  [DEF]  Me:206([ARC]69)  En:236([ARC]59)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 22 dmg (2 killed)
+  [ATK]  Me:217([ARC]40)  En:206([ARC]69)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg
+R3
+  [ATK]  Me:206([ARC]69)  En:217([ARC]40)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 11 dmg -> Swordsman retaliates: 14 (1 killed) [DEAD]
+  [ATK]  Me:217([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Cavalry moves to (3, 5)
+  [DEF]  Me:165([ARC]69)  En:217([ARC]40)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:217([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Swordsman moves to (5, 3)
+  [DEF]  Me:165([ARC]69)  En:217([ARC]40)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 24 dmg (3 killed)
+  [ATK]  Me:187([ARC]10)  En:165([ARC]69)  -> [ARC] shoots Archer (threat 3) || Archer shoots Archer: 3 dmg (1 killed)
+R4
+  [ATK]  Me:187([ARC]10)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 20 dmg -> Swordsman retaliates: 19 (1 killed)
+  [DEF]  Me:156([ARC]59)  En:146([ARC]10)  -> [DEF] defends Archer, attacks Cavalry || Swordsman attacks Cavalry: 17 dmg (1 killed) [DEAD]
+  [ATK]  Me:106([ARC]10)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 18 dmg (1 killed)
+  [DEF]  Me:132([ARC]59)  En:106([ARC]10)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 9 dmg (1 killed) [DEAD]
+R5
+  [DEF]  Me:132([ARC]59)  En:96([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:96([ARC]0)  En:132([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 20 dmg (1 killed) -> Swordsman retaliates: 8
+  [DEF]  Me:107([ARC]59)  En:96([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 5 dmg -> Swordsman retaliates: 28 (3 killed)
+R6
+  [DEF]  Me:78([ARC]30)  En:96([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 9 dmg (1 killed) -> Swordsman retaliates: 11
+  [ATK]  Me:72([ARC]0)  En:78([ARC]30)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 13 dmg (1 killed) -> Swordsman retaliates: 3
+  [DEF]  Me:54([ARC]30)  En:72([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 3 dmg
+R7
+  [DEF]  Me:54([ARC]30)  En:72([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 3 dmg -> Swordsman retaliates: 12
+  [ATK]  Me:72([ARC]0)  En:54([ARC]30)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 16 dmg (1 killed) -> Archer retaliates: 1
+  [DEF]  Me:44([ARC]20)  En:72([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+R8
+  [DEF]  Me:44([ARC]20)  En:72([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 4 dmg -> Swordsman retaliates: 6 (1 killed) [DEAD]
+  [ATK]  Me:72([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 14 dmg (2 killed) [DEAD]
+WINNER=1 ROUNDS=8
+=== Balanced seed=3 ===
+R1
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 26 dmg -> Cavalry retaliates: 24
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Cavalry moves to (9, 5)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (9, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 24) || Archer shoots Archer: 24 dmg (2 killed)
+  [ATK]  Me:277([ARC]59)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 18 dmg (1 killed)
+R2
+  [ATK]  Me:287([ARC]69)  En:277([ARC]59)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 27 dmg (1 killed) -> Cavalry retaliates: 12 (1 killed)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 15 dmg -> Cavalry retaliates: 13 (1 killed)
+  [DEF]  Me:246([ARC]69)  En:196([ARC]59)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:196([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Swordsman attacks Cavalry: 19 dmg (1 killed)
+  [DEF]  Me:206([ARC]69)  En:196([ARC]59)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 22 dmg (2 killed)
+  [ATK]  Me:176([ARC]40)  En:206([ARC]69)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 3 dmg
+R3
+  [ATK]  Me:206([ARC]69)  En:176([ARC]40)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 7 dmg -> Swordsman retaliates: 17 (1 killed) [DEAD]
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Cavalry moves to (3, 5)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Swordsman moves to (5, 3)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 22 dmg (2 killed)
+  [ATK]  Me:156([ARC]20)  En:165([ARC]69)  -> [ARC] shoots Archer (threat 6) || Archer shoots Archer: 6 dmg (1 killed)
+R4
+  [ATK]  Me:156([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 11 dmg -> Swordsman retaliates: 20
+  [DEF]  Me:156([ARC]59)  En:156([ARC]20)  -> [DEF] defends Archer, attacks Cavalry || Swordsman attacks Cavalry: 4 dmg (1 killed) [DEAD]
+  [ATK]  Me:116([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 19 dmg (1 killed)
+  [DEF]  Me:132([ARC]59)  En:116([ARC]20)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 12 dmg (2 killed) [DEAD]
+R5
+  [DEF]  Me:132([ARC]59)  En:96([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:96([ARC]0)  En:132([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 15 dmg -> Swordsman retaliates: 13
+  [DEF]  Me:132([ARC]59)  En:96([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 6 dmg (1 killed) -> Swordsman retaliates: 19 (2 killed)
+R6
+  [DEF]  Me:112([ARC]40)  En:72([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 11 dmg -> Swordsman retaliates: 14 (1 killed)
+  [ATK]  Me:72([ARC]0)  En:88([ARC]40)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 11 dmg -> Swordsman retaliates: 9
+  [DEF]  Me:88([ARC]40)  En:72([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 4 dmg (1 killed)
+R7
+  [DEF]  Me:88([ARC]40)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 9 dmg -> Swordsman retaliates: 8 (1 killed)
+  [ATK]  Me:48([ARC]0)  En:64([ARC]40)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 14 dmg (1 killed) -> Archer retaliates: 3
+  [DEF]  Me:54([ARC]30)  En:48([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 3 dmg
+R8
+  [DEF]  Me:54([ARC]30)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 4 dmg -> Swordsman retaliates: 9
+  [ATK]  Me:48([ARC]0)  En:54([ARC]30)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 15 dmg (2 killed) -> Archer retaliates: 1
+  [DEF]  Me:34([ARC]10)  En:48([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg
+R9
+  [DEF]  Me:34([ARC]10)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 4 dmg (1 killed) -> Swordsman retaliates: 5
+  [ATK]  Me:24([ARC]0)  En:34([ARC]10)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 4 dmg -> Swordsman retaliates: 3
+  [DEF]  Me:34([ARC]10)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg
+R10
+  [DEF]  Me:34([ARC]10)  En:24([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 5 dmg -> Swordsman retaliates: 4 (1 killed) [DEAD]
+  [ATK]  Me:24([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 8 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=10
+=== Balanced seed=4 ===
+R1
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 19 dmg -> Cavalry retaliates: 28
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Cavalry moves to (9, 5)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (9, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 24) || Archer shoots Archer: 21 dmg (2 killed)
+  [ATK]  Me:277([ARC]59)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 18 dmg (1 killed)
+R2
+  [ATK]  Me:287([ARC]69)  En:277([ARC]59)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 24 dmg (1 killed) -> Cavalry retaliates: 14 (1 killed)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 14 dmg -> Cavalry retaliates: 18 (1 killed)
+  [DEF]  Me:246([ARC]69)  En:196([ARC]59)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:196([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Swordsman attacks Cavalry: 18 dmg (1 killed)
+  [DEF]  Me:206([ARC]69)  En:196([ARC]59)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 21 dmg (2 killed)
+  [ATK]  Me:176([ARC]40)  En:206([ARC]69)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg
+R3
+  [ATK]  Me:206([ARC]69)  En:176([ARC]40)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 9 dmg -> Swordsman retaliates: 12 (1 killed) [DEAD]
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Cavalry moves to (3, 5)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Swordsman moves to (5, 3)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 22 dmg (2 killed)
+  [ATK]  Me:156([ARC]20)  En:165([ARC]69)  -> [ARC] shoots Archer (threat 6) || Archer shoots Archer: 7 dmg (1 killed)
+R4
+  [ATK]  Me:156([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 5 dmg -> Swordsman retaliates: 17
+  [DEF]  Me:156([ARC]59)  En:156([ARC]20)  -> [DEF] defends Archer, attacks Cavalry || Swordsman attacks Cavalry: 12 dmg (1 killed) [DEAD]
+  [ATK]  Me:116([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 18 dmg
+  [DEF]  Me:156([ARC]59)  En:116([ARC]20)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 16 dmg (2 killed) [DEAD]
+R5
+  [DEF]  Me:156([ARC]59)  En:96([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:96([ARC]0)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 18 dmg (1 killed) -> Swordsman retaliates: 15
+  [DEF]  Me:132([ARC]59)  En:96([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 5 dmg (1 killed) -> Swordsman retaliates: 22 (2 killed)
+R6
+  [DEF]  Me:112([ARC]40)  En:72([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 11 dmg -> Swordsman retaliates: 12 (1 killed)
+  [ATK]  Me:72([ARC]0)  En:88([ARC]40)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 13 dmg -> Swordsman retaliates: 8
+  [DEF]  Me:88([ARC]40)  En:72([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 4 dmg (1 killed)
+R7
+  [DEF]  Me:88([ARC]40)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 8 dmg -> Swordsman retaliates: 9 (1 killed)
+  [ATK]  Me:48([ARC]0)  En:64([ARC]40)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 16 dmg (2 killed) -> Archer retaliates: 2
+  [DEF]  Me:44([ARC]20)  En:48([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+R8
+  [DEF]  Me:44([ARC]20)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 4 dmg -> Swordsman retaliates: 8
+  [ATK]  Me:48([ARC]0)  En:44([ARC]20)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 9 dmg -> Swordsman retaliates: 3
+  [DEF]  Me:44([ARC]20)  En:48([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+R9
+  [DEF]  Me:44([ARC]20)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 4 dmg (1 killed) -> Swordsman retaliates: 3
+  [ATK]  Me:24([ARC]0)  En:44([ARC]20)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 4 dmg -> Swordsman retaliates: 3
+  [DEF]  Me:44([ARC]20)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+R10
+  [DEF]  Me:44([ARC]20)  En:24([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 4 dmg -> Swordsman retaliates: 1 (1 killed) [DEAD]
+  [ATK]  Me:24([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 5 dmg -> Archer retaliates: 2
+  [DEF]  Me:20([ARC]20)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+R11
+  [ATK]  Me:24([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 5 dmg (1 killed) -> Archer retaliates: 1
+  [DEF]  Me:10([ARC]10)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg -> Swordsman retaliates: 5
+R12
+  [ATK]  Me:24([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 2 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=12
+=== Balanced seed=5 ===
+R1
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 28 dmg -> Cavalry retaliates: 29
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Cavalry moves to (9, 5)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (9, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 24) || Archer shoots Archer: 22 dmg (2 killed)
+  [ATK]  Me:277([ARC]59)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 15 dmg (1 killed)
+R2
+  [ATK]  Me:287([ARC]69)  En:277([ARC]59)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 23 dmg (1 killed) -> Cavalry retaliates: 15 (1 killed)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 12 dmg -> Cavalry retaliates: 19 (1 killed)
+  [DEF]  Me:246([ARC]69)  En:196([ARC]59)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:196([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Swordsman attacks Cavalry: 15 dmg (1 killed)
+  [DEF]  Me:206([ARC]69)  En:196([ARC]59)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 19 dmg (2 killed)
+  [ATK]  Me:176([ARC]40)  En:206([ARC]69)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 3 dmg
+R3
+  [ATK]  Me:206([ARC]69)  En:176([ARC]40)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 8 dmg -> Swordsman retaliates: 16 (1 killed) [DEAD]
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Cavalry moves to (3, 5)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Swordsman moves to (5, 3)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 20 dmg (2 killed)
+  [ATK]  Me:156([ARC]20)  En:165([ARC]69)  -> [ARC] shoots Archer (threat 6) || Archer shoots Archer: 6 dmg (1 killed)
+R4
+  [ATK]  Me:156([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 7 dmg -> Swordsman retaliates: 18
+  [DEF]  Me:156([ARC]59)  En:156([ARC]20)  -> [DEF] defends Archer, attacks Cavalry || Swordsman attacks Cavalry: 2 dmg (1 killed) [DEAD]
+  [ATK]  Me:116([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 17 dmg
+  [DEF]  Me:156([ARC]59)  En:116([ARC]20)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 19 dmg (2 killed) [DEAD]
+R5
+  [DEF]  Me:156([ARC]59)  En:96([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:96([ARC]0)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 18 dmg (1 killed) -> Swordsman retaliates: 12
+  [DEF]  Me:132([ARC]59)  En:96([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 6 dmg (1 killed) -> Swordsman retaliates: 22 (2 killed)
+R6
+  [DEF]  Me:112([ARC]40)  En:72([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 14 dmg -> Swordsman retaliates: 12 (1 killed)
+  [ATK]  Me:72([ARC]0)  En:88([ARC]40)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 11 dmg -> Swordsman retaliates: 9
+  [DEF]  Me:88([ARC]40)  En:72([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 4 dmg (1 killed)
+R7
+  [DEF]  Me:88([ARC]40)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 10 dmg -> Swordsman retaliates: 8
+  [ATK]  Me:48([ARC]0)  En:88([ARC]40)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 9 dmg (1 killed) -> Swordsman retaliates: 4
+  [DEF]  Me:64([ARC]40)  En:48([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 3 dmg
+R8
+  [DEF]  Me:64([ARC]40)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 4 dmg -> Swordsman retaliates: 9
+  [ATK]  Me:48([ARC]0)  En:64([ARC]40)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 11 dmg (1 killed) -> Archer retaliates: 2 (1 killed)
+  [DEF]  Me:54([ARC]30)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 3 dmg
+R9
+  [DEF]  Me:54([ARC]30)  En:24([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 5 dmg -> Swordsman retaliates: 4
+  [ATK]  Me:24([ARC]0)  En:54([ARC]30)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 5 dmg -> Archer retaliates: 2
+  [DEF]  Me:54([ARC]30)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+R10
+  [DEF]  Me:54([ARC]30)  En:24([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 5 dmg -> Swordsman retaliates: 5 (1 killed) [DEAD]
+  [ATK]  Me:24([ARC]0)  En:30([ARC]30)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 5 dmg (1 killed) -> Archer retaliates: 2
+  [DEF]  Me:20([ARC]20)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+R11
+  [ATK]  Me:24([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 7 dmg (1 killed) -> Archer retaliates: 1
+  [DEF]  Me:10([ARC]10)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg -> Swordsman retaliates: 7
+R12
+  [ATK]  Me:24([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 2 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=12
+=== Balanced seed=6 ===
+R1
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 24 dmg -> Cavalry retaliates: 18
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Cavalry moves to (9, 5)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (9, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 24) || Archer shoots Archer: 25 dmg (2 killed)
+  [ATK]  Me:277([ARC]59)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 18 dmg (1 killed)
+R2
+  [ATK]  Me:287([ARC]69)  En:277([ARC]59)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 20 dmg (1 killed) -> Cavalry retaliates: 16 (1 killed)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 19 dmg -> Cavalry retaliates: 12
+  [DEF]  Me:246([ARC]69)  En:236([ARC]59)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Swordsman attacks Cavalry: 18 dmg (1 killed)
+  [DEF]  Me:206([ARC]69)  En:236([ARC]59)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 20 dmg (2 killed)
+  [ATK]  Me:217([ARC]40)  En:206([ARC]69)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg
+R3
+  [ATK]  Me:206([ARC]69)  En:217([ARC]40)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 9 dmg -> Swordsman retaliates: 15 (1 killed) [DEAD]
+  [ATK]  Me:217([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Cavalry moves to (3, 5)
+  [DEF]  Me:165([ARC]69)  En:217([ARC]40)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:217([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Swordsman moves to (5, 3)
+  [DEF]  Me:165([ARC]69)  En:217([ARC]40)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 21 dmg (2 killed)
+  [ATK]  Me:197([ARC]20)  En:165([ARC]69)  -> [ARC] shoots Archer (threat 6) || Archer shoots Archer: 4 dmg (1 killed)
+R4
+  [ATK]  Me:197([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 16 dmg -> Swordsman retaliates: 18 (1 killed)
+  [DEF]  Me:156([ARC]59)  En:156([ARC]20)  -> [DEF] defends Archer, attacks Cavalry || Swordsman attacks Cavalry: 16 dmg (1 killed) [DEAD]
+  [ATK]  Me:116([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 21 dmg (1 killed)
+  [DEF]  Me:132([ARC]59)  En:116([ARC]20)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 14 dmg (2 killed) [DEAD]
+R5
+  [DEF]  Me:132([ARC]59)  En:96([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:96([ARC]0)  En:132([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 17 dmg (1 killed) -> Swordsman retaliates: 9
+  [DEF]  Me:107([ARC]59)  En:96([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 6 dmg -> Swordsman retaliates: 28 (3 killed)
+R6
+  [DEF]  Me:78([ARC]30)  En:96([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 9 dmg (1 killed) -> Swordsman retaliates: 14
+  [ATK]  Me:72([ARC]0)  En:78([ARC]30)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 5
+  [DEF]  Me:54([ARC]30)  En:72([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 3 dmg
+R7
+  [DEF]  Me:54([ARC]30)  En:72([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 5 dmg -> Swordsman retaliates: 10
+  [ATK]  Me:72([ARC]0)  En:54([ARC]30)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 21 dmg (2 killed) -> Archer retaliates: 1
+  [DEF]  Me:34([ARC]10)  En:72([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg
+R8
+  [DEF]  Me:34([ARC]10)  En:72([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 4 dmg (1 killed) -> Swordsman retaliates: 9
+  [ATK]  Me:48([ARC]0)  En:34([ARC]10)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 1 dmg (1 killed) [DEAD]
+  [DEF]  Me:10([ARC]10)  En:48([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg
+R9
+  [ATK]  Me:48([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 9 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=9
+=== Balanced seed=7 ===
+R1
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 23 dmg -> Cavalry retaliates: 22
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Cavalry moves to (9, 5)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (9, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 24) || Archer shoots Archer: 22 dmg (2 killed)
+  [ATK]  Me:277([ARC]59)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 15 dmg (1 killed)
+R2
+  [ATK]  Me:287([ARC]69)  En:277([ARC]59)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 28 dmg (1 killed) -> Cavalry retaliates: 15 (1 killed)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 19 dmg -> Cavalry retaliates: 14 (1 killed)
+  [DEF]  Me:246([ARC]69)  En:196([ARC]59)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:196([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Swordsman attacks Cavalry: 16 dmg (1 killed)
+  [DEF]  Me:206([ARC]69)  En:196([ARC]59)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 20 dmg (2 killed)
+  [ATK]  Me:176([ARC]40)  En:206([ARC]69)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 3 dmg
+R3
+  [ATK]  Me:206([ARC]69)  En:176([ARC]40)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 9 dmg -> Swordsman retaliates: 15 (1 killed) [DEAD]
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Cavalry moves to (3, 5)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Swordsman moves to (5, 3)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 24 dmg (2 killed)
+  [ATK]  Me:156([ARC]20)  En:165([ARC]69)  -> [ARC] shoots Archer (threat 6) || Archer shoots Archer: 4 dmg
+R4
+  [ATK]  Me:156([ARC]20)  En:165([ARC]69)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 5 dmg -> Swordsman retaliates: 19
+  [DEF]  Me:165([ARC]69)  En:156([ARC]20)  -> [DEF] defends Archer, attacks Cavalry || Swordsman attacks Cavalry: 6 dmg (1 killed) [DEAD]
+  [ATK]  Me:116([ARC]20)  En:165([ARC]69)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 18 dmg
+  [DEF]  Me:165([ARC]69)  En:116([ARC]20)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 14 dmg (2 killed) [DEAD]
+R5
+  [DEF]  Me:165([ARC]69)  En:96([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:96([ARC]0)  En:165([ARC]69)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 19 dmg (1 killed) -> Swordsman retaliates: 14
+  [DEF]  Me:141([ARC]69)  En:96([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 7 dmg (1 killed) -> Swordsman retaliates: 22 (3 killed)
+R6
+  [DEF]  Me:112([ARC]40)  En:72([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 14 dmg -> Swordsman retaliates: 15 (1 killed)
+  [ATK]  Me:72([ARC]0)  En:88([ARC]40)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 14 dmg -> Swordsman retaliates: 9 (1 killed)
+  [DEF]  Me:88([ARC]40)  En:48([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 4 dmg
+R7
+  [DEF]  Me:88([ARC]40)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 9 dmg -> Swordsman retaliates: 8 (1 killed)
+  [ATK]  Me:48([ARC]0)  En:64([ARC]40)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 11 dmg (1 killed) -> Archer retaliates: 2
+  [DEF]  Me:54([ARC]30)  En:48([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 3 dmg
+R8
+  [DEF]  Me:54([ARC]30)  En:48([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 3 dmg -> Swordsman retaliates: 8
+  [ATK]  Me:48([ARC]0)  En:54([ARC]30)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 15 dmg (1 killed) -> Archer retaliates: 2 (1 killed)
+  [DEF]  Me:44([ARC]20)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+R9
+  [DEF]  Me:44([ARC]20)  En:24([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 5 dmg -> Swordsman retaliates: 4
+  [ATK]  Me:24([ARC]0)  En:44([ARC]20)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 4 dmg -> Swordsman retaliates: 5
+  [DEF]  Me:44([ARC]20)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+R10
+  [DEF]  Me:44([ARC]20)  En:24([ARC]0)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 3 dmg -> Swordsman retaliates: 3
+  [ATK]  Me:24([ARC]0)  En:44([ARC]20)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 2 dmg (1 killed) [DEAD]
+  [DEF]  Me:20([ARC]20)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg
+R11
+  [ATK]  Me:24([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 8 dmg (1 killed) -> Archer retaliates: 1
+  [DEF]  Me:10([ARC]10)  En:24([ARC]0)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg -> Swordsman retaliates: 5 (1 killed) [DEAD]
+WINNER=1 ROUNDS=11
+=== Balanced seed=8 ===
+R1
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 23 dmg -> Cavalry retaliates: 24
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Cavalry moves to (9, 5)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (9, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 24) || Archer shoots Archer: 21 dmg (2 killed)
+  [ATK]  Me:277([ARC]59)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 20 dmg (2 killed)
+R2
+  [ATK]  Me:277([ARC]59)  En:277([ARC]59)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 20 dmg (1 killed) -> Cavalry retaliates: 16 (1 killed)
+  [DEF]  Me:236([ARC]59)  En:236([ARC]59)  -> [DEF] defends Archer, attacks Cavalry || Cavalry attacks Cavalry: 17 dmg -> Cavalry retaliates: 17 (1 killed)
+  [DEF]  Me:236([ARC]59)  En:196([ARC]59)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [DEF]  Me:196([ARC]59)  En:236([ARC]59)  -> [DEF] defends Archer, attacks Cavalry || Swordsman attacks Cavalry: 18 dmg (1 killed)
+  [DEF]  Me:196([ARC]59)  En:196([ARC]59)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 18 dmg (1 killed)
+  [ATK]  Me:186([ARC]49)  En:196([ARC]59)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 4 dmg
+R3
+  [ATK]  Me:196([ARC]59)  En:186([ARC]49)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 11 dmg -> Swordsman retaliates: 11 (1 killed) [DEAD]
+  [ATK]  Me:186([ARC]49)  En:156([ARC]59)  -> [ME] chasing slow Archer, moving closer || Cavalry moves to (3, 5)
+  [DEF]  Me:156([ARC]59)  En:186([ARC]49)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:186([ARC]49)  En:156([ARC]59)  -> [ME] chasing slow Archer, moving closer || Swordsman moves to (5, 3)
+  [DEF]  Me:156([ARC]59)  En:186([ARC]49)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 16 dmg (2 killed)
+  [ATK]  Me:166([ARC]30)  En:156([ARC]59)  -> [ARC] shoots Archer (threat 9) || Archer shoots Archer: 10 dmg (1 killed)
+R4
+  [ATK]  Me:166([ARC]30)  En:146([ARC]49)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 8 dmg -> Swordsman retaliates: 16
+  [DEF]  Me:146([ARC]49)  En:166([ARC]30)  -> [DEF] defends Archer, attacks Cavalry || Swordsman attacks Cavalry: 14 dmg (1 killed) [DEAD]
+  [ATK]  Me:126([ARC]30)  En:146([ARC]49)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 19 dmg (1 killed)
+  [DEF]  Me:122([ARC]49)  En:126([ARC]30)  -> [ARC] shoots Archer (threat 15) || Archer shoots Archer: 15 dmg (2 killed)
+  [ATK]  Me:106([ARC]10)  En:122([ARC]49)  -> [ARC] shoots Archer (threat 3) || Archer shoots Archer: 2 dmg
+R5
+  [DEF]  Me:122([ARC]49)  En:106([ARC]10)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:106([ARC]10)  En:122([ARC]49)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 19 dmg -> Swordsman retaliates: 11
+  [DEF]  Me:122([ARC]49)  En:106([ARC]10)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 5 dmg (1 killed) -> Swordsman retaliates: 21 (2 killed)
+  [ATK]  Me:82([ARC]10)  En:102([ARC]30)  -> [ARC] shoots Archer (threat 3) || Archer shoots Archer: 3 dmg
+R6
+  [DEF]  Me:102([ARC]30)  En:82([ARC]10)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 13 dmg -> Swordsman retaliates: 13 (1 killed)
+  [ATK]  Me:82([ARC]10)  En:78([ARC]30)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 12 dmg -> Swordsman retaliates: 7
+  [DEF]  Me:78([ARC]30)  En:82([ARC]10)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+  [ATK]  Me:82([ARC]10)  En:78([ARC]30)  -> [ARC] shoots Archer (threat 3) || Archer shoots Archer: 3 dmg
+R7
+  [DEF]  Me:78([ARC]30)  En:82([ARC]10)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 8 dmg (1 killed) -> Swordsman retaliates: 9 (1 killed)
+  [ATK]  Me:58([ARC]10)  En:54([ARC]30)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 11 dmg (2 killed) -> Archer retaliates: 1
+  [DEF]  Me:34([ARC]10)  En:58([ARC]10)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg
+  [DEF]  Me:58([ARC]10)  En:34([ARC]10)  -> [ARC] shoots Archer (threat 3) || Archer shoots Archer: 3 dmg
+R8
+  [DEF]  Me:34([ARC]10)  En:58([ARC]10)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 4 dmg -> Swordsman retaliates: 9
+  [ATK]  Me:58([ARC]10)  En:34([ARC]10)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 8 dmg -> Swordsman retaliates: 5
+  [DEF]  Me:34([ARC]10)  En:58([ARC]10)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 1 dmg
+  [DEF]  Me:58([ARC]10)  En:34([ARC]10)  -> [ARC] shoots Archer (threat 3) || Archer shoots Archer: 2 dmg
+R9
+  [DEF]  Me:34([ARC]10)  En:58([ARC]10)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 3 dmg -> Swordsman retaliates: 3 (1 killed) [DEAD]
+  [ATK]  Me:58([ARC]10)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 5 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=9
+=== Balanced seed=9 ===
+R1
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 26 dmg -> Cavalry retaliates: 20
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Cavalry moves to (9, 5)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [DEF] covers Archer || Swordsman moves to (9, 3)
+  [DEF]  Me:297([ARC]79)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 24) || Archer shoots Archer: 24 dmg (2 killed)
+  [ATK]  Me:277([ARC]59)  En:297([ARC]79)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 16 dmg (1 killed)
+R2
+  [ATK]  Me:287([ARC]69)  En:277([ARC]59)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 22 dmg (1 killed) -> Cavalry retaliates: 15 (1 killed)
+  [ATK]  Me:236([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Cavalry attacks Cavalry: 19 dmg -> Cavalry retaliates: 16 (1 killed)
+  [DEF]  Me:246([ARC]69)  En:196([ARC]59)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:196([ARC]59)  En:246([ARC]69)  -> [ME] attacks Cavalry (in range) || Swordsman attacks Cavalry: 17 dmg (1 killed)
+  [DEF]  Me:206([ARC]69)  En:196([ARC]59)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 22 dmg (2 killed)
+  [ATK]  Me:176([ARC]40)  En:206([ARC]69)  -> [ARC] blocked -> melee Cavalry || Archer attacks Cavalry: 3 dmg
+R3
+  [ATK]  Me:206([ARC]69)  En:176([ARC]40)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 5 dmg -> Swordsman retaliates: 16 (1 killed) [DEAD]
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Cavalry moves to (3, 5)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:176([ARC]40)  En:165([ARC]69)  -> [ME] chasing slow Archer, moving closer || Swordsman moves to (5, 3)
+  [DEF]  Me:165([ARC]69)  En:176([ARC]40)  -> [ARC] shoots Archer (threat 21) || Archer shoots Archer: 18 dmg (2 killed)
+  [ATK]  Me:156([ARC]20)  En:165([ARC]69)  -> [ARC] shoots Archer (threat 6) || Archer shoots Archer: 6 dmg (1 killed)
+R4
+  [ATK]  Me:156([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Cavalry attacks Swordsman: 5 dmg -> Swordsman retaliates: 18
+  [DEF]  Me:156([ARC]59)  En:156([ARC]20)  -> [DEF] defends Archer, attacks Cavalry || Swordsman attacks Cavalry: 8 dmg (1 killed) [DEAD]
+  [ATK]  Me:116([ARC]20)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 16 dmg
+  [DEF]  Me:156([ARC]59)  En:116([ARC]20)  -> [ARC] shoots Archer (threat 18) || Archer shoots Archer: 14 dmg (1 killed)
+  [ATK]  Me:106([ARC]10)  En:156([ARC]59)  -> [ARC] shoots Archer (threat 3) || Archer shoots Archer: 3 dmg
+R5
+  [DEF]  Me:156([ARC]59)  En:106([ARC]10)  -> [DEF] covers Archer || Swordsman moves to (0, 3)
+  [ATK]  Me:106([ARC]10)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 19 dmg (1 killed) -> Swordsman retaliates: 15
+  [DEF]  Me:132([ARC]59)  En:106([ARC]10)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 5 dmg (1 killed) -> Swordsman retaliates: 23 (2 killed)
+  [ATK]  Me:82([ARC]10)  En:112([ARC]40)  -> [ARC] shoots Archer (threat 3) || Archer shoots Archer: 2 dmg (1 killed)
+R6
+  [DEF]  Me:102([ARC]30)  En:82([ARC]10)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 13 dmg -> Swordsman retaliates: 12 (1 killed)
+  [ATK]  Me:82([ARC]10)  En:78([ARC]30)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 13 dmg -> Swordsman retaliates: 9
+  [DEF]  Me:78([ARC]30)  En:82([ARC]10)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 3 dmg (1 killed)
+  [ATK]  Me:58([ARC]10)  En:78([ARC]30)  -> [ARC] shoots Archer (threat 3) || Archer shoots Archer: 3 dmg
+R7
+  [DEF]  Me:78([ARC]30)  En:58([ARC]10)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 7 dmg -> Swordsman retaliates: 8
+  [ATK]  Me:58([ARC]10)  En:78([ARC]30)  -> [ME] attacks Swordsman (in range) || Swordsman attacks Swordsman: 9 dmg (1 killed) -> Swordsman retaliates: 3
+  [DEF]  Me:54([ARC]30)  En:58([ARC]10)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 3 dmg
+  [ATK]  Me:58([ARC]10)  En:54([ARC]30)  -> [ARC] shoots Archer (threat 3) || Archer shoots Archer: 2 dmg
+R8
+  [DEF]  Me:54([ARC]30)  En:58([ARC]10)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 3 dmg -> Swordsman retaliates: 9
+  [ATK]  Me:58([ARC]10)  En:54([ARC]30)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 14 dmg (1 killed) -> Archer retaliates: 2
+  [DEF]  Me:44([ARC]20)  En:58([ARC]10)  -> [ARC] blocked -> melee Swordsman || Archer attacks Swordsman: 2 dmg
+  [ATK]  Me:58([ARC]10)  En:44([ARC]20)  -> [ARC] shoots Archer (threat 3) || Archer shoots Archer: 2 dmg (1 killed)
+R9
+  [DEF]  Me:34([ARC]10)  En:58([ARC]10)  -> [DEF] defends Archer, attacks Swordsman || Swordsman attacks Swordsman: 3 dmg -> Swordsman retaliates: 9 (1 killed) [DEAD]
+  [ATK]  Me:58([ARC]10)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Swordsman attacks Archer: 9 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=9
+=== Flyer Threat seed=0 ===
+R1
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (2, 0)
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 24 (2 killed)
+  [ATK]  Me:525([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 27 (2 killed)
+  [ATK]  Me:490([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (3, 8)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 6)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (1 killed)
+  [DEF]  Me:351([ARC]158)  En:473([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (2 killed)
+R2
+  [ATK]  Me:438([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 20 (2 killed)
+  [ATK]  Me:403([ARC]0)  En:327([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 15 dmg (1 killed) -> Swordsman retaliates: 20 (1 killed)
+  [ATK]  Me:385([ARC]0)  En:303([ARC]158)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 23 dmg (2 killed) -> Archer retaliates: 8
+  [ATK]  Me:385([ARC]0)  En:283([ARC]139)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 31 dmg (3 killed) -> Archer retaliates: 7
+  [DEF]  Me:253([ARC]109)  En:385([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 22 dmg (2 killed) -> Griffin retaliates: 2
+  [DEF]  Me:253([ARC]109)  En:350([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 10 dmg (1 killed) [DEAD]
+  [DEF]  Me:253([ARC]109)  En:333([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:233([ARC]89)  En:315([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 15 (1 killed)
+R3
+  [ATK]  Me:298([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 20 (1 killed)
+  [ATK]  Me:280([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed)
+  [ATK]  Me:280([ARC]0)  En:199([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg (1 killed) -> Swordsman retaliates: 14 (1 killed)
+  [DEF]  Me:175([ARC]79)  En:263([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 13 dmg (2 killed) -> Griffin retaliates: 2
+  [DEF]  Me:175([ARC]79)  En:228([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 12 dmg (1 killed) [DEAD]
+  [DEF]  Me:175([ARC]79)  En:210([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 15 (1 killed)
+  [DEF]  Me:165([ARC]69)  En:193([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 11 dmg
+R4
+  [ATK]  Me:193([ARC]0)  En:165([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 10 (1 killed)
+  [ATK]  Me:175([ARC]0)  En:165([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed)
+  [DEF]  Me:141([ARC]69)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 5 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:141([ARC]69)  En:158([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:141([ARC]69)  En:140([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 4 dmg -> Griffin retaliates: 3 (1 killed)
+  [DEF]  Me:132([ARC]59)  En:140([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 3 dmg (1 killed) [DEAD]
+R5
+  [ATK]  Me:123([ARC]0)  En:132([ARC]59)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg -> Swordsman retaliates: 13 (1 killed)
+  [DEF]  Me:132([ARC]59)  En:105([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 10 (1 killed) [DEAD]
+  [DEF]  Me:107([ARC]59)  En:88([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 14 dmg (1 killed) -> Griffin retaliates: 10 (1 killed)
+  [DEF]  Me:83([ARC]59)  En:70([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 15 (1 killed)
+  [DEF]  Me:74([ARC]49)  En:70([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 12 dmg (1 killed)
+R6
+  [ATK]  Me:53([ARC]0)  En:74([ARC]49)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 11 dmg (1 killed) -> Archer retaliates: 4 (1 killed)
+  [DEF]  Me:64([ARC]40)  En:35([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 6 dmg -> Griffin retaliates: 5
+  [DEF]  Me:64([ARC]40)  En:35([ARC]0)  -> [ARC] shoots Griffin (threat 2) || Archer shoots Griffin: 2 dmg
+  [DEF]  Me:64([ARC]40)  En:35([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 4 dmg (1 killed) -> Griffin retaliates: 3 (1 killed)
+R7
+  [ATK]  Me:18([ARC]0)  En:54([ARC]30)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 2 dmg -> Swordsman retaliates: 5
+  [DEF]  Me:54([ARC]30)  En:18([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 5 dmg -> Griffin retaliates: 2
+  [DEF]  Me:54([ARC]30)  En:18([ARC]0)  -> [ARC] shoots Griffin (threat 2) || Archer shoots Griffin: 1 dmg (1 killed) [DEAD]
+WINNER=0 ROUNDS=7
+=== Flyer Threat seed=1 ===
+R1
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (2, 0)
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 24 (2 killed)
+  [ATK]  Me:525([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 24 (2 killed)
+  [ATK]  Me:490([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (3, 8)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 6)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (1 killed)
+  [DEF]  Me:351([ARC]158)  En:473([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (2 killed)
+R2
+  [ATK]  Me:438([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 20 (2 killed)
+  [ATK]  Me:403([ARC]0)  En:327([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 15 dmg (1 killed) -> Swordsman retaliates: 19 (1 killed)
+  [ATK]  Me:385([ARC]0)  En:303([ARC]158)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 23 dmg (2 killed) -> Archer retaliates: 8
+  [ATK]  Me:385([ARC]0)  En:283([ARC]139)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 31 dmg (3 killed) -> Archer retaliates: 7
+  [DEF]  Me:253([ARC]109)  En:385([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 19 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:253([ARC]109)  En:368([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (2 killed) [DEAD]
+  [DEF]  Me:253([ARC]109)  En:333([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 8 dmg (1 killed) -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:233([ARC]89)  En:315([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 15 (1 killed)
+R3
+  [ATK]  Me:298([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 19 (1 killed)
+  [ATK]  Me:280([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed)
+  [ATK]  Me:280([ARC]0)  En:199([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg (1 killed) -> Swordsman retaliates: 14 (1 killed)
+  [DEF]  Me:175([ARC]79)  En:263([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 11 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:175([ARC]79)  En:245([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:175([ARC]79)  En:228([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg (1 killed) [DEAD]
+  [DEF]  Me:175([ARC]79)  En:210([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 12 dmg (1 killed)
+R4
+  [ATK]  Me:193([ARC]0)  En:175([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 13 (1 killed)
+  [ATK]  Me:175([ARC]0)  En:175([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed)
+  [DEF]  Me:151([ARC]79)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 6 dmg -> Griffin retaliates: 7
+  [DEF]  Me:151([ARC]79)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 11 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:151([ARC]79)  En:158([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 4 dmg (1 killed) -> Griffin retaliates: 3
+  [DEF]  Me:151([ARC]79)  En:140([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 9 dmg
+R5
+  [ATK]  Me:140([ARC]0)  En:151([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 2 dmg -> Swordsman retaliates: 1 (1 killed) [DEAD]
+  [ATK]  Me:123([ARC]0)  En:151([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed)
+  [DEF]  Me:127([ARC]79)  En:123([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 2 (1 killed) [DEAD]
+  [DEF]  Me:103([ARC]79)  En:105([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 6 dmg -> Griffin retaliates: 15
+  [DEF]  Me:103([ARC]79)  En:105([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:83([ARC]59)  En:88([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 9 dmg (1 killed)
+R6
+  [ATK]  Me:70([ARC]0)  En:83([ARC]59)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 15 dmg (2 killed) -> Archer retaliates: 3
+  [DEF]  Me:64([ARC]40)  En:70([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:64([ARC]40)  En:70([ARC]0)  -> [ARC] shoots Griffin (threat 5) || Archer shoots Griffin: 5 dmg
+  [DEF]  Me:64([ARC]40)  En:70([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 3 dmg (1 killed) -> Griffin retaliates: 11 (1 killed)
+R7
+  [ATK]  Me:53([ARC]0)  En:54([ARC]30)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 4 dmg (1 killed) [DEAD]
+  [DEF]  Me:30([ARC]30)  En:53([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 3 dmg -> Griffin retaliates: 11 (1 killed)
+  [DEF]  Me:20([ARC]20)  En:53([ARC]0)  -> [ARC] shoots Griffin (threat 2) || Archer shoots Griffin: 2 dmg
+R8
+  [ATK]  Me:53([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 5 dmg (1 killed) [DEAD]
+  [DEF]  Me:10([ARC]10)  En:53([ARC]0)  -> [ARC] shoots Griffin (threat 2) || Archer shoots Griffin: 3 dmg
+R9
+  [ATK]  Me:53([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 8 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=9
+=== Flyer Threat seed=2 ===
+R1
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (2, 0)
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 22 (1 killed)
+  [ATK]  Me:543([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 27 (2 killed)
+  [ATK]  Me:508([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (3, 8)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 6)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 23 dmg (1 killed)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 24 dmg (2 killed)
+R2
+  [ATK]  Me:455([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 20 (2 killed)
+  [ATK]  Me:420([ARC]0)  En:327([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed) -> Swordsman retaliates: 15 (2 killed)
+  [ATK]  Me:385([ARC]0)  En:303([ARC]158)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 23 dmg (2 killed) -> Archer retaliates: 7
+  [ATK]  Me:385([ARC]0)  En:283([ARC]139)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 31 dmg (3 killed) -> Archer retaliates: 7
+  [DEF]  Me:253([ARC]109)  En:385([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 18 dmg (2 killed) -> Griffin retaliates: 2
+  [DEF]  Me:253([ARC]109)  En:350([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 11 dmg (1 killed) [DEAD]
+  [DEF]  Me:253([ARC]109)  En:333([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 9 dmg (1 killed) -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:233([ARC]89)  En:315([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 8 dmg -> Griffin retaliates: 19 (2 killed)
+R3
+  [ATK]  Me:315([ARC]0)  En:214([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg -> Swordsman retaliates: 19 (2 killed)
+  [ATK]  Me:280([ARC]0)  En:214([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed)
+  [ATK]  Me:280([ARC]0)  En:189([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg (1 killed) -> Swordsman retaliates: 13 (1 killed)
+  [DEF]  Me:165([ARC]69)  En:263([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 14 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:165([ARC]69)  En:245([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 13 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:165([ARC]69)  En:228([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 5 dmg (1 killed) [DEAD]
+  [DEF]  Me:165([ARC]69)  En:210([ARC]0)  -> [ARC] shoots Griffin (threat 8) || Archer shoots Griffin: 8 dmg (1 killed)
+R4
+  [ATK]  Me:193([ARC]0)  En:165([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 14 (1 killed)
+  [ATK]  Me:175([ARC]0)  En:165([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed)
+  [DEF]  Me:141([ARC]69)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 5 dmg -> Griffin retaliates: 7
+  [DEF]  Me:141([ARC]69)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 13 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:141([ARC]69)  En:158([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 4 dmg (1 killed) -> Griffin retaliates: 3
+  [DEF]  Me:141([ARC]69)  En:140([ARC]0)  -> [ARC] shoots Griffin (threat 8) || Archer shoots Griffin: 6 dmg
+R5
+  [ATK]  Me:140([ARC]0)  En:141([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 2 dmg -> Swordsman retaliates: 3 (1 killed) [DEAD]
+  [ATK]  Me:123([ARC]0)  En:141([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed)
+  [DEF]  Me:117([ARC]69)  En:123([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 5 dmg (1 killed) -> Griffin retaliates: 3 (1 killed) [DEAD]
+  [DEF]  Me:93([ARC]69)  En:105([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 5 dmg -> Griffin retaliates: 15
+  [DEF]  Me:93([ARC]69)  En:105([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 5 dmg -> Griffin retaliates: 23 (2 killed)
+  [DEF]  Me:74([ARC]49)  En:105([ARC]0)  -> [ARC] shoots Griffin (threat 8) || Archer shoots Griffin: 7 dmg (1 killed)
+R6
+  [ATK]  Me:88([ARC]0)  En:74([ARC]49)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 2 dmg (1 killed) [DEAD]
+  [DEF]  Me:49([ARC]49)  En:88([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 12 (2 killed) [DEAD]
+  [DEF]  Me:30([ARC]30)  En:88([ARC]0)  -> [ARC] shoots Griffin (threat 8) || Archer shoots Griffin: 6 dmg (1 killed)
+R7
+  [ATK]  Me:70([ARC]0)  En:30([ARC]30)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 15 dmg (1 killed) -> Archer retaliates: 2
+  [DEF]  Me:20([ARC]20)  En:70([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 3 dmg -> Griffin retaliates: 15 (2 killed) [DEAD]
+WINNER=1 ROUNDS=7
+=== Flyer Threat seed=3 ===
+R1
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (2, 0)
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 26 (2 killed)
+  [ATK]  Me:525([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 28 (2 killed)
+  [ATK]  Me:490([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (3, 8)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 6)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (1 killed)
+  [DEF]  Me:351([ARC]158)  En:473([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 19 dmg (2 killed)
+R2
+  [ATK]  Me:438([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 19 (2 killed)
+  [ATK]  Me:403([ARC]0)  En:327([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 15 dmg (1 killed) -> Swordsman retaliates: 18 (1 killed)
+  [ATK]  Me:385([ARC]0)  En:303([ARC]158)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 23 dmg (2 killed) -> Archer retaliates: 9 (1 killed)
+  [ATK]  Me:368([ARC]0)  En:283([ARC]139)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 31 dmg (3 killed) -> Archer retaliates: 6
+  [DEF]  Me:253([ARC]109)  En:368([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 20 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:253([ARC]109)  En:350([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 16 dmg (2 killed) [DEAD]
+  [DEF]  Me:253([ARC]109)  En:315([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 8 dmg -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:233([ARC]89)  En:315([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 15 (1 killed)
+R3
+  [ATK]  Me:298([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 22 (2 killed)
+  [ATK]  Me:263([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed)
+  [ATK]  Me:263([ARC]0)  En:199([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg (1 killed) -> Swordsman retaliates: 11 (1 killed)
+  [DEF]  Me:175([ARC]79)  En:245([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 11 dmg -> Griffin retaliates: 5
+  [DEF]  Me:175([ARC]79)  En:245([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 13 dmg (2 killed) [DEAD]
+  [DEF]  Me:175([ARC]79)  En:210([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 5 dmg (1 killed) -> Griffin retaliates: 15 (1 killed)
+  [DEF]  Me:165([ARC]69)  En:193([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 11 dmg (1 killed)
+R4
+  [ATK]  Me:175([ARC]0)  En:165([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 7 dmg -> Swordsman retaliates: 11 (1 killed)
+  [ATK]  Me:158([ARC]0)  En:165([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed)
+  [DEF]  Me:141([ARC]69)  En:158([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 5 dmg -> Griffin retaliates: 5
+  [DEF]  Me:141([ARC]69)  En:158([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:141([ARC]69)  En:140([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 4 dmg (1 killed) [DEAD]
+  [DEF]  Me:141([ARC]69)  En:123([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 11 dmg (1 killed)
+R5
+  [ATK]  Me:105([ARC]0)  En:141([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 15 dmg -> Swordsman retaliates: 10 (1 killed)
+  [DEF]  Me:141([ARC]69)  En:88([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 5 dmg -> Griffin retaliates: 7 (1 killed) [DEAD]
+  [DEF]  Me:117([ARC]69)  En:88([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (1 killed) -> Griffin retaliates: 10 (1 killed)
+  [DEF]  Me:93([ARC]69)  En:70([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 3 dmg (1 killed) -> Griffin retaliates: 11 (1 killed)
+  [DEF]  Me:83([ARC]59)  En:53([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 11 dmg (1 killed)
+R6
+  [ATK]  Me:35([ARC]0)  En:83([ARC]59)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 7 dmg (1 killed) -> Archer retaliates: 4
+  [DEF]  Me:74([ARC]49)  En:35([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 5 dmg -> Griffin retaliates: 5
+  [DEF]  Me:74([ARC]49)  En:35([ARC]0)  -> [ARC] shoots Griffin (threat 5) || Archer shoots Griffin: 6 dmg (1 killed)
+  [DEF]  Me:74([ARC]49)  En:18([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 4 dmg -> Griffin retaliates: 3
+R7
+  [ATK]  Me:18([ARC]0)  En:74([ARC]49)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg -> Archer retaliates: 4
+  [DEF]  Me:74([ARC]49)  En:18([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 1 dmg (1 killed) [DEAD]
+WINNER=0 ROUNDS=7
+=== Flyer Threat seed=4 ===
+R1
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (2, 0)
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 24 (2 killed)
+  [ATK]  Me:525([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 23 (1 killed)
+  [ATK]  Me:508([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (3, 8)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 6)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (1 killed)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (2 killed)
+R2
+  [ATK]  Me:455([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 18 (2 killed)
+  [ATK]  Me:420([ARC]0)  En:327([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 15 dmg (1 killed) -> Swordsman retaliates: 22 (1 killed)
+  [ATK]  Me:403([ARC]0)  En:303([ARC]158)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (2 killed) -> Archer retaliates: 7 (1 killed)
+  [ATK]  Me:385([ARC]0)  En:283([ARC]139)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 31 dmg (3 killed) -> Archer retaliates: 7
+  [DEF]  Me:253([ARC]109)  En:385([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 22 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:253([ARC]109)  En:368([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 14 dmg (2 killed) [DEAD]
+  [DEF]  Me:253([ARC]109)  En:333([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 9 dmg (1 killed) -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:233([ARC]89)  En:315([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 15 (1 killed)
+R3
+  [ATK]  Me:298([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 19 (1 killed)
+  [ATK]  Me:280([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed)
+  [ATK]  Me:280([ARC]0)  En:199([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg (1 killed) -> Swordsman retaliates: 14 (1 killed)
+  [DEF]  Me:175([ARC]79)  En:263([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (2 killed) -> Griffin retaliates: 2
+  [DEF]  Me:175([ARC]79)  En:228([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 10 dmg (1 killed) [DEAD]
+  [DEF]  Me:175([ARC]79)  En:210([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 4 dmg -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:156([ARC]59)  En:210([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 12 dmg (1 killed)
+R4
+  [ATK]  Me:193([ARC]0)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 11 (1 killed)
+  [ATK]  Me:175([ARC]0)  En:156([ARC]59)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed)
+  [DEF]  Me:132([ARC]59)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:132([ARC]59)  En:158([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:132([ARC]59)  En:140([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 3
+  [DEF]  Me:132([ARC]59)  En:140([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 7 dmg (1 killed) [DEAD]
+R5
+  [ATK]  Me:123([ARC]0)  En:132([ARC]59)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg -> Swordsman retaliates: 14 (1 killed)
+  [DEF]  Me:132([ARC]59)  En:105([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 7 (1 killed) [DEAD]
+  [DEF]  Me:107([ARC]59)  En:88([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 10 dmg (1 killed) -> Griffin retaliates: 10 (1 killed)
+  [DEF]  Me:83([ARC]59)  En:70([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 12 (2 killed) [DEAD]
+  [DEF]  Me:64([ARC]40)  En:70([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 11 dmg (1 killed)
+R6
+  [ATK]  Me:53([ARC]0)  En:64([ARC]40)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 11 dmg (1 killed) -> Archer retaliates: 4
+  [DEF]  Me:54([ARC]30)  En:53([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:54([ARC]30)  En:35([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 4 dmg -> Griffin retaliates: 7 (1 killed)
+R7
+  [ATK]  Me:35([ARC]0)  En:44([ARC]20)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 5 dmg -> Swordsman retaliates: 6 (1 killed)
+  [DEF]  Me:44([ARC]20)  En:18([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 6 dmg -> Griffin retaliates: 2
+  [DEF]  Me:44([ARC]20)  En:18([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 3
+R8
+  [ATK]  Me:18([ARC]0)  En:44([ARC]20)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 2 dmg -> Swordsman retaliates: 2 (1 killed) [DEAD]
+WINNER=0 ROUNDS=8
+=== Flyer Threat seed=5 ===
+R1
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (2, 0)
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 28 (2 killed)
+  [ATK]  Me:525([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 31 (2 killed)
+  [ATK]  Me:490([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (3, 8)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 6)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (1 killed)
+  [DEF]  Me:351([ARC]158)  En:473([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (2 killed)
+R2
+  [ATK]  Me:438([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 16 (1 killed)
+  [ATK]  Me:420([ARC]0)  En:327([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 15 dmg (1 killed) -> Swordsman retaliates: 18 (1 killed)
+  [ATK]  Me:403([ARC]0)  En:303([ARC]158)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 23 dmg (2 killed) -> Archer retaliates: 7 (1 killed)
+  [ATK]  Me:385([ARC]0)  En:283([ARC]139)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 31 dmg (3 killed) -> Archer retaliates: 6
+  [DEF]  Me:253([ARC]109)  En:385([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 20 dmg (2 killed) -> Griffin retaliates: 5
+  [DEF]  Me:253([ARC]109)  En:350([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 18 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:253([ARC]109)  En:333([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg (1 killed) [DEAD]
+  [DEF]  Me:253([ARC]109)  En:315([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 15 (1 killed)
+R3
+  [ATK]  Me:298([ARC]0)  En:243([ARC]99)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 22 (2 killed)
+  [ATK]  Me:263([ARC]0)  En:243([ARC]99)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed)
+  [ATK]  Me:263([ARC]0)  En:219([ARC]99)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg (1 killed) -> Swordsman retaliates: 13 (1 killed)
+  [DEF]  Me:195([ARC]99)  En:245([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:195([ARC]99)  En:228([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 7 dmg (1 killed) [DEAD]
+  [DEF]  Me:195([ARC]99)  En:210([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 9 dmg -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:175([ARC]79)  En:210([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 11 dmg (1 killed)
+R4
+  [ATK]  Me:193([ARC]0)  En:175([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 11 (1 killed)
+  [ATK]  Me:175([ARC]0)  En:175([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed)
+  [DEF]  Me:151([ARC]79)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:151([ARC]79)  En:158([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 13 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:151([ARC]79)  En:140([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 6 dmg -> Griffin retaliates: 3
+  [DEF]  Me:151([ARC]79)  En:140([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 1 dmg (1 killed) [DEAD]
+R5
+  [ATK]  Me:123([ARC]0)  En:151([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed) -> Swordsman retaliates: 7 (1 killed)
+  [DEF]  Me:127([ARC]79)  En:105([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 5 dmg -> Griffin retaliates: 7 (1 killed) [DEAD]
+  [DEF]  Me:103([ARC]79)  En:105([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 5 dmg (1 killed) -> Griffin retaliates: 12
+  [DEF]  Me:103([ARC]79)  En:88([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 6 dmg -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:83([ARC]59)  En:88([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 12 dmg (1 killed)
+R6
+  [ATK]  Me:70([ARC]0)  En:83([ARC]59)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 15 dmg (2 killed) -> Archer retaliates: 2
+  [DEF]  Me:64([ARC]40)  En:70([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:64([ARC]40)  En:70([ARC]0)  -> [ARC] shoots Griffin (threat 5) || Archer shoots Griffin: 5 dmg (1 killed)
+  [DEF]  Me:64([ARC]40)  En:53([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 11 (1 killed)
+R7
+  [ATK]  Me:53([ARC]0)  En:54([ARC]30)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 7 dmg -> Swordsman retaliates: 7
+  [DEF]  Me:54([ARC]30)  En:53([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 5 (1 killed) [DEAD]
+  [DEF]  Me:30([ARC]30)  En:35([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 7 (1 killed)
+  [DEF]  Me:20([ARC]20)  En:35([ARC]0)  -> [ARC] shoots Griffin (threat 2) || Archer shoots Griffin: 3 dmg
+R8
+  [ATK]  Me:35([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 7 dmg -> Archer retaliates: 1
+  [DEF]  Me:20([ARC]20)  En:35([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg (1 killed) -> Griffin retaliates: 2 (1 killed) [DEAD]
+  [DEF]  Me:10([ARC]10)  En:18([ARC]0)  -> [ARC] shoots Griffin (threat 2) || Archer shoots Griffin: 3 dmg
+R9
+  [ATK]  Me:18([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg -> Archer retaliates: 1
+  [DEF]  Me:10([ARC]10)  En:18([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg -> Griffin retaliates: 3
+R10
+  [ATK]  Me:18([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 2 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=10
+=== Flyer Threat seed=6 ===
+R1
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (2, 0)
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 26 (2 killed)
+  [ATK]  Me:525([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 23 (1 killed)
+  [ATK]  Me:508([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (3, 8)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 6)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 24 dmg (2 killed)
+  [DEF]  Me:351([ARC]158)  En:473([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (1 killed)
+R2
+  [ATK]  Me:455([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 19 (2 killed)
+  [ATK]  Me:420([ARC]0)  En:327([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 15 dmg (1 killed) -> Swordsman retaliates: 18 (1 killed)
+  [ATK]  Me:403([ARC]0)  En:303([ARC]158)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (2 killed) -> Archer retaliates: 8 (1 killed)
+  [ATK]  Me:385([ARC]0)  En:283([ARC]139)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 31 dmg (3 killed) -> Archer retaliates: 6
+  [DEF]  Me:253([ARC]109)  En:385([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 20 dmg (2 killed) -> Griffin retaliates: 2
+  [DEF]  Me:253([ARC]109)  En:350([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 11 dmg (1 killed) [DEAD]
+  [DEF]  Me:253([ARC]109)  En:333([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 8 dmg (1 killed) -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:233([ARC]89)  En:315([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 15 (1 killed)
+R3
+  [ATK]  Me:298([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 15 (1 killed)
+  [ATK]  Me:280([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed)
+  [ATK]  Me:280([ARC]0)  En:199([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg (1 killed) -> Swordsman retaliates: 14 (1 killed)
+  [DEF]  Me:175([ARC]79)  En:263([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:175([ARC]79)  En:245([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:175([ARC]79)  En:228([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg (1 killed) [DEAD]
+  [DEF]  Me:175([ARC]79)  En:210([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 11 dmg (1 killed)
+R4
+  [ATK]  Me:193([ARC]0)  En:175([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 11 (1 killed)
+  [ATK]  Me:175([ARC]0)  En:175([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed)
+  [DEF]  Me:151([ARC]79)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 7 dmg -> Griffin retaliates: 7
+  [DEF]  Me:151([ARC]79)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 14 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:151([ARC]79)  En:158([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 4 dmg (1 killed) -> Griffin retaliates: 3
+  [DEF]  Me:151([ARC]79)  En:140([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 10 dmg (1 killed) [DEAD]
+R5
+  [ATK]  Me:123([ARC]0)  En:151([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed) -> Swordsman retaliates: 7 (1 killed)
+  [DEF]  Me:127([ARC]79)  En:105([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 6 dmg -> Griffin retaliates: 5 (1 killed) [DEAD]
+  [DEF]  Me:103([ARC]79)  En:105([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 12
+  [DEF]  Me:103([ARC]79)  En:88([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 5 dmg -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:83([ARC]59)  En:88([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 12 dmg (1 killed)
+R6
+  [ATK]  Me:70([ARC]0)  En:83([ARC]59)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 15 dmg (2 killed) -> Archer retaliates: 2
+  [DEF]  Me:64([ARC]40)  En:70([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:64([ARC]40)  En:70([ARC]0)  -> [ARC] shoots Griffin (threat 5) || Archer shoots Griffin: 5 dmg (1 killed)
+  [DEF]  Me:64([ARC]40)  En:53([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 11 (1 killed)
+R7
+  [ATK]  Me:53([ARC]0)  En:54([ARC]30)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 7 dmg -> Swordsman retaliates: 6
+  [DEF]  Me:54([ARC]30)  En:53([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 2 (1 killed) [DEAD]
+  [DEF]  Me:30([ARC]30)  En:35([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 3 dmg -> Griffin retaliates: 7 (1 killed)
+  [DEF]  Me:20([ARC]20)  En:35([ARC]0)  -> [ARC] shoots Griffin (threat 2) || Archer shoots Griffin: 3 dmg (1 killed)
+R8
+  [ATK]  Me:18([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg -> Archer retaliates: 1
+  [DEF]  Me:20([ARC]20)  En:18([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg -> Griffin retaliates: 2 (1 killed) [DEAD]
+  [DEF]  Me:10([ARC]10)  En:18([ARC]0)  -> [ARC] shoots Griffin (threat 2) || Archer shoots Griffin: 3 dmg
+R9
+  [ATK]  Me:18([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 3 dmg -> Archer retaliates: 1
+  [DEF]  Me:10([ARC]10)  En:18([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg -> Griffin retaliates: 3
+R10
+  [ATK]  Me:18([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 2 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=10
+=== Flyer Threat seed=7 ===
+R1
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (2, 0)
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 26 (2 killed)
+  [ATK]  Me:525([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 23 (1 killed)
+  [ATK]  Me:508([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (3, 8)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 6)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 20 dmg (1 killed)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 19 dmg (2 killed)
+R2
+  [ATK]  Me:455([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 15 (1 killed)
+  [ATK]  Me:438([ARC]0)  En:327([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 15 dmg (1 killed) -> Swordsman retaliates: 19 (1 killed)
+  [ATK]  Me:420([ARC]0)  En:303([ARC]158)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (2 killed) -> Archer retaliates: 7 (1 killed)
+  [ATK]  Me:403([ARC]0)  En:283([ARC]139)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 31 dmg (3 killed) -> Archer retaliates: 6
+  [DEF]  Me:253([ARC]109)  En:403([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 19 dmg (2 killed) -> Griffin retaliates: 5
+  [DEF]  Me:253([ARC]109)  En:368([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 22 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:253([ARC]109)  En:350([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg (1 killed) [DEAD]
+  [DEF]  Me:253([ARC]109)  En:333([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 15 (1 killed)
+R3
+  [ATK]  Me:315([ARC]0)  En:243([ARC]99)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 20 (1 killed)
+  [ATK]  Me:298([ARC]0)  En:243([ARC]99)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 15 dmg (1 killed)
+  [ATK]  Me:298([ARC]0)  En:219([ARC]99)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg (1 killed) -> Swordsman retaliates: 14 (1 killed)
+  [DEF]  Me:195([ARC]99)  En:280([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 10 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:195([ARC]99)  En:263([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 14 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:195([ARC]99)  En:245([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg (1 killed) [DEAD]
+  [DEF]  Me:195([ARC]99)  En:228([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 12 dmg (1 killed)
+R4
+  [ATK]  Me:210([ARC]0)  En:195([ARC]99)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 19 dmg (2 killed) -> Archer retaliates: 5
+  [ATK]  Me:210([ARC]0)  En:175([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed) -> Swordsman retaliates: 6 (1 killed)
+  [DEF]  Me:151([ARC]79)  En:193([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 10
+  [DEF]  Me:151([ARC]79)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (1 killed) -> Griffin retaliates: 12
+  [DEF]  Me:151([ARC]79)  En:158([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 5 dmg -> Griffin retaliates: 15 (2 killed)
+  [DEF]  Me:132([ARC]59)  En:158([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 12 dmg (1 killed)
+R5
+  [ATK]  Me:140([ARC]0)  En:132([ARC]59)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 7 dmg (1 killed) -> Swordsman retaliates: 6 (1 killed)
+  [ATK]  Me:123([ARC]0)  En:107([ARC]59)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 19 dmg (2 killed) -> Archer retaliates: 2
+  [DEF]  Me:88([ARC]40)  En:123([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:88([ARC]40)  En:123([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (0, 2)
+  [DEF]  Me:88([ARC]40)  En:123([ARC]0)  -> [ARC] shoots Griffin (threat 5) || Archer shoots Griffin: 5 dmg
+  [DEF]  Me:88([ARC]40)  En:123([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 15 (2 killed) [DEAD]
+R6
+  [ATK]  Me:123([ARC]0)  En:68([ARC]20)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 5 dmg -> Swordsman retaliates: 6 (1 killed)
+  [ATK]  Me:105([ARC]0)  En:68([ARC]20)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 19 dmg (2 killed) [DEAD]
+  [CAUT]  Me:48([ARC]0)  En:105([ARC]0)  -> [ME] attacks Griffin (in range) || Swordsman attacks Griffin: 5 dmg (1 killed) -> Griffin retaliates: 1 (1 killed) [DEAD]
+  [CAUT]  Me:24([ARC]0)  En:88([ARC]0)  -> [ME] attacks Griffin (in range) || Swordsman attacks Griffin: 7 dmg -> Griffin retaliates: 10
+R7
+  [CAUT]  Me:88([ARC]0)  En:24([ARC]0)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 2 dmg -> Swordsman retaliates: 5
+  [CAUT]  Me:88([ARC]0)  En:24([ARC]0)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=7
+=== Flyer Threat seed=8 ===
+R1
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (2, 0)
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 23 (1 killed)
+  [ATK]  Me:543([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 23 (1 killed)
+  [ATK]  Me:525([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (3, 8)
+  [DEF]  Me:351([ARC]158)  En:525([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:351([ARC]158)  En:525([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 6)
+  [DEF]  Me:351([ARC]158)  En:525([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (1 killed)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 22 dmg (2 killed)
+R2
+  [ATK]  Me:473([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 22 (2 killed)
+  [ATK]  Me:438([ARC]0)  En:327([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed) -> Swordsman retaliates: 19 (2 killed)
+  [ATK]  Me:403([ARC]0)  En:303([ARC]158)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (2 killed) -> Archer retaliates: 8 (1 killed)
+  [ATK]  Me:385([ARC]0)  En:283([ARC]139)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 31 dmg (3 killed) -> Archer retaliates: 6
+  [DEF]  Me:253([ARC]109)  En:385([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 22 dmg (2 killed) -> Griffin retaliates: 2
+  [DEF]  Me:253([ARC]109)  En:350([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 8 dmg (1 killed) [DEAD]
+  [DEF]  Me:253([ARC]109)  En:333([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:233([ARC]89)  En:315([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 15 (1 killed)
+R3
+  [ATK]  Me:298([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 18 (1 killed)
+  [ATK]  Me:280([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed)
+  [ATK]  Me:280([ARC]0)  En:199([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg (1 killed) -> Swordsman retaliates: 15 (1 killed)
+  [DEF]  Me:175([ARC]79)  En:263([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 14 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:175([ARC]79)  En:245([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 14 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:175([ARC]79)  En:228([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg (1 killed) [DEAD]
+  [DEF]  Me:175([ARC]79)  En:210([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 11 dmg (1 killed)
+R4
+  [ATK]  Me:193([ARC]0)  En:175([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 11 (1 killed)
+  [ATK]  Me:175([ARC]0)  En:175([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed)
+  [DEF]  Me:151([ARC]79)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 5 dmg -> Griffin retaliates: 7
+  [DEF]  Me:151([ARC]79)  En:175([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 13 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:151([ARC]79)  En:158([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 5 dmg -> Griffin retaliates: 7 (1 killed)
+  [DEF]  Me:141([ARC]69)  En:158([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 13 dmg (2 killed) [DEAD]
+R5
+  [ATK]  Me:123([ARC]0)  En:141([ARC]69)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 17 dmg (1 killed) -> Swordsman retaliates: 5 (1 killed)
+  [DEF]  Me:117([ARC]69)  En:105([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 7 dmg -> Griffin retaliates: 5 (1 killed) [DEAD]
+  [DEF]  Me:93([ARC]69)  En:105([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 12
+  [DEF]  Me:93([ARC]69)  En:88([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 3 dmg -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:74([ARC]49)  En:88([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 9 dmg (1 killed)
+R6
+  [ATK]  Me:70([ARC]0)  En:74([ARC]49)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 15 dmg (2 killed) -> Archer retaliates: 2
+  [DEF]  Me:54([ARC]30)  En:70([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 6 dmg -> Griffin retaliates: 7 (1 killed) [DEAD]
+  [DEF]  Me:30([ARC]30)  En:70([ARC]0)  -> [ARC] shoots Griffin (threat 2) || Archer shoots Griffin: 2 dmg (1 killed)
+  [DEF]  Me:30([ARC]30)  En:53([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg -> Griffin retaliates: 11 (1 killed)
+R7
+  [ATK]  Me:53([ARC]0)  En:20([ARC]20)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 8 dmg (1 killed) [DEAD]
+  [DEF]  Me:10([ARC]10)  En:53([ARC]0)  -> [ARC] shoots Griffin (threat 2) || Archer shoots Griffin: 2 dmg
+R8
+  [ATK]  Me:53([ARC]0)  En:10([ARC]10)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 8 dmg (1 killed) [DEAD]
+WINNER=1 ROUNDS=8
+=== Flyer Threat seed=9 ===
+R1
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (2, 0)
+  [ATK]  Me:560([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 27 (2 killed)
+  [ATK]  Me:525([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg -> Swordsman retaliates: 23 (1 killed)
+  [ATK]  Me:508([ARC]0)  En:351([ARC]158)  -> [ME] chasing slow Archer, moving closer || Griffin moves to (3, 8)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 2)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [DEF] covers Archer || Swordsman moves to (1, 6)
+  [DEF]  Me:351([ARC]158)  En:508([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 23 dmg (1 killed)
+  [DEF]  Me:351([ARC]158)  En:490([ARC]0)  -> [ARC] shoots Griffin (threat 22) || Archer shoots Griffin: 18 dmg (2 killed)
+R2
+  [ATK]  Me:455([ARC]0)  En:351([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 22 (2 killed)
+  [ATK]  Me:420([ARC]0)  En:327([ARC]158)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 15 dmg (1 killed) -> Swordsman retaliates: 16 (1 killed)
+  [ATK]  Me:403([ARC]0)  En:303([ARC]158)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (2 killed) -> Archer retaliates: 8 (1 killed)
+  [ATK]  Me:385([ARC]0)  En:283([ARC]139)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 31 dmg (3 killed) -> Archer retaliates: 6
+  [DEF]  Me:253([ARC]109)  En:385([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 18 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:253([ARC]109)  En:368([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 15 dmg (2 killed) [DEAD]
+  [DEF]  Me:253([ARC]109)  En:333([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 19 (2 killed)
+  [DEF]  Me:233([ARC]89)  En:315([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 6 dmg (1 killed) -> Griffin retaliates: 15 (1 killed)
+R3
+  [ATK]  Me:298([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 10 dmg -> Swordsman retaliates: 20 (1 killed)
+  [ATK]  Me:280([ARC]0)  En:223([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed)
+  [ATK]  Me:280([ARC]0)  En:199([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 20 dmg (1 killed) -> Swordsman retaliates: 13 (1 killed)
+  [DEF]  Me:175([ARC]79)  En:263([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 14 dmg (1 killed) -> Griffin retaliates: 5
+  [DEF]  Me:175([ARC]79)  En:245([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 11 dmg (1 killed) -> Griffin retaliates: 2
+  [DEF]  Me:175([ARC]79)  En:228([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 2 dmg (1 killed) [DEAD]
+  [DEF]  Me:175([ARC]79)  En:210([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 8 dmg
+R4
+  [ATK]  Me:210([ARC]0)  En:175([ARC]79)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg (1 killed) -> Swordsman retaliates: 6 (1 killed)
+  [ATK]  Me:193([ARC]0)  En:151([ARC]79)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed) -> Archer retaliates: 1
+  [DEF]  Me:122([ARC]49)  En:193([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 7 dmg -> Griffin retaliates: 10
+  [DEF]  Me:122([ARC]49)  En:193([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 14 dmg (2 killed) -> Griffin retaliates: 5
+  [DEF]  Me:122([ARC]49)  En:158([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg -> Griffin retaliates: 7 (1 killed) [DEAD]
+  [DEF]  Me:112([ARC]40)  En:158([ARC]0)  -> [ARC] shoots Griffin (threat 11) || Archer shoots Griffin: 9 dmg
+R5
+  [ATK]  Me:158([ARC]0)  En:112([ARC]40)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 5 dmg -> Swordsman retaliates: 13 (2 killed) [DEAD]
+  [ATK]  Me:123([ARC]0)  En:112([ARC]40)  -> [ME] attacks Archer (in range) || Griffin attacks Archer: 27 dmg (3 killed) -> Archer retaliates: 1
+  [CAUT]  Me:82([ARC]10)  En:123([ARC]0)  -> [ME] attacks Griffin (in range) || Swordsman attacks Griffin: 7 dmg (1 killed) -> Griffin retaliates: 14 (1 killed) [DEAD]
+  [DEF]  Me:58([ARC]10)  En:105([ARC]0)  -> [DEF] defends Archer, attacks Griffin || Swordsman attacks Griffin: 14 dmg (1 killed) -> Griffin retaliates: 12 (1 killed)
+  [DEF]  Me:34([ARC]10)  En:88([ARC]0)  -> [ARC] blocked -> melee Griffin || Archer attacks Griffin: 1 dmg -> Griffin retaliates: 7 (1 killed) [DEAD]
+R6
+  [CAUT]  Me:88([ARC]0)  En:24([ARC]0)  -> [ME] attacks Swordsman (in range) || Griffin attacks Swordsman: 12 dmg -> Swordsman retaliates: 6 (1 killed)
+  [CAUT]  Me:24([ARC]0)  En:70([ARC]0)  -> [ME] attacks Griffin (in range) || Swordsman attacks Griffin: 5 dmg -> Griffin retaliates: 9 (1 killed) [DEAD]
+WINNER=1 ROUNDS=6

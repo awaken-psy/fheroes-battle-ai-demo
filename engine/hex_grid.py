@@ -9,7 +9,7 @@ Pixel coordinates and drawing live in ``ui/hex_renderer.py``.
 """
 
 from collections import deque
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, FrozenSet, List, Optional, Set, Tuple
 
 import config
 
@@ -87,8 +87,15 @@ class HexGrid:
 
     def reachable(self, start: Tuple[int, int], speed: int,
                   occupied: Set[Tuple[int, int]], flying: bool = False,
-                  tail_dir: Optional[int] = None
+                  tail_dir: Optional[int] = None,
+                  moat_cells: Optional[FrozenSet[Tuple[int, int]]] = None
                   ) -> Dict[Tuple[int, int], int]:
+        """BFS reachable cells within *speed* steps.
+
+        ``moat_cells`` (siege): non-flying units can enter a moat cell but
+        their movement terminates there — the cell is added to results but
+        the BFS does not expand from it.  ``None`` (default) = no moat.
+        """
         result: Dict[Tuple[int, int], int] = {start: 0}
         queue = deque([(start, 0)])
         while queue:
@@ -103,13 +110,23 @@ class HexGrid:
                 if tail_dir is not None and not self._tail_ok(nb, tail_dir, occupied, flying):
                     continue
                 result[nb] = d + 1
+                # Moat: non-flying units stop here (can enter but not continue).
+                if moat_cells and not flying and nb in moat_cells:
+                    continue  # don't expand from moat
                 queue.append((nb, d + 1))
         return result
 
     def find_path(self, start: Tuple[int, int], goal: Tuple[int, int],
                   occupied: Set[Tuple[int, int]], flying: bool = False,
-                  max_len: int = 99, tail_dir: Optional[int] = None
+                  max_len: int = 99, tail_dir: Optional[int] = None,
+                  moat_cells: Optional[FrozenSet[Tuple[int, int]]] = None
                   ) -> Optional[List[Tuple[int, int]]]:
+        """BFS shortest path from *start* to *goal*.
+
+        ``moat_cells`` (siege): non-flying units may traverse at most one moat
+        cell (the one they stop on).  The BFS does not expand further from a
+        moat cell unless it is the goal itself.
+        """
         if start == goal:
             return [start]
         prev: Dict[Tuple[int, int], Tuple[int, int]] = {start: start}
@@ -132,12 +149,16 @@ class HexGrid:
                         path.append(prev[path[-1]])
                     path.reverse()
                     return path
+                # Moat: non-flying units stop here — don't expand further.
+                if moat_cells and not flying and nb in moat_cells:
+                    continue
                 queue.append((nb, d + 1))
         return None
 
     def nearest_cell_next_to(self, start: Tuple[int, int], target: Tuple[int, int],
                              occupied: Set[Tuple[int, int]], flying: bool = False,
-                             max_dist: int = 99, tail_dir: Optional[int] = None
+                             max_dist: int = 99, tail_dir: Optional[int] = None,
+                             moat_cells: Optional[FrozenSet[Tuple[int, int]]] = None
                              ) -> Optional[Tuple[int, int]]:
         best_pos, best_d = None, float('inf')
         for nb in self.neighbors(*target):
@@ -145,7 +166,8 @@ class HexGrid:
                 continue
             if tail_dir is not None and not self._tail_ok(nb, tail_dir, occupied, flying):
                 continue
-            path = self.find_path(start, nb, occupied, flying, max_dist, tail_dir)
+            path = self.find_path(start, nb, occupied, flying, max_dist,
+                                  tail_dir, moat_cells)
             if path and len(path) - 1 < best_d:
                 best_d = len(path) - 1
                 best_pos = nb

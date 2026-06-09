@@ -12,6 +12,8 @@ import pygame
 
 import config
 from engine.hex_grid import HexGrid
+from engine.castle import WALL_POSITIONS, MOAT_CELLS, GATE_POS, \
+    ARCHER_TOWER_POSITIONS, GATE_TOWER_POSITIONS
 
 
 class HexRenderer:
@@ -108,3 +110,81 @@ class HexRenderer:
                                  (p1[0] + dx * drawn, p1[1] + dy * drawn),
                                  (p1[0] + dx * (drawn + seg), p1[1] + dy * (drawn + seg)), width)
             drawn += seg; on = not on
+
+    # ── siege rendering ──────────────────────────────────────
+
+    def draw_siege(self, surf: "pygame.Surface", castle):
+        """Draw castle structures on the hex grid.
+
+        Renders walls (color by HP), moat, towers, and gate.
+        """
+        import config as cfg
+
+        # Moat cells — blue-tinted overlay
+        for cell in MOAT_CELLS:
+            cx, cy = self._centers[cell]
+            pts = self._hex_points(cx, cy)
+            s = pygame.Surface((surf.get_width(), surf.get_height()), pygame.SRCALPHA)
+            pygame.draw.polygon(s, (*cfg.MOAT_COLOR, 120), pts)
+            surf.blit(s, (0, 0))
+
+        # Gate / bridge
+        gcx, gcy = self._centers[GATE_POS]
+        gpts = self._hex_points(gcx, gcy)
+        if castle.bridge_destroyed:
+            gate_fill = (80, 70, 55, 80)  # rubble
+        elif castle.bridge_down:
+            gate_fill = (0, 0, 0, 0)  # open — no overlay
+        else:
+            gate_fill = (*cfg.GATE_COLOR, 180)  # closed wooden gate
+        if gate_fill[3] > 0:
+            s = pygame.Surface((surf.get_width(), surf.get_height()), pygame.SRCALPHA)
+            pygame.draw.polygon(s, gate_fill, gpts)
+            surf.blit(s, (0, 0))
+            # Gate border
+            pygame.draw.polygon(surf, cfg.GATE_COLOR, gpts, 2)
+
+        # Walls — color depends on HP
+        for pos, hp in castle.walls.items():
+            cx, cy = self._centers[pos]
+            pts = self._hex_points(cx, cy)
+            if hp == 2:
+                color = cfg.WALL_COLOR
+            elif hp == 1:
+                color = cfg.WALL_DAMAGED
+            else:
+                continue  # destroyed — no wall drawn
+            s = pygame.Surface((surf.get_width(), surf.get_height()), pygame.SRCALPHA)
+            pygame.draw.polygon(s, (*color, 200), pts)
+            surf.blit(s, (0, 0))
+            pygame.draw.polygon(surf, color, pts, 2)
+
+        # Archer tower positions — stone markers
+        for pos in ARCHER_TOWER_POSITIONS:
+            cx, cy = self._centers[pos]
+            r = int(self.size * 0.3)
+            pygame.draw.circle(surf, cfg.TOWER_COLOR, (int(cx), int(cy)), r)
+            pygame.draw.circle(surf, (200, 190, 180), (int(cx), int(cy)), r, 1)
+
+        # Gate tower positions — smaller markers
+        for pos in GATE_TOWER_POSITIONS:
+            cx, cy = self._centers[pos]
+            r = int(self.size * 0.22)
+            pygame.draw.circle(surf, (*cfg.TOWER_COLOR,), (int(cx), int(cy)), r)
+            pygame.draw.circle(surf, (200, 190, 180), (int(cx), int(cy)), r, 1)
+
+        # Tower labels for active towers
+        for i, tower in enumerate(castle.towers):
+            if not tower.is_valid:
+                continue
+            # Show a small "T" label near the tower's conceptual position
+            if tower.kind == "center":
+                tx, ty = self._centers[(9, 4)]
+            elif tower.kind == "left":
+                tx, ty = self._centers[ARCHER_TOWER_POSITIONS[0]]
+            else:
+                tx, ty = self._centers[ARCHER_TOWER_POSITIONS[1]]
+            # Draw a small cross/battlement icon
+            sz = int(self.size * 0.15)
+            pygame.draw.rect(surf, cfg.TOWER_COLOR,
+                             (int(tx) - sz, int(ty) - sz, sz * 2, sz * 2))

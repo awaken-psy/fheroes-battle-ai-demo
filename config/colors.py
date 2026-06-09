@@ -31,3 +31,10 @@ PATH_COLOR = (234, 179, 8)   # #EAB308 gold path
 TARGET_COLOR = (239, 68, 68) # #EF4444 red target
 RETREAT_COLOR = (74, 222, 128)  # #4ADE80 retreat green
 COVER_COLOR = (59, 130, 246)    # #3B82F6 cover blue
+
+# Siege structures
+WALL_COLOR = (139, 105, 60)     # intact wall (brown)
+WALL_DAMAGED = (100, 80, 50)    # damaged wall
+MOAT_COLOR = (20, 60, 100)      # moat water (dark teal-blue)
+TOWER_COLOR = (160, 150, 140)   # stone tower (gray)
+GATE_COLOR = (120, 90, 50)      # wooden gate (brown)
