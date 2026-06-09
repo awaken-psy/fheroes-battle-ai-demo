@@ -78,7 +78,7 @@ def test_check_retreat_needs_a_hero():
 
 def test_check_retreat_returns_farewell_and_retreat():
     weak = Unit.from_type("Archer", 0, 0, 4)
-    weak.take_damage(145)   # down to 1 creature -> tiny strength, hopeless
+    weak.take_damage(71)    # down to 1 creature (80 total hp → 9 left) → hopeless
     units = [weak] + [Unit.from_type("Cavalry", 1, 8, r) for r in (1, 3, 5, 7)]
     hero = Hero(power=3, spells=["Lightning Bolt"])
     b = _battle(units, heroes={0: hero, 1: None})
