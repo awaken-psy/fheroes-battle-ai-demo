@@ -7,8 +7,12 @@ proves **zero behavior change** for the covered single-hex, open-field battles.
 
 This is the safety net for the M5b/M6 rule-replication work: structural changes
 (wide units, siege) must not alter any of these existing single-hex battles, so
-this hash must stay identical until M6a deliberately rebuilds the baseline when
-switching to fheroes2's exact monster stats.
+this hash must stay identical until a deliberate baseline rebuild.
+
+Baseline history:
+  49b740ae — M5b (single-hex, old simplified stats)
+  7641852a — M6a first draft (before preset rebalance)
+  1f54c421 — M6a final (fheroes2 exact stats + rebalanced presets)
 
 Usage:
     python scripts/fingerprint.py          # print the hash

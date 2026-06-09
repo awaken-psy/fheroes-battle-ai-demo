@@ -117,19 +117,30 @@ class BattleState:
 
     def expected_damage(self, atk: Unit, dfn: Unit, ranged: bool = False) -> int:
         """Average damage — used by the AI for decisions and by tests."""
-        base = atk.count * atk.damage * atk.damage_factor
-        return max(1, int(base * self._damage_mult(atk, dfn, ranged)))
+        base = atk.count * atk.damage_avg * atk.damage_factor
+        dmg = max(1, int(base * self._damage_mult(atk, dfn, ranged)))
+        # Double attack abilities: the AI reasons about total expected output.
+        if ranged and atk.has_ability("double_shooting"):
+            dmg *= 2
+        elif not ranged and atk.has_ability("double_melee"):
+            dmg = int(dmg * 1.75)
+        return dmg
 
     def roll_damage(self, atk: Unit, dfn: Unit, ranged: bool = False) -> int:
-        """Actual damage with random spread — used when executing an attack.
+        """Actual damage when executing an attack.
 
-        Also applies the attacker army's luck: a good-luck roll doubles damage,
-        a bad-luck roll halves it. The AI never sees this (expected_damage is
-        luck-free), matching fheroes2 where luck is engine-only.
+        fheroes2: each creature in the stack rolls its damage in [min, max] and
+        the rolls are summed — the spread comes from the unit's own range, not
+        an artificial ±jitter. Also applies the attacker army's luck (good = x2,
+        bad = x0.5). The AI never sees luck (expected_damage is luck-free).
         """
-        base = atk.count * atk.damage * atk.damage_factor
-        mult = self._damage_mult(atk, dfn, ranged) * random.uniform(0.85, 1.15)
-        mult *= self._roll_luck(atk.team)
+        if atk.damage_min == atk.damage_max:
+            rolled = atk.count * atk.damage_min
+        else:
+            rolled = sum(random.randint(atk.damage_min, atk.damage_max)
+                         for _ in range(atk.count))
+        base = rolled * atk.damage_factor
+        mult = self._damage_mult(atk, dfn, ranged) * self._roll_luck(atk.team)
         return max(1, int(base * mult))
 
     def _roll_luck(self, team: int) -> float:
@@ -199,6 +210,25 @@ class BattleState:
                 if drained > 0:
                     desc += f" -> {atk.name} drains {drained}"
 
+            # two_cell_melee: splash to unit behind the target (same attack)
+            if not action.ranged and atk.has_ability("two_cell_melee"):
+                from_pos = action.from_pos if action.from_pos else atk.pos
+                behind = self.grid.cell_behind(from_pos, tgt.pos)
+                if behind:
+                    splash_unit = self.unit_at(behind)
+                    if (splash_unit and splash_unit.is_alive
+                            and splash_unit is not tgt
+                            and splash_unit.team != atk.team):
+                        splash_actual, splash_killed = splash_unit.take_damage(dmg)
+                        r['splash_dmg'] = splash_actual
+                        r['splash_killed'] = splash_killed
+                        desc += f" |splash {splash_unit.name}:{splash_actual}"
+                        if splash_killed > 0:
+                            desc += f" ({splash_killed}k)"
+                        if not splash_unit.is_alive:
+                            self.deaths_this_round += 1
+                            desc += f" {splash_unit.name}[DEAD]"
+
             # retaliation (melee only; once per round, or always if unlimited)
             can_retaliate = tgt.has_ability("unlimited_retaliation") or not tgt.retaliated
             if not action.ranged and can_retaliate and tgt.is_alive:
@@ -212,6 +242,38 @@ class BattleState:
                 if ret_killed > 0:
                     desc += f" ({ret_killed} killed)"
                 if not atk.is_alive:
+                    self.deaths_this_round += 1
+                    desc += " [DEAD]"
+
+            # ── M6a: double attacks (after retaliation) ────────────────
+
+            # double_shooting: second ranged attack
+            if (action.ranged and atk.has_ability("double_shooting")
+                    and tgt.is_alive):
+                dmg2 = self.roll_damage(atk, tgt, ranged=True)
+                actual2, killed2 = tgt.take_damage(dmg2)
+                r['dmg'] += actual2
+                r['killed'] += killed2
+                desc += f" +2nd shot:{actual2}"
+                if killed2 > 0:
+                    desc += f" ({killed2}k)"
+                r['target_alive'] = tgt.is_alive
+                if not tgt.is_alive:
+                    self.deaths_this_round += 1
+                    desc += " [DEAD]"
+
+            # double_melee: second melee attack (after retaliation)
+            if (not action.ranged and atk.has_ability("double_melee")
+                    and atk.is_alive and tgt.is_alive):
+                dmg2 = self.roll_damage(atk, tgt, ranged=False)
+                actual2, killed2 = tgt.take_damage(dmg2)
+                r['dmg'] += actual2
+                r['killed'] += killed2
+                desc += f" +2nd hit:{actual2}"
+                if killed2 > 0:
+                    desc += f" ({killed2}k)"
+                r['target_alive'] = tgt.is_alive
+                if not tgt.is_alive:
                     self.deaths_this_round += 1
                     desc += " [DEAD]"
 

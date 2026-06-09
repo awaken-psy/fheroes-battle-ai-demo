@@ -45,6 +45,28 @@ class HexGrid:
     def half_of(self, col: int) -> int:
         return 0 if col < self.cols // 2 else 1
 
+    def cell_behind(self, from_pos: Tuple[int, int],
+                    target_pos: Tuple[int, int]) -> Optional[Tuple[int, int]]:
+        """Return the cell one step behind *target* from *from*'s perspective.
+
+        Used by TWO_CELL_MELEE_ATTACK: the attacker hits both the target and
+        whatever unit sits one hex further in the same direction.  Computed via
+        cube-coordinate direction normalisation so it is correct for all hex
+        offsets, not just the east-west axis.
+        """
+        fc = self._to_cube(*from_pos)
+        tc = self._to_cube(*target_pos)
+        # Cube-space direction, normalised to a unit step.
+        def _sign(x):
+            return (1 if x > 0 else -1) if x != 0 else 0
+        nd = tuple(map(_sign, (tc[0] - fc[0], tc[1] - fc[1], tc[2] - fc[2])))
+        bq, br = tc[0] + nd[0], tc[1] + nd[1]
+        col = bq + (br - (br & 1)) // 2
+        row = br
+        if self.is_valid(col, row):
+            return (col, row)
+        return None
+
     # ── pathfinding ─────────────────────────────────────────
     #
     # All three functions track the *head* cell. ``tail_dir`` is the column

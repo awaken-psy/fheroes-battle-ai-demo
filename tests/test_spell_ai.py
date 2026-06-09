@@ -30,7 +30,7 @@ def test_damage_spell_picks_highest_value_target():
     hero = Hero(power=3, spells=["Lightning Bolt"])
     units = [Unit.from_type("Swordsman", 0, 1, 4),
              Unit.from_type("Archer", 1, 8, 4),    # low hp, high value-per-damage
-             Unit.from_type("Pikeman", 1, 9, 4)]   # bulky
+             Unit.from_type("Goblin", 1, 9, 4)]    # weakest, but spell overkills
     choice = _choose(units, 0, hero)
     assert choice is not None
     spell, target = choice
@@ -61,9 +61,9 @@ def test_conserves_spell_when_already_dominant():
     # Strong army vs weak enemy -> threshold (myStr^2/enemyStr*0.04) is high,
     # a weak Magic Arrow doesn't clear it -> don't waste the cast.
     hero = Hero(power=3, spells=["Magic Arrow"])
-    units = [Unit.from_type("Pikeman", 0, 1, 4),
-             Unit.from_type("Pikeman", 0, 1, 2),
-             Unit.from_type("Archer", 1, 8, 4)]
+    units = [Unit.from_type("Crusader", 0, 1, 4),
+             Unit.from_type("Paladin", 0, 1, 2),
+             Unit.from_type("Goblin", 1, 8, 4)]
     assert _choose(units, 0, hero) is None
 
 

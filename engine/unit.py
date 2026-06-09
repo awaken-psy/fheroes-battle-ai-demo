@@ -19,7 +19,13 @@ class Unit:
         self.defense = kwargs["defense"]
         self.max_hp = kwargs["hp"]
         self.base_speed = kwargs["speed"]
-        self.damage = kwargs["damage"]
+        # fheroes2 damage is a per-creature [min, max] range rolled in combat.
+        # Backward-compat: a single ``damage`` means min == max (no spread).
+        if "damage_min" in kwargs and "damage_max" in kwargs:
+            self.damage_min = kwargs["damage_min"]
+            self.damage_max = kwargs["damage_max"]
+        else:
+            self.damage_min = self.damage_max = kwargs["damage"]
         self.is_archer = kwargs["is_archer"]
         self.is_flying = kwargs["is_flying"]
         # Wide units occupy two horizontally-adjacent cells (head + tail).
@@ -43,8 +49,11 @@ class Unit:
         self._base_strength = self._compute_base_strength()
 
     @staticmethod
-    def from_type(type_name: str, team: int, col: int, row: int) -> "Unit":
-        t = config.UNIT_TYPES[type_name]
+    def from_type(type_name: str, team: int, col: int, row: int,
+                  count: int = None) -> "Unit":
+        t = dict(config.UNIT_TYPES[type_name])
+        if count is not None:
+            t["count"] = count
         return Unit(type_name, team, col, row, **t)
 
     # ── properties ──────────────────────────────────────────
@@ -94,6 +103,11 @@ class Unit:
         return max(1, self.base_speed + delta)
 
     @property
+    def damage_avg(self) -> float:
+        """Average per-creature damage — used by expected_damage / strength."""
+        return (self.damage_min + self.damage_max) / 2.0
+
+    @property
     def damage_factor(self) -> float:
         """Combined damage multiplier from Bless / Curse effects."""
         factor = 1.0
@@ -127,10 +141,29 @@ class Unit:
         being a shooter / flyer, a speed remap around Speed::AVERAGE, and the
         special-ability terms from getMonsterBaseStrength.
         """
-        damage_potential = float(self.damage)
+        damage_potential = float(self.damage_avg)
         effective_hp = float(self.max_hp)
+
+        # fheroes2: NO_ENEMY_RETALIATION → effectiveHP *= 1.4
+        if "no_enemy_retaliation" in self.abilities:
+            effective_hp *= 1.4
+
+        # fheroes2: double attack abilities (mutually exclusive).
+        if "double_shooting" in self.abilities:
+            damage_potential *= 2
+        elif "double_melee" in self.abilities:
+            damage_potential *= (2.0 if "no_enemy_retaliation" in self.abilities
+                                 else 1.75)
+
+        if "double_damage_to_undead" in self.abilities:
+            damage_potential *= 1.15
+
+        if "two_cell_melee" in self.abilities:
+            damage_potential *= 1.2
+
         if "unlimited_retaliation" in self.abilities:
             damage_potential *= 1.25
+
         special = 1.0
         if self.is_archer:
             special += 0.4

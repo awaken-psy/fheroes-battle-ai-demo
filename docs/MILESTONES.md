@@ -14,7 +14,7 @@
 | **M4** `v0.6` | 撤退 + 完整回合行为 | P2(其余) | ~85% | ✅ 完成 |
 | **M5** `v1.0` | 特殊能力 + 谨慎走位 | P3(核心) | ~90% | ✅ 完成 |
 | **M5b** | 宽体单位(2 格占位) | P3 | ~91% | ✅ 完成 |
-| **M6a** | 兵种扩充(~60,原版精确数值) | P3 | ~92% | 📋 待办 |
+| **M6a** | 兵种扩充(原版精确数值;先 Knight+Barbarian ~20) | P3 | ~92% | ✅ 完成 |
 | **M6b** | 攻城系统(完整) | P4 | ~94% | 📋 待办 |
 | **M6c** | 验证 / 调参 / 原版对照 | P4 | ~95% | 📋 待办 |
 
@@ -170,22 +170,50 @@
 > 注:朝向固定为近似(原版 `UpdateDirection` 倒退翻转未实现);宽体 ENEMY 的 `pos_value`/`threat`
 > 评分仍按 head 近似(scoring.py 未动以守指纹),M6a 接原版数值后再评估是否细化。
 
-## M6a — 兵种扩充(~60,原版精确数值)
+## M6a — 兵种扩充(原版精确数值)✅
 
-> 一次性把兵种数值切到 **fheroes2 原版精确表**(现有 8 个简化数值随之作废),
-> 此刻重建指纹基线(有意的一次性行为变更,记录在案)。
-> 对照源码:`monster/monster.cpp`(`GetBattleStats` 等)、`monster/monster_info.cpp`。
+> 把兵种数值切到 **fheroes2 原版精确表**(现有简化数值作废),此刻**重建指纹基线**
+> (有意的一次性行为变更,M6a 唯一允许破 `49b740ae1e7e90d3` 的点)。
+> **范围决策(2026-06-09)**:先做 **Knight + Barbarian 两阵营(~20)** 打通管线,
+> 其余 4 阵营 + 中立作机械式后续扩充。数量用**预设可指定 + 默认 `grown`**;
+> 能力**易做的实现、其余进档案表,全部进 strength 公式**。
+> 对照源码:`monster/monster_info.cpp`(`battleStats`/`generalStats` 数据表 + 行 391+ 的能力注入、
+> `getMonsterBaseStrength`)、`kingdom/speed.h`(Speed 枚举=整数,AVERAGE=4)。
+
+**名册**:Knight = Peasant/Archer/Ranger/Pikeman/Veteran Pikeman/Swordsman/Master Swordsman/
+Cavalry/Champion/Paladin/Crusader;Barbarian = Goblin/Orc/Orc Chief/Wolf/Ogre/Ogre Lord/
+Troll/War Troll/Cyclops。
+
+**能力覆盖表**(本两阵营用到的):
+
+| 能力 | 兵种 | 本轮 |
+|---|---|---|
+| `DOUBLE_HEX_SIZE`(宽体) | Cavalry, Champion, Wolf | ✅ 已实现(M5b) |
+| `HP_REGENERATION` | Troll, War Troll | ✅ 已实现(self_heal) |
+| `DOUBLE_SHOOTING` | Ranger | ✅ 做(射手每回合射 2 次) |
+| `DOUBLE_MELEE_ATTACK` | Paladin, Crusader, Wolf | ✅ 做(近战连击 2 次,反击后触发) |
+| `TWO_CELL_MELEE_ATTACK` | Cyclops | ✅ 做(命中目标 + 其身后一格,反击前触发) |
+| `DOUBLE_DAMAGE_TO_UNDEAD` | Crusader | ✅ 做(×1.15 进公式;本两阵营无亡灵) |
+| `SPELL_CASTER`(20% 麻痹) | Cyclops | 📄 档案(需麻痹状态,暂缺战斗钩子) |
+| `IMMUNE_TO_CERTAIN_SPELL`(诅咒) | Crusader | 📄 档案(法术免疫判定,暂缺) |
 
 任务:
-- [ ] 移植原版兵种数据表(attack/defense/hp/damage/speed/count/shots/wide/abilities + 6 阵营分组),重构 `config/units.py`
-- [ ] 各兵种能力映射到现有能力钩子;产出**能力覆盖表**,逐个标注「忠实 / 近似 / 暂缺」(施法单位、龙息双格伤害、闪电反击等)
-- [ ] 单测:批量创建全部兵种、strength 公式 sanity、宽体标记正确
-- [ ] **重建并记录**新指纹基线(替换 R1 的 `545c41fcb8481a63`,注明原因)
+- [x] **伤害模型 min/max**:`Unit.damage`→`damage_min/damage_max`;`expected_damage`=`count·(min+max)/2·mult`,`roll_damage` 在区间内取(**移除非忠实的 ±15%**),`_compute_base_strength` 用均值
+- [x] **`config/units.py` 重构**:精确数据表 + `race`/`level`/`grown` 字段,标 `is_wide`/`shots`/`abilities`
+- [x] **能力**:补全 strength 公式能力项(no_enemy_retaliation×1.4、double_shooting×2、double_melee×1.75、two_cell×1.2、double_damage_to_undead×1.15);战斗钩子做 double_shooting/double_melee/two_cell;其余进档案
+- [x] **数量规则**:扩展预设格式支持可选 `count`,未写默认 = `grown`;`from_type` 支持 count 覆写
+- [x] **预设迁移**:老预设迁到新兵种 + 加 Knight vs Barbarian / Clash of Titans 预设;Balanced 换 Ogre Lord(非宽体镜像公平)
+- [x] **测试**:批量创建全兵种、strength 按 cost 单调性 sanity、宽体/射手标记、新能力 combat hook (20 新测试)
+- [x] **重建指纹基线**:`1f54c421b0f7f078` 替换 `49b740ae`,更新脚本历史注释
 
 **退出标准:**
-- [ ] ~60 兵种可创建且通过 strength sanity;能力覆盖表入档
-- [ ] 新指纹基线已记录,后续以它为零回归基准
-- [ ] 全部 pytest 绿
+- [x] Knight+Barbarian 20 兵种可创建且通过 strength sanity;能力覆盖表入档
+- [x] 新指纹基线已记录(`1f54c421b0f7f078`),后续以它为零回归基准
+- [x] 全部 pytest 绿(115 个);arena 镜像 4 预设均 PASS(Balanced 50.0/Archer Defense 51.7/Flyer Threat 45.7/Knight vs Barbarian 48.7)
+
+> 注:移除 ±15% 改 min/max + 老预设迁精确数值,会改变 arena 镜像胜率,需重新确认(M6a 预期内重校准)。
+> 其余 4 阵营 + 中立(Sorceress/Warlock/Wizard/Necromancer + Griffin/Phoenix/Hydra/各色龙等)
+> 待本轮管线打通后机械式补入,届时再评估新能力(DRAGON/AREA_SHOT/UNDEAD/ELEMENTAL 等)。
 
 ## M6b — 攻城系统(完整版)
 

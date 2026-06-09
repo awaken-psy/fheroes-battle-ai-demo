@@ -88,18 +88,29 @@ def test_expected_damage_min_one():
     assert b.expected_damage(a, d) >= 1
 
 
-# ── roll_damage (random spread) ─────────────────────────────────────
+# ── roll_damage (per-creature min/max spread) ───────────────────────
 
-def test_roll_damage_within_spread():
+def test_roll_damage_no_spread_when_min_equals_max():
+    # A single ``damage`` value means min == max, so no random spread.
     a = _unit("A", 0, 0, 0, attack=7, damage=3, count=20)  # base 60, mult 1.2
     d = _unit("D", 1, 1, 0, defense=5)
     b = _battle(a, d)
-    lo = int(60 * 1.2 * 0.85)
-    hi = int(60 * 1.2 * 1.15) + 1
     for i in range(200):
         random.seed(i)
-        dmg = b.roll_damage(a, d)
-        assert lo <= dmg <= hi
+        assert b.roll_damage(a, d) == int(60 * 1.2)
+
+
+def test_roll_damage_respects_min_max_range():
+    # attack == defense -> mult 1.0; 10 creatures each roll in [2, 8].
+    a = _unit("A", 0, 0, 0, attack=5, damage_min=2, damage_max=8, count=10)
+    d = _unit("D", 1, 1, 0, defense=5)
+    b = _battle(a, d)
+    vals = set()
+    for i in range(300):
+        random.seed(i)
+        vals.add(b.roll_damage(a, d))
+    assert len(vals) > 1                       # spread is present
+    assert min(vals) >= 10 * 2 and max(vals) <= 10 * 8
 
 
 def test_roll_damage_reproducible_with_seed():
