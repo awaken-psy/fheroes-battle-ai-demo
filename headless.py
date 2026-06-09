@@ -136,10 +136,13 @@ def run_battle(config_path: str, output_path: str | None = None) -> str:
     luck = {int(k): v for k, v in cfg.get("luck", {}).items()} or None
 
     # run battle
+    from engine.castle import Castle
+    castle = Castle() if cfg.get("siege") else None
     grid = HexGrid()
     battle = BattleState(grid, units, heroes=heroes,
                          difficulty=cfg.get("difficulty", "Normal"),
-                         morale=morale, luck=luck)
+                         morale=morale, luck=luck,
+                         castle=castle)
     ai = create_ai("classic")
     logger = BattleLogger()
     logger.start(units)

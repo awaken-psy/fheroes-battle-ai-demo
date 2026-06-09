@@ -227,6 +227,10 @@ class SetupScreen:
     def _load_preset(self, name):
         preset = config.PRESETS[name]
         self.game.units = []
+        # Siege flag: if preset has "siege": True, store for start_battle.
+        self.game._siege = preset.get("siege", False)
         for team, placements in preset.items():
+            if isinstance(team, str):
+                continue  # skip "siege" key
             for type_name, col, row in placements:
                 self.game.units.append(Unit.from_type(type_name, team, col, row))

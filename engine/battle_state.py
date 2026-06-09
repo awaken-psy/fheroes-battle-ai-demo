@@ -1,20 +1,22 @@
 """Battle state machine — turn order, damage, victory."""
 
 import random
-from typing import List, Optional, Set, Tuple
+from typing import FrozenSet, List, Optional, Set, Tuple
 
 from .unit import Unit
 from .actions import (Action, MoveAction, AttackAction, SkipAction,
                       CastAction, RetreatAction)
 from .hex_grid import HexGrid
 from .spells import DAMAGE, spell_damage, make_effect
+from .castle import Castle, MOAT_CELLS, GATE_POS
 
 
 class BattleState:
     def __init__(self, grid: HexGrid, units: List[Unit], first_team: int = 0,
                  attacker_team: int = 0, heroes: Optional[dict] = None,
                  difficulty: str = "Normal",
-                 morale: Optional[dict] = None, luck: Optional[dict] = None):
+                 morale: Optional[dict] = None, luck: Optional[dict] = None,
+                 castle: Optional[Castle] = None):
         self.grid = grid
         self.units = units
         # Optional commander per team; None means that side has no spellcaster.
@@ -37,6 +39,8 @@ class BattleState:
         self.luck = luck if luck is not None else {0: 0, 1: 0}
         # Set to a team index when that side's hero flees.
         self._retreated = None
+        # Siege structures (None for open-field battles).
+        self.castle = castle
 
     def alive(self, team: Optional[int] = None) -> List[Unit]:
         u = [u for u in self.units if u.is_alive]
@@ -57,6 +61,37 @@ class BattleState:
                 continue
             cells |= u.occupied_cells()
         return cells
+
+    def _move_occupied(self, unit: Optional[Unit] = None) -> Set[Tuple[int, int]]:
+        """Occupied cells for pathfinding, including siege structures.
+
+        Adds intact wall segments and (if applicable) the closed gate.
+        Non-siege: identical to ``occupied()``.
+        """
+        cells = self.occupied(exclude=unit)
+        if self.castle:
+            cells |= self.castle.wall_intact_cells()
+            # Gate blocks attacker when bridge is up and not destroyed.
+            if unit is not None and not self.castle.is_gate_passable(unit.team):
+                cells.add(GATE_POS)
+        return cells
+
+    def _moat_cells(self) -> Optional[FrozenSet[Tuple[int, int]]]:
+        """Return moat cells if this is a siege, else None."""
+        return MOAT_CELLS if self.castle else None
+
+    def _shooting_penalty(self, atk: Unit, dfn: Unit) -> bool:
+        """Wall shooting penalty: 50% damage when firing across intact walls.
+
+        fheroes2 IsShootingPenalty: penalty applies when attacker and defender
+        are on opposite sides of the castle wall line.  Simplified: no
+        per-line-of-sight gap check (would need pixel-level LOS).
+        """
+        if not self.castle or not self.castle.any_wall_standing():
+            return False
+        a_outside = self.castle.is_outside_walls(*atk.pos)
+        d_outside = self.castle.is_outside_walls(*dfn.pos)
+        return a_outside != d_outside
 
     def unit_at(self, pos: Tuple[int, int]) -> Optional[Unit]:
         """The unit whose body (head or tail) covers ``pos``."""
@@ -105,20 +140,35 @@ class BattleState:
     # Keeping these apart makes AI decisions and tests reproducible.
 
     @staticmethod
-    def _damage_mult(atk: Unit, dfn: Unit, ranged: bool = False) -> float:
-        """Deterministic damage multiplier (attack/defense + archer penalty)."""
-        if atk.attack > dfn.defense:
-            mult = min(1 + 0.1 * (atk.attack - dfn.defense), 3.0)
+    def _damage_mult(atk: Unit, dfn: Unit, ranged: bool = False,
+                     moat_def_penalty: bool = False) -> float:
+        """Deterministic damage multiplier (attack/defense + archer penalty).
+
+        ``moat_def_penalty``: if True, the defender is in a moat cell and
+        suffers -3 defense (fheroes2: GetBattleMoatReduceDefense() = 3).
+        """
+        dfn_def = max(0, dfn.defense - 3) if moat_def_penalty else dfn.defense
+        if atk.attack > dfn_def:
+            mult = min(1 + 0.1 * (atk.attack - dfn_def), 3.0)
         else:
-            mult = max(1 - 0.05 * (dfn.defense - atk.attack), 0.3)
+            mult = max(1 - 0.05 * (dfn_def - atk.attack), 0.3)
         if atk.is_archer and not ranged:
             mult *= 0.5  # archer melee penalty
         return mult
 
+    def _in_moat(self, unit: Unit) -> bool:
+        """Is *unit* currently standing in a moat cell?"""
+        return (self.castle is not None
+                and Castle.is_moat(*unit.pos))
+
     def expected_damage(self, atk: Unit, dfn: Unit, ranged: bool = False) -> int:
         """Average damage — used by the AI for decisions and by tests."""
+        moat = self._in_moat(dfn)
         base = atk.count * atk.damage_avg * atk.damage_factor
-        dmg = max(1, int(base * self._damage_mult(atk, dfn, ranged)))
+        dmg = max(1, int(base * self._damage_mult(atk, dfn, ranged, moat)))
+        # Wall shooting penalty: 50% when firing across intact walls.
+        if ranged and self._shooting_penalty(atk, dfn):
+            dmg = dmg // 2
         # Double attack abilities: the AI reasons about total expected output.
         if ranged and atk.has_ability("double_shooting"):
             dmg *= 2
@@ -134,13 +184,17 @@ class BattleState:
         an artificial ±jitter. Also applies the attacker army's luck (good = x2,
         bad = x0.5). The AI never sees luck (expected_damage is luck-free).
         """
+        moat = self._in_moat(dfn)
         if atk.damage_min == atk.damage_max:
             rolled = atk.count * atk.damage_min
         else:
             rolled = sum(random.randint(atk.damage_min, atk.damage_max)
                          for _ in range(atk.count))
         base = rolled * atk.damage_factor
-        mult = self._damage_mult(atk, dfn, ranged) * self._roll_luck(atk.team)
+        mult = self._damage_mult(atk, dfn, ranged, moat) * self._roll_luck(atk.team)
+        # Wall shooting penalty: 50% when firing across intact walls.
+        if ranged and self._shooting_penalty(atk, dfn):
+            mult *= 0.5
         return max(1, int(base * mult))
 
     def _roll_luck(self, team: int) -> float:
@@ -173,7 +227,14 @@ class BattleState:
              'target_alive': True, 'attacker_alive': True}
 
         if isinstance(action, MoveAction):
-            action.unit.pos = action.path[-1]
+            unit = action.unit
+            unit.pos = action.path[-1]
+            # Bridge: defender lowers it when moving into/out of gate area.
+            if self.castle and not self.castle.bridge_down:
+                if (unit.team == 1
+                        and Castle.is_moat(*unit.pos)
+                        and not self.castle.bridge_destroyed):
+                    self.castle.lower_bridge()
             r['desc'] = f"{action.unit.name} moves to {action.path[-1]}"
             return r
 
@@ -378,3 +439,61 @@ class BattleState:
         for hero in self.heroes.values():
             if hero is not None:
                 hero.reset_round()
+
+        # ── Siege: catapult + tower actions ─────────────────────
+        # fheroes2 Turns(): catapult fires during first attacker-unit turn;
+        # towers fire during first defender-unit turn. We run both here at
+        # round start (headless simplification) to keep the game loop simple.
+        if self.castle:
+            self._catapult_round()
+            self._tower_round()
+
+    # ── siege helpers ────────────────────────────────────────────
+
+    def _catapult_round(self):
+        """Catapult fires once per round (attacker siege weapon).
+
+        fheroes2: CatapultAction() in battle_arena.cpp — the catapult targets
+        intact walls, then towers, then the bridge. 75% hit, 1 damage.
+        """
+        shots = self.castle.catapult_round()
+        for shot in shots:
+            if shot["hit"] and shot["damage"] > 0:
+                # Wall damage already applied inside catapult_round().
+                # Tower/bridge destruction also applied there.
+                pass  # result recorded for UI/logging if needed
+
+    def _tower_round(self):
+        """Each active tower shoots the highest-threat enemy once per round.
+
+        fheroes2: TowerAction() — towers fire during the first defender-unit
+        turn. Order: center, left, right (battle_arena.cpp:623-625).
+        """
+        if not self.castle:
+            return
+        for tower in self.castle.towers:
+            if not tower.is_valid:
+                continue
+            # Tower shoots attacker units (team 0 in siege).
+            enemies = self.alive(self.attacker_team)
+            if not enemies:
+                break
+            target = tower.select_target(enemies)
+            if target is None:
+                continue
+            dmg = tower.roll_damage()
+            if dmg <= 0:
+                continue
+            # Tower attack uses the same _damage_mult as normal combat.
+            # Tower is a pseudo-archer (attack=5) vs target's defense.
+            dfn_def = target.defense
+            if self._in_moat(target):
+                dfn_def = max(0, dfn_def - 3)
+            if tower.attack > dfn_def:
+                mult = min(1 + 0.1 * (tower.attack - dfn_def), 3.0)
+            else:
+                mult = max(1 - 0.05 * (dfn_def - tower.attack), 0.3)
+            actual_dmg = max(1, int(dmg * mult))
+            actual, killed = target.take_damage(actual_dmg)
+            if killed > 0:
+                self.deaths_this_round += 1
