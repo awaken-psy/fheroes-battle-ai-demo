@@ -36,6 +36,10 @@ class ClassicAI(AIPlayer):
         if hero is None:
             return None
         state = analyze(battle, unit)
+        # ai_battle.cpp:712 — _considerRetreat gate: only evaluate retreat
+        # when friendly stacks have died or the army started with < 4 stacks.
+        if not state.consider_retreat:
+            return None
         if not should_retreat(state, battle.difficulty):
             return None
         farewell = None
@@ -306,7 +310,34 @@ class ClassicAI(AIPlayer):
         result = self._chase(battle, unit, enemies, occ, moat, s,
                              lambda e: True,
                              "chasing any")
-        return result or (SkipAction(unit), "[ME] no target")
+        if result:
+            return result
+
+        # 3. Siege: approach castle walls when no target is reachable.
+        # ai_battle.cpp:1618-1638 — _attackingCastle fallback.
+        if s.attacking_castle and battle.castle:
+            from engine.castle import WALL_POSITIONS
+            best_dist = float('inf')
+            best_cell = None
+            for wp in WALL_POSITIONS:
+                tc = grid.nearest_cell_next_to(unit.pos, wp, occ,
+                                                unit.is_flying,
+                                                unit.speed * 3, td, moat)
+                if tc is None:
+                    continue
+                d = grid.distance(unit.pos, tc)
+                if d < best_dist:
+                    best_dist = d
+                    best_cell = tc
+            if best_cell:
+                path = grid.find_path(unit.pos, best_cell, occ,
+                                      unit.is_flying, unit.speed * 3, td, moat)
+                if path and len(path) > 1:
+                    seg = path[:unit.speed + 1]
+                    return (MoveAction(unit, seg),
+                            "[ME] moving towards castle walls")
+
+        return SkipAction(unit), "[ME] no target"
 
     def _chase(self, battle: BattleState, unit: Unit,
                enemies: List[Unit], occ: Set[tuple], moat, s: AIState,
