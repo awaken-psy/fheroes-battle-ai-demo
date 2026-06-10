@@ -1,0 +1,23 @@
+{
+  "units": [
+    {"team": 0, "type": "Archer",  "col": 0, "row": 0, "count": 3},
+    {"team": 0, "type": "Archer",  "col": 0, "row": 2, "count": 3},
+    {"team": 0, "type": "Archer",  "col": 0, "row": 4, "count": 3},
+    {"team": 0, "type": "Pikeman", "col": 1, "row": 1, "count": 3},
+    {"team": 0, "type": "Pikeman", "col": 1, "row": 3, "count": 3},
+    {"team": 0, "type": "Pikeman", "col": 1, "row": 5, "count": 3},
+
+    {"team": 1, "type": "Archer",  "col": 10, "row": 0, "count": 3},
+    {"team": 1, "type": "Archer",  "col": 10, "row": 2, "count": 3},
+    {"team": 1, "type": "Archer",  "col": 10, "row": 4, "count": 3},
+    {"team": 1, "type": "Pikeman", "col": 9,  "row": 1, "count": 3},
+    {"team": 1, "type": "Pikeman", "col": 9,  "row": 3, "count": 3},
+    {"team": 1, "type": "Pikeman", "col": 9,  "row": 5, "count": 3}
+  ],
+  "heroes": {
+    "0": {"name": "Cleric", "power": 3, "spell_points": 20,
+          "spells": ["Bless", "Haste", "Slow"]},
+    "1": {"name": "Cleric", "power": 3, "spell_points": 20,
+          "spells": ["Bless", "Haste", "Slow"]}
+  }
+}

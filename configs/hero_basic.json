@@ -1,0 +1,25 @@
+{
+  "units": [
+    {"team": 0, "type": "Pikeman",   "col": 0, "row": 1, "count": 4},
+    {"team": 0, "type": "Pikeman",   "col": 0, "row": 3, "count": 4},
+    {"team": 0, "type": "Pikeman",   "col": 0, "row": 5, "count": 4},
+    {"team": 0, "type": "Pikeman",   "col": 0, "row": 7, "count": 4},
+    {"team": 0, "type": "Swordsman", "col": 1, "row": 2, "count": 3},
+    {"team": 0, "type": "Swordsman", "col": 1, "row": 4, "count": 3},
+    {"team": 0, "type": "Swordsman", "col": 1, "row": 6, "count": 3},
+
+    {"team": 1, "type": "Pikeman",   "col": 10, "row": 1, "count": 4},
+    {"team": 1, "type": "Pikeman",   "col": 10, "row": 3, "count": 4},
+    {"team": 1, "type": "Pikeman",   "col": 10, "row": 5, "count": 4},
+    {"team": 1, "type": "Pikeman",   "col": 10, "row": 7, "count": 4},
+    {"team": 1, "type": "Swordsman", "col": 9,  "row": 2, "count": 3},
+    {"team": 1, "type": "Swordsman", "col": 9,  "row": 4, "count": 3},
+    {"team": 1, "type": "Swordsman", "col": 9,  "row": 6, "count": 3}
+  ],
+  "heroes": {
+    "0": {"name": "Knight", "power": 3, "spell_points": 15,
+          "spells": ["Magic Arrow"]},
+    "1": {"name": "Knight", "power": 3, "spell_points": 15,
+          "spells": ["Magic Arrow"]}
+  }
+}

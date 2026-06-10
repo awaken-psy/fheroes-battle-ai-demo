@@ -1,0 +1,29 @@
+{
+  "units": [
+    {"team": 0, "type": "Skeleton",     "col": 0, "row": 0, "count": 8},
+    {"team": 0, "type": "Skeleton",     "col": 0, "row": 1, "count": 8},
+    {"team": 0, "type": "Skeleton",     "col": 0, "row": 2, "count": 8},
+    {"team": 0, "type": "Royal Mummy",  "col": 1, "row": 1, "count": 3},
+    {"team": 0, "type": "Royal Mummy",  "col": 1, "row": 3, "count": 3},
+    {"team": 0, "type": "Royal Mummy",  "col": 1, "row": 5, "count": 3},
+    {"team": 0, "type": "Vampire",      "col": 2, "row": 2, "count": 3},
+    {"team": 0, "type": "Vampire",      "col": 2, "row": 4, "count": 3},
+    {"team": 0, "type": "Vampire",      "col": 2, "row": 6, "count": 3},
+
+    {"team": 1, "type": "Skeleton",     "col": 10, "row": 0, "count": 8},
+    {"team": 1, "type": "Skeleton",     "col": 10, "row": 1, "count": 8},
+    {"team": 1, "type": "Skeleton",     "col": 10, "row": 2, "count": 8},
+    {"team": 1, "type": "Royal Mummy",  "col": 9,  "row": 1, "count": 3},
+    {"team": 1, "type": "Royal Mummy",  "col": 9,  "row": 3, "count": 3},
+    {"team": 1, "type": "Royal Mummy",  "col": 9,  "row": 5, "count": 3},
+    {"team": 1, "type": "Vampire",      "col": 8,  "row": 2, "count": 3},
+    {"team": 1, "type": "Vampire",      "col": 8,  "row": 4, "count": 3},
+    {"team": 1, "type": "Vampire",      "col": 8,  "row": 6, "count": 3}
+  ],
+  "heroes": {
+    "0": {"name": "Necromancer", "power": 4, "spell_points": 18,
+          "spells": ["Magic Arrow", "Curse", "Haste"]},
+    "1": {"name": "Necromancer", "power": 4, "spell_points": 18,
+          "spells": ["Magic Arrow", "Curse", "Haste"]}
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "units": [
+    {"team": 0, "type": "Champion", "col": 1, "row": 3, "count": 1},
+    {"team": 1, "type": "Champion", "col": 8, "row": 3, "count": 1}
+  ],
+  "heroes": {
+    "0": {"name": "Paladin", "power": 4, "spell_points": 15,
+          "spells": ["Magic Arrow", "Haste"]},
+    "1": {"name": "Paladin", "power": 4, "spell_points": 15,
+          "spells": ["Magic Arrow", "Haste"]}
+  }
+}
