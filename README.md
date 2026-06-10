@@ -6,32 +6,70 @@
 > 本项目复刻了 fheroes2 的战斗 AI 算法，基于 GPL-2.0 许可证发布。
 > 原作版权 © ihhub 及 fheroes2 贡献者。详见 [LICENSE](LICENSE)。
 
-## 复刻进度 `v1.0`
+## 项目进度
 
-里程碑 M1–M5 全部完成，覆盖原版战斗 AI 约 **~90%**（82 个 pytest + CI 守护）。详见 [docs/MILESTONES.md](docs/MILESTONES.md)。
+里程碑 M1–M7e（规则层）+ A1–A4（经典 AI 决策层）+ R1–R7（深度学习训练管线）**全部完成**。
 
-已实现并对齐原版的能力：
+- **561 个测试**全通过，CI 守护
+- **63 种兵种**，**38 种法术**，规则保真度 ~99%
+- 经典 AI 决策覆盖率 ~97%（126 条审计逐条对齐）
+- 3600 局实战验证
+- 完整 PPO 自我博弈训练管线（PyTorch + Gymnasium）
 
-- **战术决策**：`planUnitTurn` 分发、射手护弓/逃跑、近战攻防、`analyzeBattleState` 姿态判断
-- **保真量纲**：战力公式 `(1+0.1atk+0.05def)×getMonsterBaseStrength×count`；威胁评分 = 期望伤害 / 距离衰减
-- **法术系统**：英雄（法术威力/法力/法术书）+ 6 法术（Magic Arrow / Lightning Bolt / Haste / Slow / Bless / Curse）+ 有时限状态效果 + 施法 AI（阈值 + 法力折价 + 各法术 ratio）
-- **撤退**：劣势（`myStr×难度系数 < enemyStr`）时英雄撤退 + 告别伤害法术
-- **特殊能力**：无限反击 / 吸血 / 死亡凝视 / 自愈
-- **引擎机制**：交替出手回合序、士气/运气（军队级，AI 不评估）、狂暴、50 回合反僵局
-- **验证闭环**：`scripts/arena.py` 批量 AI-vs-AI 自对弈（镜像 + 置信区间 + 撤退率）
+详见 [docs/MILESTONES.md](docs/MILESTONES.md)。
 
-> 留待选做（未排期）：宽体单位、攻城/城墙、更多兵种(~60)、arena 权重调参、与原版决策对照。
+### 三大里程碑层
+
+| 层 | 里程碑 | 说明 |
+|----|--------|------|
+| **规则层** | M1–M7e | 战斗引擎完整实现：63 兵种、38 法术、攻城、士气/运气、特殊能力 |
+| **经典 AI** | A1–A4 | 忠实复刻 fheroes2 C++ 源码决策链，~97% 覆盖率 |
+| **深度学习** | R1–R7 | CNN+PPO 自我博弈训练管线，从观测编码到训练脚本 |
+
+### 深度学习 R 系列路线
+
+```
+R1(可插拔骨架) → R2(观测编码) ──┐
+                               ├→ R4(环境封装) → R5(神经网络) ──┐
+              R3(动作空间) ────┘                                ├→ R6(PPO训练器) → R7(训练管线)
+```
+
+| 里程碑 | 文件 | 说明 | 测试 |
+|--------|------|------|------|
+| R2 | `ai/observation.py` | 33 通道 hex grid + 20 维全局向量，player-relative | 38 |
+| R3 | `ai/action_space.py` | 13566 维扁平离散 + 合法性 mask | 53 |
+| R4 | `ai/env.py`, `ai/self_play.py` | Gymnasium BattleEnv + 自博弈 runner | 32 |
+| R5 | `ai/deep/model.py` | 4×64 ResBlock CNN + Policy/Value 双头，~4.15M 参数 | 21 |
+| R6 | `ai/deep/trainer.py` | TrajectoryBuffer + GAE + PPOTrainer (CleanRL 风格) | 30 |
+| R7 | `ai/deep/player.py`, `ai/deep/pipeline.py`, `scripts/train.py` | DeepAI + 训练管线 CLI | 31 |
 
 ## 快速开始
 
 ```bash
-uv run main.py                          # GUI 模式
-uv run main.py configs/example.json     # CLI 无头模式
-uv run pytest                           # 跑测试（需先 uv sync --group dev）
-uv run python scripts/arena.py --preset Balanced --games 500 --mirror   # 批量自对弈
+uv sync                                    # 安装依赖（含 PyTorch）
+uv run main.py                             # GUI 模式
+uv run main.py configs/example.json        # CLI 无头模式
+uv run pytest                              # 跑测试（561 个）
+uv run python scripts/arena.py --preset Balanced --games 500 --mirror   # 经典 AI 批量自对弈
 ```
 
-首次运行会自动创建 `.venv` 并安装 pygame。
+### 训练深度学习 AI
+
+```bash
+# 从零训练
+uv run python scripts/train.py --total-steps 100000 --eval-interval 5000
+
+# 从 checkpoint 恢复
+uv run python scripts/train.py --resume checkpoints/checkpoint_5000.pt
+
+# 自定义阵容
+uv run python scripts/train.py --config configs/even_clash.json --eval-games 50
+
+# 训练输出 JSON lines 日志，可用 jq 过滤
+uv run python scripts/train.py --total-steps 50000 | jq 'select(.type=="eval")'
+```
+
+训练参数全部可通过 CLI 控制（`--lr`, `--gamma`, `--clip-eps`, `--phase1-steps` 等）。
 
 ## 使用方式
 
@@ -136,22 +174,28 @@ uv run pyinstaller --onefile --name fheroes-battle-ai-demo \
   --hidden-import=engine.unit --hidden-import=engine.battle_state \
   --hidden-import=engine.battle_logger --hidden-import=engine.actions \
   --hidden-import=engine.hero --hidden-import=engine.spells \
-  --hidden-import=ai --hidden-import=ai.planner \
-  --hidden-import=ai.evaluation --hidden-import=ai.scoring \
-  --hidden-import=ai.strategy --hidden-import=ai.spells --hidden-import=ai.retreat \
+  --hidden-import=engine.castle \
+  --hidden-import=ai --hidden-import=ai.base --hidden-import=ai.factory \
+  --hidden-import=ai.classic --hidden-import=ai.classic.planner \
+  --hidden-import=ai.classic.evaluation --hidden-import=ai.classic.scoring \
+  --hidden-import=ai.classic.strategy --hidden-import=ai.classic.spells \
+  --hidden-import=ai.classic.retreat \
   --hidden-import=ui --hidden-import=ui.fonts \
-  --hidden-import=ui.renderer --hidden-import=ui.hex_renderer --hidden-import=ui.game \
+  --hidden-import=ui.renderer --hidden-import=ui.hex_renderer \
+  --hidden-import=ui.game \
   --hidden-import=ui.screens --hidden-import=ui.screens.setup \
   --hidden-import=ui.screens.battle \
   main.py
 ```
 
-产出单个可执行文件 `dist/fheroes-battle-ai-demo`（约 22M），可分发：
+产出单个可执行文件 `dist/fheroes-battle-ai-demo`，可分发：
 
 ```bash
 ./dist/fheroes-battle-ai-demo                        # GUI
 ./dist/fheroes-battle-ai-demo configs/example.json   # CLI
 ```
+
+> 注：打包仅包含经典 AI（ClassicAI），不包含深度学习组件（PyTorch）。
 
 ## 战斗日志
 
@@ -164,121 +208,120 @@ log/2026-05-30_04-15-23.log
 日志内容包含：双方阵容、逐回合 AI 决策链、战斗结果、胜负判定。
 按 `F` 快进或 `R` 中止也会写入日志。
 
-## 兵种属性
-
-| 兵种 | 攻击 | 防御 | 生命 | 速度 | 伤害 | 数量 | 类型 | 特殊能力 |
-|------|------|------|------|------|------|------|------|------|
-| Swordsman | 5 | 5 | 15 | 4 | 3 | 20 | 步兵 | — |
-| Archer | 4 | 3 | 10 | 3 | 2 | 15 | 射手 | — |
-| Griffin | 6 | 4 | 12 | 7 | 3 | 8 | 飞行 | 无限反击 |
-| Pikeman | 4 | 7 | 20 | 3 | 2 | 25 | 步兵 | — |
-| Cavalry | 7 | 4 | 12 | 6 | 4 | 10 | 步兵 | — |
-| Vampire | 6 | 6 | 20 | 6 | 4 | 8 | 飞行 | 吸血 |
-| Troll | 10 | 5 | 40 | 4 | 7 | 4 | 步兵 | 自愈 |
-| Medusa | 8 | 9 | 25 | 5 | 6 | 4 | 步兵 | 死亡凝视 |
-
-## AI 行为观察指南
-
-对应 [docs/战斗AI学习指南.md](docs/战斗AI学习指南.md) 中的算法：
-
-1. **射手逃跑**：用 "Flyer Threat" 预设，观察弓箭手面对狮鹫时的逃跑决策（狮鹫是飞行单位 → 弓箭手不会逃跑，因为飞兵追得上）
-2. **射手射击优先级**：观察弓箭手射击哪个目标（基于 threat 评分）
-3. **近战追击"逃不掉"的目标**：慢速步兵 vs 快速飞行兽，AI 会优先追速度慢的目标
-4. **防御战术**：用 "Archer Defense" 预设，蓝方弓箭手多 → 近战步兵会保护射手（走绿色路线到射手旁边）
-5. **进攻战术**：红方全骑兵 → 不保护射手，直接冲锋
 
 ## 项目结构
 
 ```
 fheroes-battle-ai-demo/
-├── main.py                统一入口（GUI / CLI）
-├── headless.py            无头战斗引擎（被 main.py 调用）
-├── pyproject.toml         项目配置
+├── main.py                  统一入口（GUI / CLI）
+├── headless.py              无头战斗引擎（被 main.py 调用）
+├── pyproject.toml           项目配置 + 依赖
 │
-├── configs/               战斗配置文件（CLI 模式输入）
-│   ├── example.json       最简阵容
-│   └── mage_duel.json     带英雄/法术
+├── configs/                 战斗配置文件（CLI / 训练脚本输入）
+│   ├── example.json         最简阵容
+│   ├── mage_duel.json       带英雄/法术
+│   └── even_clash.json      多兵种对抗（训练常用）
 │
 ├── scripts/
-│   └── arena.py           批量 AI-vs-AI 自对弈（镜像/置信区间/撤退率）
+│   ├── arena.py             批量 AI-vs-AI 自对弈（镜像/置信区间/撤退率）
+│   ├── train.py             PPO 自我博弈训练脚本（R7）
+│   ├── ai_validation.py     AI 决策审计工具
+│   └── fingerprint.py       代码指纹生成
 │
-├── docs/                  文档
-│   ├── MILESTONES.md      里程碑 M1–M5（含退出标准）
-│   ├── VERIFICATION.md    M1–M5 验证清单（可逐条复核）
+├── docs/                    文档
+│   ├── MILESTONES.md        里程碑（含退出标准）
+│   ├── VERIFICATION.md      验证清单
+│   ├── rules-audit.md       规则对照（318 项）
+│   ├── ai-audit.md          AI 行为审计（126 条）
 │   └── 战斗AI学习指南.md
 │
-├── config/                纯数据常量（无逻辑）
-│   ├── colors.py          调色板
-│   ├── units.py           兵种定义（含特殊能力）
-│   ├── presets.py         预设阵型
-│   └── timing.py          动画/延迟常量
+├── config/                  纯数据常量（无逻辑）
+│   ├── colors.py            调色板
+│   ├── units.py             兵种定义（63 种，含特殊能力）
+│   ├── presets.py           预设阵型
+│   └── timing.py            动画/延迟常量
 │
-├── engine/                核心引擎（零 pygame，可纯逻辑单测）
-│   ├── hex_grid.py        六角格几何 + 寻路（纯几何）
-│   ├── unit.py            单位类（属性/效果/能力/战力公式）
-│   ├── battle_state.py    战斗状态机 + 伤害/施法/士气运气/胜负
-│   ├── hero.py            英雄（法术威力/法力/法术书）
-│   ├── spells.py          法术定义 + 有时限状态效果
-│   ├── battle_logger.py   战斗日志记录
-│   └── actions.py         行动类型（Move/Attack/Skip/Cast/Retreat）
+├── engine/                  核心引擎（零 pygame，可纯逻辑单测）
+│   ├── hex_grid.py          六角格几何 + 寻路
+│   ├── unit.py              单位类（属性/效果/能力/战力公式）
+│   ├── battle_state.py      战斗状态机 + 伤害/施法/士气运气/胜负
+│   ├── hero.py              英雄（法术威力/法力/法术书）
+│   ├── spells.py            法术定义（38 种）+ 有时限状态效果
+│   ├── castle.py            攻城（城墙/护城河/箭塔）
+│   ├── battle_logger.py     战斗日志记录
+│   └── actions.py           行动类型（Move/Attack/Skip/Cast/Retreat）
 │
-├── ai/                    AI 决策系统
-│   ├── planner.py         顶层决策调度（含狂暴/谨慎走位）
-│   ├── evaluation.py      局面分析（兵力对比、战术标志）
-│   ├── scoring.py         威胁评分 + 位置评估
-│   ├── spells.py          施法 AI（select_best_spell）
-│   ├── retreat.py         撤退决策
-│   └── strategy.py        策略枚举（预留，符合原版无独立策略层）
+├── ai/                      AI 决策系统
+│   ├── base.py              AIPlayer 抽象基类
+│   ├── factory.py           工厂 + 注册表（create_ai）
+│   ├── observation.py       观测编码（R2: 33 通道 grid + 20 维全局）
+│   ├── action_space.py      动作空间（R3: 13566 维 + 合法性 mask）
+│   ├── env.py               Gymnasium BattleEnv（R4）
+│   ├── self_play.py         自博弈 runner + eval_vs_classic
+│   ├── classic/             经典 AI（忠实复刻 fheroes2 C++ 源码）
+│   │   ├── planner.py       顶层决策调度
+│   │   ├── evaluation.py    局面分析
+│   │   ├── scoring.py       威胁评分 + 位置评估
+│   │   ├── spells.py        施法 AI
+│   │   ├── retreat.py       撤退决策
+│   │   └── strategy.py      策略枚举
+│   └── deep/                深度学习 AI
+│       ├── model.py         BattleNet CNN（R5: ResBlock + Policy/Value 双头）
+│       ├── trainer.py       PPOTrainer（R6: GAE + PPO-Clip）
+│       ├── player.py        DeepAI(AIPlayer) + make_agent_fn（R7）
+│       └── pipeline.py      训练工具（配置/课程/checkpoint）（R7）
 │
-├── ui/                    渲染层（依赖 engine + config）
-│   ├── game.py            Game 类：窗口、缩放、主循环
-│   ├── fonts.py           字体系统 + team helpers
-│   ├── renderer.py        共享绘制工具（Popup、按钮、单位）
-│   ├── hex_renderer.py    六角格像素层 + 绘图（pygame 集中于此）
+├── ui/                      渲染层（依赖 engine + config）
+│   ├── game.py              Game 类：窗口、缩放、主循环
+│   ├── fonts.py             字体系统 + team helpers
+│   ├── renderer.py          共享绘制工具
+│   ├── hex_renderer.py      六角格像素层（pygame 集中于此）
 │   └── screens/
-│       ├── setup.py       布阵界面
-│       └── battle.py      战斗界面 + 动画引擎
+│       ├── setup.py         布阵界面
+│       └── battle.py        战斗界面 + 动画引擎
 │
-├── tests/                 自动化测试（82 个，无需显示器）
-├── log/                   战斗日志（自动生成，gitignore）
-└── assets/                资源目录（预留贴图/音效）
+├── tests/                   自动化测试（561 个，无需显示器）
+└── log/                     战斗日志（自动生成，gitignore）
 ```
 
-**依赖方向：`config → engine → ai → ui`**。`engine` 与 `ai` 完全脱离 pygame——所有像素/绘图集中在 `ui/hex_renderer.py` 与 `ui/`，因此核心逻辑可在无显示器环境单测（CI 即如此跑 pytest + arena）。
+**依赖方向**：`config → engine → ai → ui`。`engine` 与 `ai` 完全脱离 pygame——所有像素/绘图集中在 `ui/`，核心逻辑可在无显示器环境单测（CI 即如此跑 pytest + arena）。
 
-## 后续发展方向
-
-本项目专注**战术层 AI**——只做战场内决策（移动、攻击、法术、士气等），不做冒险地图/城镇等战略层。核心复刻 M1–M5 已完成（见 [docs/MILESTONES.md](docs/MILESTONES.md)）；以下为留待选做（未排期，多为独立大块或研究级）：
-
-- [ ] **宽体单位 + 双格攻击**：单位占两格 → 改占位/寻路/邻接（`optimalAttackVector` / `doubleCellAttackValue`）
-- [ ] **攻城 / 城墙 / 箭塔**：城墙格、守方箭塔、隔墙远程惩罚、桥、地震法术——基本是第二套战斗模式
-- [ ] **更多兵种(~60)**：逼近原版完整数值表（接口已就绪，主要是数据录入）
-- [ ] **arena 权重调优**：在批量对战闭环上对 threat / 姿态阈值做参数搜索
-- [ ] **与原版决策对照**：把 fheroes2 C++ AI 当 oracle 跑同一快照比一致率
-- [ ] **阵型编队 / MCTS 陪练**（可选）
-
-### 关键参考文件
-
-| 本项目模块 | fheroes2 源码 | 功能 |
-|-----------|--------------|------|
-| `ai/planner.py` | [ai_battle.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle.cpp) | 战斗 AI 主逻辑 |
-| `ai/spells.py` | [ai_battle_spell.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle_spell.cpp) | 法术 AI（selectBestSpell） |
-| `ai/retreat.py` | [ai_battle.cpp:703-870](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle.cpp#L703-L870) | 撤退决策 |
-| `ai/evaluation.py` | [ai_battle.cpp:949](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle.cpp#L949) | 局面分析 |
-| `engine/hex_grid.py` | [battle_board.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/battle/battle_board.cpp) | 六角格引擎 |
-| `engine/battle_state.py` | [battle_arena.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/battle/battle_arena.cpp) | 战斗机制 |
-| `engine/unit.py` | [battle_troop.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/battle/battle_troop.cpp) | 单位逻辑 |
+**AI 架构**：`ai.base.AIPlayer` 抽象接口 → `ai.classic.ClassicAI`（规则驱动）+ `ai.deep.player.DeepAI`（神经网络驱动），通过 `ai.factory.create_ai()` 统一创建。
 
 ## 技术栈
 
 - **Python 3.11+**
+- **PyTorch** — 深度学习（CNN 骨干 + PPO 训练）
+- **Gymnasium** — RL 环境标准接口
+- **NumPy** — 数值计算
 - **pygame** — 渲染、输入、窗口管理
 - **uv** — 包管理与依赖解析
 - **PyInstaller** — 打包为单文件可执行
-- 无第三方 AI/ML 框架，所有决策逻辑手工实现以忠实复刻原版算法
 
 ## 安全机制
 
 - **反僵局**：进攻方连续 50 回合无任何死亡 → 撤退判负（对齐原版 `MAX_TURNS_WITHOUT_DEATHS`）
 - **200 回合绝对兜底**：触顶按剩余 army strength 判定胜方，防止无限循环
 - **`_next_unit()` 无递归**：避免栈溢出
+
+## 后续发展方向
+
+核心复刻 + 深度学习管线已完成。以下为留待选做（未排期）：
+
+- [ ] **实际训练与调参**：运行 `train.py`，观察 vs ClassicAI 胜率曲线，调优超参数
+- [ ] **宽体单位 + 双格攻击**：单位占两格 → 改占位/寻路/邻接
+- [ ] **更多阵容训练**：扩展到多兵种/带英雄/攻城场景
+- [ ] **arena 权重调优**：经典 AI threat / 姿态阈值参数搜索
+- [ ] **与原版决策对照**：把 fheroes2 C++ AI 当 oracle 跑同一快照比一致率
+
+### 关键参考文件
+
+| 本项目模块 | fheroes2 源码 | 功能 |
+|-----------|--------------|------|
+| `ai/classic/planner.py` | [ai_battle.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle.cpp) | 战斗 AI 主逻辑 |
+| `ai/classic/spells.py` | [ai_battle_spell.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle_spell.cpp) | 法术 AI |
+| `ai/classic/retreat.py` | [ai_battle.cpp:703-870](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle.cpp#L703-L870) | 撤退决策 |
+| `ai/classic/evaluation.py` | [ai_battle.cpp:949](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/ai/ai_battle.cpp#L949) | 局面分析 |
+| `engine/hex_grid.py` | [battle_board.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/battle/battle_board.cpp) | 六角格引擎 |
+| `engine/battle_state.py` | [battle_arena.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/battle/battle_arena.cpp) | 战斗机制 |
+| `engine/unit.py` | [battle_troop.cpp](https://github.com/ihhub/fheroes2/blob/master/src/fheroes2/battle/battle_troop.cpp) | 单位逻辑 |
