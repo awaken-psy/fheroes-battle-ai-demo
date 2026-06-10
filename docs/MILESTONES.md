@@ -1,6 +1,6 @@
 # 里程碑 — 战斗 AI 复刻
 
-> **T 系列（训练实战）进行中 — T1✅ T2✅ T3✅ T4✅ T5✅ 完成，准备 T6 稳定性优化。**
+> **T 系列（训练实战）进行中 — T1✅ T2✅ T3✅ T4✅ T5✅ T6✅ 完成，准备 T7 模型升级。**
 >
 > - 规则层 M1–M7e：~99% 保真度，63 兵种，38 法术，298 测试
 > - AI 决策层 A1–A4：~97% 决策行为覆盖（126 条审计），356 测试
@@ -9,11 +9,10 @@
 > - **T2 模型/训练改进**：GroupNorm + LR decay + Grad accum + TensorBoard，13 测试，PR #25
 > - **T3 自博弈对手池**：OpponentPool + 50/50 池采样 + 磁盘持久化，16 测试，PR #27
 > - **T4 训练战役**：200k 步，best.pt 胜率 88%（example.json），训练报告已写
-> - **T5 多配置训练**：✅ 每 rollout 随机选配置，多配置 eval，平均 best.pt
-> - **T6 稳定性优化**：📋 下一步
-> - **T6 稳定性优化**：📋
+> - **T5 多配置训练**：每 rollout 随机选配置，多配置 eval，平均 best.pt，PR #31
+> - **T6 稳定性优化**：cosine LR + 500k 步 × 4 配置 × pool 10，3/4 benchmark 通过
 > - **T7 模型升级**：📋（实验性）
-> - **总计 622 测试，CI 守护**
+> - **总计 633 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
 > AI 行为审计见 [`docs/ai-audit.md`](ai-audit.md)（126 条）。
@@ -262,48 +261,37 @@ for i, cfg in enumerate(configs):
 
 ---
 
-### T6 — 训练稳定性优化
+### T6 — 训练稳定性优化 ✅
 
 改进超参数和训练策略，减少 eval 胜率震荡，提升最终性能。
 
 **修改文件**：
-- `scripts/train.py` — 新增 `--lr-schedule` 参数（linear / cosine）
-- `ai/deep/trainer.py` — 支持 cosine annealing LR
+- `scripts/train.py` — `--lr-decay` 替换为 `--lr-schedule {none,linear,cosine}`
+- 新增 `tests/test_lr_schedule.py` — 11 个测试
+
+**训练结果**：
+- 500k 步，4 配置混合训练，1745.9 秒（RTX 3070）
+- Cosine LR: 2.5e-4 → 0.0 平滑衰减
+- Entropy: 3.56 → 1.73
+- best.pt (step 430,080): 平均胜率 **57%**
+  - example 83% ✅ | even_clash 95% ✅ | mage_duel 51% ✅ | dragon_battle 0% ✗
+- 训练报告：[`docs/t6-training-report.md`](t6-training-report.md)
 
 **改进项**：
 
 | 改进 | 说明 | 原因 |
 |------|------|------|
-| Cosine annealing LR | 学习率余弦退火，周期性重启 | 线性衰减末期 LR≈0 导致停滞，cosine 可跳出局部最优 |
-| 对手池扩容 | 默认 5→10 或更多 | 更多对手多样性，减少循环主导策略 |
+| Cosine annealing LR | 学习率余弦退火 | 线性衰减末期 LR≈0 导致停滞，cosine 平滑衰减 |
+| 对手池扩容 | 5→10 | 更多对手多样性，减少循环主导策略 |
 | 课程阶段延长 | phase1 10k→30k，phase2 30k→100k | 多配置训练更复杂，需要更多时间学基础 |
-| 更长训练 | 500k+ 步 | T4 的 200k 步仍在震荡，需要更多步数收敛 |
-
-**训练命令**（T5 完成后执行）：
-```bash
-python scripts/train.py \
-  --total-steps 500000 \
-  --rollout-steps 2048 \
-  --config configs/example.json configs/even_clash.json \
-           configs/mage_duel.json configs/dragon_battle.json \
-  --eval-interval 10000 \
-  --eval-games 100 \
-  --device cuda \
-  --lr-schedule cosine \
-  --grad-accum 4 \
-  --tensorboard \
-  --opponent-pool 10 \
-  --phase1-steps 30000 \
-  --phase2-steps 100000 \
-  --checkpoint-dir checkpoints/t6-stability
-```
+| 更长训练 | 200k→500k 步 | T4 的 200k 步仍在震荡，需要更多步数收敛 |
 
 **退出标准**：
-- [ ] Cosine annealing LR scheduler 选项添加
-- [ ] 500k 步混合配置训练完成
-- [ ] 4 配置 benchmark 与 T4 baseline 对比（期望 3/4 以上配置有非零胜率）
-- [ ] 训练报告写入 `docs/t6-training-report.md`
-- [ ] 所有测试通过
+- [x] Cosine annealing LR scheduler 选项添加
+- [x] 500k 步混合配置训练完成
+- [x] 4 配置 benchmark 与 T4 baseline 对比（3/4 配置有非零胜率 ✅）
+- [x] 训练报告写入 `docs/t6-training-report.md`
+- [x] 所有测试通过（633 passed）
 
 ---
 

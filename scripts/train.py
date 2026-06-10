@@ -12,8 +12,8 @@ Usage::
     # Custom battle config
     python scripts/train.py --config configs/even_clash.json
 
-    # With all T2 improvements
-    python scripts/train.py --device cuda --lr-decay --grad-accum 4 --tensorboard
+    # With all T2/T6 improvements
+    python scripts/train.py --device cuda --lr-schedule cosine --grad-accum 4 --tensorboard
 
 All training progress is printed as JSON lines (one per rollout).
 Evaluation results are JSON lines with an ``"eval"`` key.
@@ -73,9 +73,11 @@ def parse_args(argv=None):
     p.add_argument("--value-coeff", type=float, default=0.5)
     p.add_argument("--max-grad-norm", type=float, default=0.5)
 
-    # T2 improvements
-    p.add_argument("--lr-decay", action="store_true",
-                   help="Enable linear LR decay to 0 over training")
+    # T2/T6 improvements
+    p.add_argument("--lr-schedule", type=str, default="none",
+                   choices=["none", "linear", "cosine"],
+                   help="LR schedule: none (constant), linear (decay to 0), "
+                        "cosine (CosineAnnealingLR, T6)")
     p.add_argument("--grad-accum", type=int, default=1,
                    help="Gradient accumulation steps (default: 1, no accumulation)")
     p.add_argument("--tensorboard", action="store_true",
@@ -153,17 +155,23 @@ def main(argv=None):
     if multi_config:
         log_step(0, {"msg": f"multi-config training: {config_names}"})
 
-    # ── LR scheduler (T2) ─────────────────────────────────────────
+    # ── LR scheduler (T2/T6) ──────────────────────────────────────────
     scheduler = None
-    if args.lr_decay:
-        # Total optimizer steps ≈ total_rollouts × update_epochs
-        # We approximate: scheduler steps once per rollout
-        # LinearLR decays from lr to end_lr over total_iters
+    total_iters = args.total_steps // args.rollout_steps
+    if args.lr_schedule == "linear":
+        # LinearLR decays from lr to 0 over total_iters
         scheduler = torch.optim.lr_scheduler.LinearLR(
             trainer.optimizer,
             start_factor=1.0,
             end_factor=0.0,
-            total_iters=args.total_steps // args.rollout_steps,
+            total_iters=total_iters,
+        )
+    elif args.lr_schedule == "cosine":
+        # CosineAnnealingLR decays LR following a cosine curve (T6)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            trainer.optimizer,
+            T_max=total_iters,
+            eta_min=0.0,
         )
 
     # ── TensorBoard writer (T2) ──────────────────────────────────
