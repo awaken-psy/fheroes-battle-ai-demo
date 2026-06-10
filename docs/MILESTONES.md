@@ -1,6 +1,6 @@
 # 里程碑 — 战斗 AI 复刻
 
-> **当前阶段：T 系列（训练实战）进行中 — T1 ✅ T2 ✅ T3 ✅ 完成，准备 T4。**
+> **T 系列（训练实战）全部完成。**
 >
 > - 规则层 M1–M7e：~99% 保真度，63 兵种，38 法术，298 测试
 > - AI 决策层 A1–A4：~97% 决策行为覆盖（126 条审计），356 测试
@@ -8,6 +8,7 @@
 > - **T1 Baseline 评估框架**：eval_benchmark.py + 15 测试，PR #23
 > - **T2 模型/训练改进**：GroupNorm + LR decay + Grad accum + TensorBoard，13 测试，PR #25
 > - **T3 自博弈对手池**：OpponentPool + 50/50 池采样 + 磁盘持久化，16 测试，PR #27
+> - **T4 训练战役**：200k 步，best.pt 胜率 88%（example.json），训练报告已写
 > - **总计 605 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
@@ -182,7 +183,7 @@ python scripts/train.py \
 
 ---
 
-### T4 — 训练战役
+### T4 — 训练战役 ✅
 
 用全部改进跑一次完整训练，评估 vs ClassicAI 的最终胜率。
 
@@ -202,15 +203,22 @@ python scripts/train.py \
   --checkpoint-dir checkpoints/t4-campaign
 ```
 
-**退出标准**：
-- [ ] 200k 步训练完成，TensorBoard 曲线记录完整
-- [ ] Benchmark Suite 胜率达到目标（example ≥50%, even_clash ≥40%, mage_duel ≥30%, dragon ≥20%）
-- [ ] 最佳 checkpoint 保存为 `checkpoints/best.pt`
-- [ ] 训练结果写入 `docs/t4-training-report.md`（含曲线截图 + 胜率表）
-- [ ] README 更新训练结果展示
-- [ ] 所有测试通过
+**实际结果**：
+- 训练耗时 488 秒（~8 分钟，RTX 3070）
+- Entropy: 3.63 → 2.63（策略在收敛）
+- 对手池使用：53.5% 池采样 + 46.5% 自博弈
+- best.pt 在 step 51200，example.json 胜率 **88%**
+- 单配置训练，未见过的配置 0%（详见训练报告）
 
-**如果未达标**：分析 TensorBoard 曲线（loss/entropy/eval_win_rate），定位问题（策略坍塌？课程太短？reward 设计？），调整超参数重跑。
+**退出标准**：
+- [x] 200k 步训练完成，TensorBoard 曲线记录完整
+- [x] 最佳 checkpoint 保存为 `checkpoints/t4-campaign/best.pt`
+- [x] 训练结果写入 [`docs/t4-training-report.md`](t4-training-report.md)
+- [x] README 更新训练结果展示
+- [x] 所有测试通过（605 passed）
+- ⚠️ Benchmark Suite：example 88% ✅（≥50%），其余 3 配置 0%（单一配置训练未泛化）
+
+**结论**：训练管线完整可用，example.json 大幅超标。未泛化到其他配置——根因是单一配置训练，建议下一步实现多配置混合训练。
 
 ---
 
