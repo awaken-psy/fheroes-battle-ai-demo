@@ -1,0 +1,16 @@
+{
+  "units": [
+    {"team": 0, "type": "Mage",       "col": 0, "row": 4, "count": 5},
+    {"team": 0, "type": "Iron Golem", "col": 1, "row": 2, "count": 8},
+    {"team": 0, "type": "Sprite",     "col": 1, "row": 6, "count": 15},
+    {"team": 1, "type": "Druid",      "col": 10, "row": 4, "count": 5},
+    {"team": 1, "type": "Battle Dwarf","col": 9, "row": 2, "count": 8},
+    {"team": 1, "type": "Elf",        "col": 9, "row": 6, "count": 8}
+  ],
+  "heroes": {
+    "0": {"name": "Wizard", "power": 6, "spell_points": 25,
+          "spells": ["Lightning Bolt", "Fireball", "Slow", "Curse", "Shield"]},
+    "1": {"name": "Sorceress", "power": 5, "spell_points": 22,
+          "spells": ["Cold Ray", "Magic Arrow", "Haste", "Bless", "Cure"]}
+  }
+}

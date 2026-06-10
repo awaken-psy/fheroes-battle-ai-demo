@@ -1,0 +1,10 @@
+{
+  "units": [
+    {"team": 0, "type": "Champion",  "col": 2, "row": 3, "count": 4},
+    {"team": 0, "type": "Wolf",      "col": 0, "row": 5, "count": 8},
+    {"team": 0, "type": "Paladin",   "col": 1, "row": 7, "count": 5},
+    {"team": 1, "type": "Crusader",  "col": 8, "row": 3, "count": 5},
+    {"team": 1, "type": "Unicorn",   "col": 10, "row": 5, "count": 4},
+    {"team": 1, "type": "Rogue",     "col": 9, "row": 7, "count": 15}
+  ]
+}

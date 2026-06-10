@@ -1,0 +1,16 @@
+{
+  "units": [
+    {"team": 0, "type": "Swordsman", "col": 1, "row": 2, "count": 8},
+    {"team": 0, "type": "Archer",    "col": 0, "row": 4, "count": 6},
+    {"team": 0, "type": "Pikeman",   "col": 2, "row": 6, "count": 10},
+    {"team": 1, "type": "Orc Chief", "col": 9, "row": 2, "count": 7},
+    {"team": 1, "type": "Wolf",      "col": 8, "row": 4, "count": 5},
+    {"team": 1, "type": "Ogre",      "col": 10, "row": 6, "count": 6}
+  ],
+  "heroes": {
+    "0": {"name": "Knight", "power": 3, "spell_points": 15,
+          "spells": ["Magic Arrow", "Haste", "Bless"]},
+    "1": {"name": "Barbarian", "power": 2, "spell_points": 10,
+          "spells": ["Magic Arrow", "Bloodlust"]}
+  }
+}

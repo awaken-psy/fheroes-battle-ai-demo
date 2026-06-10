@@ -48,9 +48,24 @@ def spec_from_preset(name: str):
 
 
 def spec_from_config(path: str):
+    """Load battle spec from a config JSON file.
+
+    Returns (spec_list, heroes_dict, is_siege) where spec_list items are
+    (type, team, col, row[, count]) tuples and heroes_dict maps team→hero_cfg.
+    """
     with open(path, encoding="utf-8") as f:
-        placements = json.load(f)
-    return [(p["type"], p["team"], p["col"], p["row"]) for p in placements]
+        data = json.load(f)
+    if isinstance(data, dict):
+        placements = data.get("units", [])
+        heroes = {int(k): v for k, v in data.get("heroes", {}).items()} or None
+        siege = data.get("siege", False)
+    else:
+        placements = data
+        heroes = None
+        siege = False
+    spec = [(p["type"], p["team"], p["col"], p["row"], p.get("count"))
+            for p in placements]
+    return spec, heroes, siege
 
 
 def mirror_spec(spec):
@@ -60,15 +75,25 @@ def mirror_spec(spec):
     ~50%. Any systematic deviation reveals a side or first-move bias.
     """
     cols = config.GRID_COLS
-    team0 = [(t, 0, c, r) for (t, team, c, r) in spec if team == 0]
+    # spec items are 4- or 5-tuples (type, team, col, row[, count])
+    team0 = [s for s in spec if s[1] == 0]
     if not team0:
         sys.exit("--mirror needs at least one team-0 unit to mirror.")
-    mirrored = [(t, 1, cols - 1 - c, r) for (t, _, c, r) in team0]
+    mirrored = []
+    for s in team0:
+        t, _, c, r = s[:4]
+        cnt = s[4] if len(s) > 4 else None
+        mirrored.append((t, 1, cols - 1 - c, r, cnt))
     return team0 + mirrored
 
 
 def build_units(spec):
-    return [Unit.from_type(t, team, c, r) for (t, team, c, r) in spec]
+    units = []
+    for s in spec:
+        t, team, c, r = s[:4]
+        cnt = s[4] if len(s) > 4 else None
+        units.append(Unit.from_type(t, team, c, r, count=cnt))
+    return units
 
 
 def wilson_interval(wins: int, n: int, z: float = 1.96):
@@ -83,12 +108,15 @@ def wilson_interval(wins: int, n: int, z: float = 1.96):
 
 
 def run(args):
-    spec = (spec_from_config(args.config) if args.config
-            else spec_from_preset(args.preset))
+    if args.config:
+        spec, cfg_heroes, cfg_siege = spec_from_config(args.config)
+    else:
+        spec = spec_from_preset(args.preset)
+        cfg_heroes = None
+        cfg_siege = config.PRESETS.get(args.preset, {}).get("siege", False)
 
     # Siege mode: fixed attacker/defender (team 0 attacks, team 1 defends).
-    is_siege = args.siege or (not args.config and not args.mirror
-                              and config.PRESETS.get(args.preset, {}).get("siege", False))
+    is_siege = args.siege or cfg_siege
 
     if args.mirror:
         spec = mirror_spec(spec)
@@ -96,10 +124,18 @@ def run(args):
             print("Warning: --mirror overrides siege mode (siege incompatible with mirror)")
             is_siege = False
 
+    # Heroes: CLI flags override config file; config file overrides defaults.
     default_hero = {"power": 3, "spell_points": 15}
-    hero_configs = {0: default_hero if args.hero0 else None,
-                    1: default_hero if args.hero1 else None}
-    use_heroes = args.hero0 or args.hero1
+    if args.hero0 or args.hero1:
+        hero_configs = {0: default_hero if args.hero0 else None,
+                        1: default_hero if args.hero1 else None}
+        use_heroes = True
+    elif cfg_heroes:
+        hero_configs = cfg_heroes
+        use_heroes = True
+    else:
+        hero_configs = {0: None, 1: None}
+        use_heroes = False
 
     wins = {0: 0, 1: 0}
     early = 0

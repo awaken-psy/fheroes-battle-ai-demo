@@ -1,0 +1,344 @@
+{
+  "scenarios": [
+    {
+      "games": 200,
+      "source": "preset:Balanced",
+      "mirror": true,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 99,
+      "team1_wins": 101,
+      "team0_winrate": 0.495,
+      "ci95": [
+        0.4265,
+        0.5637
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 8.84,
+      "scenario": "Mirror: Balanced",
+      "status": "PASS",
+      "detail": "mirror fairness 40-60% band (got 49.5%)",
+      "elapsed_s": 1.31
+    },
+    {
+      "games": 200,
+      "source": "preset:Wide Clash",
+      "mirror": true,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 86,
+      "team1_wins": 114,
+      "team0_winrate": 0.43,
+      "ci95": [
+        0.3633,
+        0.4993
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 6.67,
+      "scenario": "Mirror: Wide Clash",
+      "status": "PASS",
+      "detail": "mirror fairness 40-60% band (got 43.0%)",
+      "elapsed_s": 2.52
+    },
+    {
+      "games": 200,
+      "source": "preset:Dragon Horde",
+      "mirror": true,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 100,
+      "team1_wins": 100,
+      "team0_winrate": 0.5,
+      "ci95": [
+        0.4314,
+        0.5686
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 15.05,
+      "scenario": "Mirror: Dragon Horde",
+      "status": "PASS",
+      "detail": "mirror fairness 40-60% band (got 50.0%)",
+      "elapsed_s": 5.0
+    },
+    {
+      "games": 200,
+      "source": "preset:Archer Defense",
+      "mirror": false,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 0,
+      "team1_wins": 200,
+      "team0_winrate": 0.0,
+      "ci95": [
+        0.0,
+        0.0188
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 3.88,
+      "scenario": "Archer Defense",
+      "status": "PASS",
+      "detail": "T0=0 T1=200 avg_rnd=3.88",
+      "elapsed_s": 2.73
+    },
+    {
+      "games": 200,
+      "source": "preset:Flyer Threat",
+      "mirror": false,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 135,
+      "team1_wins": 65,
+      "team0_winrate": 0.675,
+      "ci95": [
+        0.6073,
+        0.7361
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 9.82,
+      "scenario": "Flyer Threat",
+      "status": "PASS",
+      "detail": "T0=135 T1=65 avg_rnd=9.82",
+      "elapsed_s": 2.8
+    },
+    {
+      "games": 200,
+      "source": "preset:Knight vs Barbarian",
+      "mirror": false,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 200,
+      "team1_wins": 0,
+      "team0_winrate": 1.0,
+      "ci95": [
+        0.9812,
+        1.0
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 6.66,
+      "scenario": "Knight vs Barbarian",
+      "status": "PASS",
+      "detail": "T0=200 T1=0 avg_rnd=6.66",
+      "elapsed_s": 1.63
+    },
+    {
+      "games": 200,
+      "source": "preset:Clash of Titans",
+      "mirror": false,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 0,
+      "team1_wins": 200,
+      "team0_winrate": 0.0,
+      "ci95": [
+        0.0,
+        0.0188
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 5.82,
+      "scenario": "Clash of Titans",
+      "status": "PASS",
+      "detail": "T0=0 T1=200 avg_rnd=5.82",
+      "elapsed_s": 2.0
+    },
+    {
+      "games": 200,
+      "source": "preset:Sorceress vs Necromancer",
+      "mirror": false,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 0,
+      "team1_wins": 200,
+      "team0_winrate": 0.0,
+      "ci95": [
+        0.0,
+        0.0188
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 5.0,
+      "scenario": "Sorceress vs Necro",
+      "status": "PASS",
+      "detail": "T0=0 T1=200 avg_rnd=5.0",
+      "elapsed_s": 1.41
+    },
+    {
+      "games": 200,
+      "source": "preset:Wizard's Tower",
+      "mirror": false,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 51,
+      "team1_wins": 149,
+      "team0_winrate": 0.255,
+      "ci95": [
+        0.1996,
+        0.3196
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 5.1,
+      "scenario": "Wizard's Tower",
+      "status": "PASS",
+      "detail": "T0=51 T1=149 avg_rnd=5.1",
+      "elapsed_s": 5.14
+    },
+    {
+      "games": 200,
+      "source": "preset:Siege: Assault",
+      "mirror": false,
+      "siege": true,
+      "seed": 42,
+      "team0_wins": 100,
+      "team1_wins": 100,
+      "team0_winrate": 0.5,
+      "ci95": [
+        0.4314,
+        0.5686
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 5.75,
+      "scenario": "Siege: Assault",
+      "status": "PASS",
+      "detail": "T0=100 T1=100 avg_rnd=5.75",
+      "elapsed_s": 4.97
+    },
+    {
+      "games": 200,
+      "source": "configs/spell_duel.json",
+      "mirror": false,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 200,
+      "team1_wins": 0,
+      "team0_winrate": 1.0,
+      "ci95": [
+        0.9812,
+        1.0
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 2.5,
+      "scenario": "Spell Duel",
+      "status": "PASS",
+      "detail": "T0=200 T1=0 avg_rnd=2.5",
+      "elapsed_s": 0.55
+    },
+    {
+      "games": 200,
+      "source": "configs/ability_showcase.json",
+      "mirror": false,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 0,
+      "team1_wins": 200,
+      "team0_winrate": 0.0,
+      "ci95": [
+        0.0,
+        0.0188
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 3.92,
+      "scenario": "Ability Showcase",
+      "status": "PASS",
+      "detail": "T0=0 T1=200 avg_rnd=3.92",
+      "elapsed_s": 1.45
+    },
+    {
+      "games": 200,
+      "source": "configs/wide_melee.json",
+      "mirror": false,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 0,
+      "team1_wins": 200,
+      "team0_winrate": 0.0,
+      "ci95": [
+        0.0,
+        0.0188
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 3.95,
+      "scenario": "Wide Melee",
+      "status": "PASS",
+      "detail": "T0=0 T1=200 avg_rnd=3.95",
+      "elapsed_s": 1.76
+    },
+    {
+      "games": 200,
+      "source": "configs/dragon_battle.json",
+      "mirror": false,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 0,
+      "team1_wins": 200,
+      "team0_winrate": 0.0,
+      "ci95": [
+        0.0,
+        0.0188
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 3.0,
+      "scenario": "Dragon Battle",
+      "status": "PASS",
+      "detail": "T0=0 T1=200 avg_rnd=3.0",
+      "elapsed_s": 0.94
+    },
+    {
+      "games": 200,
+      "source": "configs/ranged_fest.json",
+      "mirror": false,
+      "siege": false,
+      "seed": 42,
+      "team0_wins": 200,
+      "team1_wins": 0,
+      "team0_winrate": 1.0,
+      "ci95": [
+        0.9812,
+        1.0
+      ],
+      "ended_early": 0,
+      "retreats": 0,
+      "avg_rounds": 3.86,
+      "scenario": "Ranged Fest",
+      "status": "PASS",
+      "detail": "T0=200 T1=0 avg_rnd=3.86",
+      "elapsed_s": 0.15
+    },
+    {
+      "games": 200,
+      "source": "configs/siege_wizards.json",
+      "mirror": false,
+      "siege": true,
+      "seed": 42,
+      "team0_wins": 141,
+      "team1_wins": 59,
+      "team0_winrate": 0.705,
+      "ci95": [
+        0.6384,
+        0.7639
+      ],
+      "ended_early": 70,
+      "retreats": 70,
+      "avg_rounds": 7.75,
+      "scenario": "Siege + Wizards",
+      "status": "PASS",
+      "detail": "T0=141 T1=59 avg_rnd=7.75",
+      "elapsed_s": 8.74
+    }
+  ],
+  "total_games": 3200,
+  "total_time_s": 43.11,
+  "pass": 16,
+  "warn": 0
+}
