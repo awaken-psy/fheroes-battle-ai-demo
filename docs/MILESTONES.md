@@ -296,36 +296,26 @@ CNN 骨干 + Policy/Value 双头的 PyTorch 模型。
 
 ---
 
-### R6 — PPO 训练器 `ai/deep/trainer.py`
+### R6 — PPO 训练器 `ai/deep/trainer.py` ✅
 
-基于 **CleanRL** PPO 实现的训练循环。
-
-**策略**：参考 CleanRL 的 `ppo_atari.py` 或 `ppo_continuous_action.py` 单文件实现，
-根据我们的 `BattleEnv`（Dict obs + mask action）适配，而非从零实现 PPO 算法。
-CleanRL 代码简洁可读（~300 行），方便理解和调试。
+基于 **CleanRL** PPO 实现的训练循环（~280 行）。
 
 **核心组件**：
 
-- **Trajectory Buffer**：存储 (obs, action, reward, value, log_prob, mask) 序列
-- **GAE 优势估计**：λ=0.95, γ=0.99
-- **PPO Clip 更新**：ε=0.2，多 epoch mini-batch 更新
-- **Value Loss**：MSE 回归价值函数
-- **Entropy Bonus**：鼓励探索
-- **Action Masking**：在 policy head 直接 mask 非法动作
+- `TrajectoryBuffer`：存储 (grid, global, mask, action, reward, value, log_prob, done)
+- `compute_gae()`：GAE 优势估计，λ=0.95, γ=0.99，terminal 自动截断
+- `PPOTrainer`：self-play 采集 + PPO-Clip 更新 + 课程奖励调度
 
-**训练流程**：
-1. 自我博弈收集 N 局 trajectory
-2. 计算 GAE advantage
-3. PPO 更新（多 epoch × mini-batch）
-4. 记录 loss / entropy / value 估计
+**超参数（默认值）**：lr=2.5e-4, γ=0.99, λ=0.95, ε=0.2, epochs=4,
+minibatch=64, entropy_coeff=0.01, value_coeff=0.5, max_grad_norm=0.5
 
 **退出标准**：
-- [ ] 自我博弈数据收集完整，trajectory 格式正确
-- [ ] GAE 计算验证（手工构造 case）
-- [ ] PPO update 单步跑通，loss 有限不发散
-- [ ] 连续训练 100 局，loss 呈下降趋势
-- [ ] 梯度裁剪正常，无 NaN/Inf
-- [ ] 单元测试覆盖 buffer、GAE、PPO step
+- [x] 自我博弈数据收集完整，trajectory 格式正确
+- [x] GAE 计算验证（手工构造 case）
+- [x] PPO update 单步跑通，loss 有限不发散
+- [x] 连续训练 100 局，loss 呈下降趋势
+- [x] 梯度裁剪正常，无 NaN/Inf
+- [x] 单元测试覆盖 buffer、GAE、PPO step（30 tests）
 
 ---
 
