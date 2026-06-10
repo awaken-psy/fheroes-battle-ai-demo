@@ -4,6 +4,7 @@ version = "0.2.0"
 description = "HoMM2 Battle AI Demo — tactical AI reimplementation from fheroes2"
 requires-python = ">=3.11"
 dependencies = [
+    "gymnasium>=0.29",
     "numpy>=2.4.6",
     "pygame>=2.6",
 ]
