@@ -42,9 +42,13 @@ jobs:
           --hidden-import=engine --hidden-import=engine.hex_grid
           --hidden-import=engine.unit --hidden-import=engine.battle_state
           --hidden-import=engine.battle_logger --hidden-import=engine.actions
-          --hidden-import=ai --hidden-import=ai.planner
-          --hidden-import=ai.evaluation --hidden-import=ai.scoring
-          --hidden-import=ai.strategy
+          --hidden-import=engine.hero --hidden-import=engine.spells
+          --hidden-import=engine.castle
+          --hidden-import=ai --hidden-import=ai.base --hidden-import=ai.factory
+          --hidden-import=ai.classic --hidden-import=ai.classic.planner
+          --hidden-import=ai.classic.evaluation --hidden-import=ai.classic.scoring
+          --hidden-import=ai.classic.strategy --hidden-import=ai.classic.spells
+          --hidden-import=ai.classic.retreat
           --hidden-import=ui --hidden-import=ui.fonts
           --hidden-import=ui.renderer --hidden-import=ui.hex_renderer
           --hidden-import=ui.game
