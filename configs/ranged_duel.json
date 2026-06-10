@@ -1,0 +1,17 @@
+{
+  "units": [
+    {"team": 0, "type": "Ranger",     "col": 0, "row": 1, "count": 3},
+    {"team": 0, "type": "Ranger",     "col": 0, "row": 4, "count": 3},
+    {"team": 0, "type": "Ranger",     "col": 0, "row": 6, "count": 3},
+    {"team": 0, "type": "Grand Elf",  "col": 1, "row": 2, "count": 3},
+    {"team": 0, "type": "Grand Elf",  "col": 1, "row": 5, "count": 3},
+    {"team": 0, "type": "Grand Elf",  "col": 1, "row": 7, "count": 3},
+
+    {"team": 1, "type": "Ranger",     "col": 10, "row": 1, "count": 3},
+    {"team": 1, "type": "Ranger",     "col": 10, "row": 4, "count": 3},
+    {"team": 1, "type": "Ranger",     "col": 10, "row": 6, "count": 3},
+    {"team": 1, "type": "Grand Elf",  "col": 9,  "row": 2, "count": 3},
+    {"team": 1, "type": "Grand Elf",  "col": 9,  "row": 5, "count": 3},
+    {"team": 1, "type": "Grand Elf",  "col": 9,  "row": 7, "count": 3}
+  ]
+}

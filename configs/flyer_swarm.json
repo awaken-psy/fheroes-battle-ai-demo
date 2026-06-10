@@ -1,0 +1,29 @@
+{
+  "units": [
+    {"team": 0, "type": "Sprite",   "col": 0, "row": 0, "count": 6},
+    {"team": 0, "type": "Sprite",   "col": 0, "row": 1, "count": 6},
+    {"team": 0, "type": "Sprite",   "col": 0, "row": 2, "count": 6},
+    {"team": 0, "type": "Sprite",   "col": 0, "row": 3, "count": 6},
+    {"team": 0, "type": "Sprite",   "col": 0, "row": 4, "count": 6},
+    {"team": 0, "type": "Sprite",   "col": 0, "row": 5, "count": 6},
+    {"team": 0, "type": "Gargoyle", "col": 1, "row": 1, "count": 4},
+    {"team": 0, "type": "Gargoyle", "col": 1, "row": 3, "count": 4},
+    {"team": 0, "type": "Gargoyle", "col": 1, "row": 5, "count": 4},
+    {"team": 0, "type": "Gargoyle", "col": 1, "row": 7, "count": 4},
+    {"team": 0, "type": "Griffin",  "col": 2, "row": 2, "count": 2},
+    {"team": 0, "type": "Griffin",  "col": 2, "row": 6, "count": 2},
+
+    {"team": 1, "type": "Sprite",   "col": 10, "row": 0, "count": 6},
+    {"team": 1, "type": "Sprite",   "col": 10, "row": 1, "count": 6},
+    {"team": 1, "type": "Sprite",   "col": 10, "row": 2, "count": 6},
+    {"team": 1, "type": "Sprite",   "col": 10, "row": 3, "count": 6},
+    {"team": 1, "type": "Sprite",   "col": 10, "row": 4, "count": 6},
+    {"team": 1, "type": "Sprite",   "col": 10, "row": 5, "count": 6},
+    {"team": 1, "type": "Gargoyle", "col": 9,  "row": 1, "count": 4},
+    {"team": 1, "type": "Gargoyle", "col": 9,  "row": 3, "count": 4},
+    {"team": 1, "type": "Gargoyle", "col": 9,  "row": 5, "count": 4},
+    {"team": 1, "type": "Gargoyle", "col": 9,  "row": 7, "count": 4},
+    {"team": 1, "type": "Griffin",  "col": 8,  "row": 2, "count": 2},
+    {"team": 1, "type": "Griffin",  "col": 8,  "row": 6, "count": 2}
+  ]
+}

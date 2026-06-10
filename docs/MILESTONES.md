@@ -1,6 +1,6 @@
 # 里程碑 — 战斗 AI 复刻
 
-> **T 系列（训练实战）进行中 — T1✅ T2✅ T3✅ T4✅ T5✅ T6✅ 完成，准备 T7 模型升级。**
+> **T 系列（训练实战）进行中 — T1✅ T2✅ T3✅ T4✅ T5✅ T6✅ 完成，T7 配置多样化训练进行中。**
 >
 > - 规则层 M1–M7e：~99% 保真度，63 兵种，38 法术，298 测试
 > - AI 决策层 A1–A4：~97% 决策行为覆盖（126 条审计），356 测试
@@ -11,7 +11,7 @@
 > - **T4 训练战役**：200k 步，best.pt 胜率 88%（example.json），训练报告已写
 > - **T5 多配置训练**：每 rollout 随机选配置，多配置 eval，平均 best.pt，PR #31
 > - **T6 稳定性优化**：cosine LR + 500k 步 × 4 配置 × pool 10，3/4 benchmark 通过
-> - **T7 模型升级**：📋（实验性）
+> - **T7 配置多样化**：16 配置覆盖多维度，修复 dragon_battle 阵容不平衡（进行中）
 > - **总计 633 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
@@ -295,9 +295,97 @@ for i, cfg in enumerate(configs):
 
 ---
 
-### T7 — 模型架构升级（实验性）
+### T7 — 配置多样化训练（进行中）
 
-探索更好的网络架构是否带来性能提升。仅在 T5+T6 完成后、且有明确瓶颈证据时启动。
+> **根因分析**：T6 中 dragon_battle 0% 胜率并非模型容量不足，而是阵容严重不平衡
+> （Team 0 总 HP 750 vs Team 1 总 HP 1190，相差 58.7%）。
+> 同时，仅 4 个配置导致泛化维度不足。本里程碑通过 16 个平衡配置覆盖战斗的多维度。
+
+**设计思路**：构建 16 个平衡且多样的训练配置，覆盖以下维度——
+英雄/无英雄、飞行/步行、宽体/单格、远程/近战、法术/无法术、镜像/非镜像、
+不同规模（1v1 到大规模混战）。
+
+**修改/新增文件**：
+- `configs/dragon_battle.json` — 修复为镜像平衡阵容
+- `configs/*.json` — 新增 12 个配置文件
+- `scripts/eval_benchmark.py` — 支持自动发现 configs/ 下所有配置
+- 新增 `tests/test_config_balance.py` — 配置平衡性验证
+
+#### 16 配置一览
+
+**第一组：基础战斗（无英雄，无/有宽体）**
+
+| # | 配置 | 阵容（双方镜像） | 覆盖维度 |
+|---|------|-----------------|---------|
+| 1 | `example.json` *(保留)* | Swordsman×1, Archer×1, Cavalry×1 | 近战+远程混编 |
+| 2 | `melee_brawl.json` *(新)* | Swordsman×3, Pikeman×3, Champion×2 | 纯近战 5v5 |
+| 3 | `archer_line.json` *(新)* | Archer×4, Pikeman×3（前排挡箭） | 远程保护战术 |
+| 4 | `ranged_duel.json` *(新)* | Ranger×3, Grand Elf×3 | 双射远程对决 |
+
+**第二组：机动类型（飞行+宽体）**
+
+| # | 配置 | 阵容（双方镜像） | 覆盖维度 |
+|---|------|-----------------|---------|
+| 5 | `flyer_swarm.json` *(新)* | Sprite×6, Gargoyle×4, Griffin×2 | 低级飞行群 |
+| 6 | `wide_charge.json` *(新)* | Cavalry×3, Boar×3, Wolf×3 | 宽体地面冲锋 |
+| 7 | `dragon_battle.json` *(修复)* | Green Dragon×2, Phoenix×2, Griffin×4 | 高级宽体飞行 |
+| 8 | `mixed_mobility.json` *(新)* | Swordsman×2, Archer×2, Griffin×2, Roc×2 | 步兵+飞行混编 |
+
+**第三组：英雄战斗**
+
+| # | 配置 | 阵容 | 覆盖维度 |
+|---|------|------|---------|
+| 9 | `even_clash.json` *(保留)* | 非镜像 3v3 + 双英雄 | 非镜像适应 |
+| 10 | `mage_duel.json` *(保留)* | 镜像 3v3 + 6 法术英雄 | 法术密集 |
+| 11 | `hero_basic.json` *(新)* | Pikeman×4, Swordsman×3, 英雄(Magic Arrow) | 单法术基础英雄 |
+| 12 | `hero_support.json` *(新)* | Archer×3, Pikeman×3, 英雄(Bless/Haste/Slow) | 纯增益减益法术 |
+
+**第四组：特殊场景**
+
+| # | 配置 | 阵容 | 覆盖维度 |
+|---|------|------|---------|
+| 13 | `solo_duel.json` *(新)* | Champion×1, 英雄(Magic Arrow+Haste) | 1v1 微操 |
+| 14 | `duo_mirror.json` *(新)* | Crusader×2, Champion×1 | 2 单位小队 |
+| 15 | `undead_mirror.json` *(新)* | Skeleton×8, Royal Mummy×3, Vampire×3, 英雄 | 亡灵+数量优势 |
+| 16 | `large_battle.json` *(新)* | Swordsman×3, Archer×3, Pikeman×2, Cavalry×2, Griffin×2, 英雄 | 大规模混战 |
+
+#### 维度覆盖矩阵
+
+| 配置 | 英雄 | 飞行 | 宽体 | 远程 | 法术 | 对称 | 规模 |
+|------|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
+| 1 example | ✗ | ✗ | ✗ | ✓ | ✗ | 镜像 | 3 |
+| 2 melee_brawl | ✗ | ✗ | ✓ | ✗ | ✗ | 镜像 | 8 |
+| 3 archer_line | ✗ | ✗ | ✗ | ✓ | ✗ | 镜像 | 7 |
+| 4 ranged_duel | ✗ | ✗ | ✗ | ✓ | ✗ | 镜像 | 6 |
+| 5 flyer_swarm | ✗ | ✓ | ✓ | ✗ | ✗ | 镜像 | 6 |
+| 6 wide_charge | ✗ | ✗ | ✓ | ✗ | ✗ | 镜像 | 9 |
+| 7 dragon_battle | ✗ | ✓ | ✓ | ✗ | ✗ | 镜像 | 8 |
+| 8 mixed_mobility | ✗ | ✓ | ✓ | ✓ | ✗ | 镜像 | 8 |
+| 9 even_clash | ✓ | ✗ | ✗ | ✗ | ✓ | 非镜像 | 3 |
+| 10 mage_duel | ✓ | ✗ | ✗ | ✗ | ✓ | 镜像 | 3 |
+| 11 hero_basic | ✓ | ✗ | ✗ | ✗ | ✓ | 镜像 | 7 |
+| 12 hero_support | ✓ | ✗ | ✗ | ✓ | ✓ | 镜像 | 6 |
+| 13 solo_duel | ✓ | ✗ | ✓ | ✗ | ✓ | 镜像 | 1 |
+| 14 duo_mirror | ✗ | ✗ | ✓ | ✗ | ✗ | 镜像 | 3 |
+| 15 undead_mirror | ✓ | ✓ | ✗ | ✗ | ✓ | 镜像 | 14 |
+| 16 large_battle | ✓ | ✓ | ✓ | ✓ | ✓ | 镜像 | 12 |
+
+**退出标准**：
+- [ ] 16 个配置 JSON 文件创建完成（3 保留 + 1 修复 + 12 新增）
+- [ ] `dragon_battle.json` 修复为镜像平衡阵容
+- [ ] 镜像配置双方阵容完全一致；非镜像配置总 HP 差异 < 10%
+- [ ] `eval_benchmark.py` 支持自动发现 `configs/` 下所有 JSON
+- [ ] 每个配置均可正常运行完整战斗（100 局验证无崩溃）
+- [ ] 新增配置平衡性测试通过
+- [ ] 所有已有测试通过（633+）
+
+---
+
+### T8 — 模型架构升级（实验性）
+
+> 原 T7，因 T7 改为配置多样化训练而顺延。
+
+探索更好的网络架构是否带来性能提升。在 T7 配置多样化完成后启动。
 
 **修改文件**：
 - `ai/deep/model.py` — 新增架构选项（attention / 更深更宽网络）
@@ -312,7 +400,7 @@ for i, cfg in enumerate(configs):
 
 **退出标准**：
 - [ ] 至少 1 种新架构可选
-- [ ] 与 T6 baseline 的消融对比实验完成
+- [ ] 与 T7 baseline 的消融对比实验完成
 - [ ] 最优架构记录在训练报告中
 - [ ] 所有测试通过
 

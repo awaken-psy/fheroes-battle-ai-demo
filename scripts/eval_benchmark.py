@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
-"""T1 — Benchmark evaluation framework for fheroes2 battle DeepAI.
+"""T1+T7 — Benchmark evaluation framework for fheroes2 battle DeepAI.
 
 Loads a trained checkpoint and evaluates against ClassicAI across multiple
 battle configurations, reporting win rates with confidence intervals and
 pass/fail against target thresholds.
 
+Supports two modes:
+  - Default: auto-discover all ``configs/*.json`` training configs
+  - Legacy:  ``--legacy-4`` to use the original 4-config T6 benchmark
+
 Usage::
 
-    # Evaluate a checkpoint against all benchmark configs
+    # Auto-discover all training configs
     python scripts/eval_benchmark.py checkpoints/final.pt
+
+    # Legacy T6 benchmark (4 configs)
+    python scripts/eval_benchmark.py checkpoints/final.pt --legacy-4
 
     # Custom number of games per config
     python scripts/eval_benchmark.py checkpoints/final.pt --games 100
@@ -36,15 +43,55 @@ from ai.deep.player import make_agent_fn
 from ai.self_play import eval_vs_classic
 
 
-# ── Benchmark configurations ──────────────────────────────────────
-# Each entry: (config_path, display_name, target_win_rate)
+# ── Legacy T6 benchmark configs (4 configs) ────────────────────────
 
-BENCHMARK_CONFIGS = [
+LEGACY_BENCHMARK_CONFIGS = [
     ("configs/example.json", "Mirror Melee", 0.50),
     ("configs/even_clash.json", "Asymmetric w/ Heroes", 0.40),
     ("configs/mage_duel.json", "Spell-Heavy", 0.30),
     ("configs/dragon_battle.json", "Tier-7 Units", 0.20),
 ]
+
+# Default target win rate for auto-discovered configs
+DEFAULT_TARGET_WIN_RATE = 0.30
+
+
+# ── Auto-discovery ─────────────────────────────────────────────────
+
+# Files in configs/ that are NOT training configs (test/dev/validation)
+_EXCLUDE_CONFIGS = {
+    "validation_results.json",
+    "ability_showcase.json",
+    "ranged_fest.json",
+    "siege_wizards.json",
+    "spell_duel.json",
+    "spell_mage_duel.json",
+    "wide_melee.json",
+}
+
+
+def discover_training_configs(configs_dir: str = "configs") -> list:
+    """Auto-discover training config files from configs/ directory.
+
+    Returns list of (config_path, display_name, target_win_rate).
+    Excludes known test/dev configs.
+    """
+    results = []
+    if not os.path.isdir(configs_dir):
+        return results
+
+    for fname in sorted(os.listdir(configs_dir)):
+        if not fname.endswith(".json"):
+            continue
+        if fname in _EXCLUDE_CONFIGS:
+            continue
+
+        path = os.path.join(configs_dir, fname)
+        # Generate display name from filename: "melee_brawl" -> "Melee Brawl"
+        display = fname.replace(".json", "").replace("_", " ").title()
+        results.append((path, display, DEFAULT_TARGET_WIN_RATE))
+
+    return results
 
 
 # ── Statistics ─────────────────────────────────────────────────────
@@ -83,14 +130,18 @@ def run_benchmark(
     games: int = 50,
     device: str = "cpu",
     seed: int = 42,
+    benchmark_configs: list = None,
 ) -> list:
     """Run all benchmark configs against ClassicAI.
 
     Returns a list of result dicts, one per config.
     """
+    if benchmark_configs is None:
+        benchmark_configs = discover_training_configs()
+
     results = []
 
-    for config_path, name, target in BENCHMARK_CONFIGS:
+    for config_path, name, target in benchmark_configs:
         env_config = load_battle_config(config_path)
         agent_fn = make_agent_fn(model, device=device)
 
@@ -160,6 +211,8 @@ def parse_args(argv=None):
                    help="Base RNG seed (default: 42)")
     p.add_argument("--json", type=str, default=None,
                    help="Save results to JSON file")
+    p.add_argument("--legacy-4", action="store_true",
+                   help="Use legacy T6 benchmark (4 configs only)")
     return p.parse_args(argv)
 
 
@@ -169,14 +222,22 @@ def main(argv=None):
     if not os.path.isfile(args.checkpoint):
         sys.exit(f"Checkpoint not found: {args.checkpoint}")
 
+    # Select benchmark configs
+    if args.legacy_4:
+        benchmark_configs = LEGACY_BENCHMARK_CONFIGS
+        mode = "legacy T6 (4 configs)"
+    else:
+        benchmark_configs = discover_training_configs()
+        mode = f"auto-discovered ({len(benchmark_configs)} configs)"
+
     print(f"Loading checkpoint: {args.checkpoint}")
     model = load_model(args.checkpoint, device=args.device)
     print(f"Model loaded ({model.count_parameters():,} params)")
-    print(f"Running benchmark: {len(BENCHMARK_CONFIGS)} configs × {args.games} games")
+    print(f"Running benchmark: {mode} × {args.games} games")
     print()
 
     results = run_benchmark(model, games=args.games, device=args.device,
-                            seed=args.seed)
+                            seed=args.seed, benchmark_configs=benchmark_configs)
 
     # Print results table
     print(format_table(results))

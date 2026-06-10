@@ -1,4 +1,4 @@
-"""Tests for T1 eval_benchmark — benchmark evaluation framework."""
+"""Tests for T1+T7 eval_benchmark — benchmark evaluation framework."""
 
 import json
 import os
@@ -12,7 +12,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from ai.deep.model import BattleNet
 from scripts.eval_benchmark import (
-    BENCHMARK_CONFIGS,
+    LEGACY_BENCHMARK_CONFIGS,
+    discover_training_configs,
     format_table,
     load_model,
     run_benchmark,
@@ -51,31 +52,51 @@ class TestWilsonInterval:
         assert (hi2 - lo2) < (hi1 - lo1)
 
 
-# ── Benchmark config validity ─────────────────────────────────────
+# ── Legacy benchmark config validity ──────────────────────────────
 
 
-class TestBenchmarkConfigs:
-    def test_all_configs_exist(self):
-        """All benchmark config files must be present on disk."""
-        for config_path, name, target in BENCHMARK_CONFIGS:
+class TestLegacyBenchmarkConfigs:
+    def test_all_legacy_configs_exist(self):
+        """All legacy benchmark config files must be present on disk."""
+        for config_path, name, target in LEGACY_BENCHMARK_CONFIGS:
             full = os.path.join(ROOT, config_path)
             assert os.path.isfile(full), f"Missing config: {config_path}"
 
-    def test_all_configs_loadable(self):
+    def test_all_legacy_configs_loadable(self):
         """All configs must load without error."""
         from ai.deep.pipeline import load_battle_config
-        for config_path, name, target in BENCHMARK_CONFIGS:
+        for config_path, name, target in LEGACY_BENCHMARK_CONFIGS:
             full = os.path.join(ROOT, config_path)
             cfg = load_battle_config(full)
             assert "units" in cfg
             assert len(cfg["units"]) >= 2
 
     def test_targets_are_valid(self):
-        for config_path, name, target in BENCHMARK_CONFIGS:
+        for config_path, name, target in LEGACY_BENCHMARK_CONFIGS:
             assert 0.0 <= target <= 1.0, f"Invalid target for {name}: {target}"
 
-    def test_four_configs(self):
-        assert len(BENCHMARK_CONFIGS) == 4
+    def test_four_legacy_configs(self):
+        assert len(LEGACY_BENCHMARK_CONFIGS) == 4
+
+
+# ── Auto-discovery ─────────────────────────────────────────────────
+
+
+class TestAutoDiscovery:
+    def test_discovers_training_configs(self):
+        configs = discover_training_configs(os.path.join(ROOT, "configs"))
+        assert len(configs) >= 16
+
+    def test_discovered_configs_exist(self):
+        configs = discover_training_configs(os.path.join(ROOT, "configs"))
+        for path, name, target in configs:
+            assert os.path.isfile(os.path.join(ROOT, path)), (
+                f"Discovered config missing: {path}")
+
+    def test_discovered_names_are_readable(self):
+        configs = discover_training_configs(os.path.join(ROOT, "configs"))
+        for path, name, target in configs:
+            assert " " in name or len(name) > 2, f"Bad display name: {name}"
 
 
 # ── Model loading ─────────────────────────────────────────────────
@@ -141,9 +162,10 @@ class TestFormatTable:
 class TestRunBenchmark:
     """Smoke tests with a random (untrained) model — 2 games per config."""
 
-    def test_runs_all_configs(self):
+    def test_runs_legacy_configs(self):
         model = BattleNet()
-        results = run_benchmark(model, games=2, device="cpu", seed=0)
+        results = run_benchmark(model, games=2, device="cpu", seed=0,
+                                benchmark_configs=LEGACY_BENCHMARK_CONFIGS)
         assert len(results) == 4
         for r in results:
             assert r["games"] == 2
@@ -154,7 +176,8 @@ class TestRunBenchmark:
 
     def test_result_structure(self):
         model = BattleNet()
-        results = run_benchmark(model, games=2, device="cpu", seed=0)
+        results = run_benchmark(model, games=2, device="cpu", seed=0,
+                                benchmark_configs=LEGACY_BENCHMARK_CONFIGS)
         r = results[0]
         expected_keys = {"config", "name", "target", "wins", "games",
                          "win_rate", "ci95", "avg_rounds", "elapsed", "pass"}
