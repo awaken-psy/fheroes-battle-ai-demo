@@ -38,6 +38,10 @@ def load_battle_config(path: Optional[str] = None) -> dict:
     with open(path) as f:
         raw = json.load(f)
 
+    # Support both dict-style {"units": [...]} and bare list [...]
+    if isinstance(raw, list):
+        raw = {"units": raw}
+
     units = []
     for u in raw.get("units", []):
         if isinstance(u, dict):

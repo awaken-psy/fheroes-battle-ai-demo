@@ -4,7 +4,7 @@
     {"team": 0, "type": "Griffin",       "col": 0, "row": 2, "count": 6},
     {"team": 0, "type": "Phoenix",       "col": 1, "row": 6, "count": 2},
     {"team": 1, "type": "Red Dragon",    "col": 8, "row": 4, "count": 2},
-    {"team": 1, "type": "Bone Dragon",   "col": 10, "row": 2, "count": 3},
-    {"team": 1, "type": "Vampire Lord",  "col": 9, "row": 6, "count": 6}
+    {"team": 1, "type": "Bone Dragon",   "col": 9, "row": 2, "count": 3},
+    {"team": 1, "type": "Vampire Lord",  "col": 10, "row": 6, "count": 6}
   ]
 }
