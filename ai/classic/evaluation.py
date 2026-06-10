@@ -5,6 +5,7 @@ Maps to analyzeBattleState() in fheroes2's ai_battle.cpp:949.
 
 from engine.unit import Unit
 from engine.battle_state import BattleState
+from engine.spells import DAMAGE, AOE, spell_damage
 
 
 class AIState:
@@ -26,6 +27,29 @@ class AIState:
         # Retreat gate — fheroes2 _considerRetreat: true when any friendly
         # stack has been wiped out or the initial army had fewer than 4 stacks.
         self.consider_retreat = True
+        # Hero spell threat — ai_battle.cpp:1109-1116
+        # Simplified: max damage spell value (commanderMaximumSpellDamageValue).
+        self.my_spell_str = 0.0
+        self.enemy_spell_str = 0.0
+        # Avoid stacking — ai_battle.cpp:994-1012
+        # True when enemy has AREA_SHOT units with >10% of army strength.
+        self.avoid_stacking = False
+
+
+def _max_spell_damage(hero) -> float:
+    """commanderMaximumSpellDamageValue — ai_battle.cpp:489.
+
+    Returns the best damage value among castable combat spells.
+    Simplified: no commander-specific bonuses (artifacts, etc.).
+    """
+    best = 0.0
+    for spell in hero.spellbook:
+        if spell.kind not in (DAMAGE, AOE):
+            continue
+        if hero.spell_points < spell.cost:
+            continue
+        best = max(best, float(spell_damage(spell, hero.power)))
+    return best
 
 
 def analyze(battle: BattleState, unit: Unit) -> AIState:
@@ -39,15 +63,23 @@ def analyze(battle: BattleState, unit: Unit) -> AIState:
 
     # enemy stats
     e_sum = 0.0
+    area_shot_str = 0.0  # ai_battle.cpp:973 — AREA_SHOT threat tracking
     for e in enemies:
         v = e.strength
         s.enemy_army += v
         if e.is_archer:
             s.enemy_shooters += v
+            # ai_battle.cpp:994 — detect AREA_SHOT enemies (not in melee)
+            if e.has_ability("area_shot"):
+                area_shot_str += v
         s.enemy_avg_speed += e.speed * v
         e_sum += v
     if e_sum > 0:
         s.enemy_avg_speed /= e_sum
+
+    # ai_battle.cpp:1012 — AREA_SHOT threat >10% of enemy army → avoid stacking
+    if e_sum > 0 and area_shot_str / e_sum > 0.10:
+        s.avoid_stacking = True
 
     # friendly stats
     f_sum = 0.0
@@ -75,6 +107,20 @@ def analyze(battle: BattleState, unit: Unit) -> AIState:
             s.attacking_castle = True
             s.enemy_shooters += tower_str
             s.my_shooters /= 1.5      # wall penalty on self
+
+    # ── Hero spell threat — ai_battle.cpp:1105-1116 ──────────
+    # Simplified: use max damageable spell value as proxy for
+    # GetMagicStrategicValue.  Added to shooter strength after
+    # castle modifiers, matching the original ordering.
+    my_hero = battle.heroes.get(unit.team)
+    if my_hero and s.my_shooters > 1:
+        s.my_spell_str = _max_spell_damage(my_hero)
+        s.my_shooters += s.my_spell_str
+
+    enemy_hero = battle.heroes.get(1 - unit.team)
+    if enemy_hero:
+        s.enemy_spell_str = _max_spell_damage(enemy_hero)
+        s.enemy_shooters += s.enemy_spell_str
 
     # tactical flags — ai_battle.cpp:1124-1164
     s.defensive = should_defend(unit, s, battle)
