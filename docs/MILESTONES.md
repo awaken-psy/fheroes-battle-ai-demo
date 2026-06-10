@@ -1,11 +1,12 @@
 # 里程碑 — 战斗 AI 复刻
 
-> **当前阶段：规则层 + 经典 AI + 深度学习训练管线全部完成。**
+> **当前阶段：T 系列（训练实战）进行中 — T1 ✅ 完成，准备 T2。**
 >
 > - 规则层 M1–M7e：~99% 保真度，63 兵种，38 法术，298 测试
 > - AI 决策层 A1–A4：~97% 决策行为覆盖（126 条审计），356 测试
 > - 深度学习 R1–R7：CNN+PPO 自我博弈训练管线，205 测试
-> - **总计 561 测试，CI 守护**
+> - **T1 Baseline 评估框架**：eval_benchmark.py + 15 测试，PR #23
+> - **总计 576 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
 > AI 行为审计见 [`docs/ai-audit.md`](ai-audit.md)（126 条）。
@@ -74,7 +75,7 @@ T1(Baseline训练) ──→ T2(模型/训练改进) ──→ T3(对手池) ─
 
 ---
 
-### T1 — Baseline 训练 + 评估框架
+### T1 — Baseline 训练 + 评估框架 ✅
 
 用当前模型和超参数跑一次完整训练，建立 baseline 指标。
 
@@ -94,11 +95,17 @@ python scripts/train.py \
 ```
 
 **退出标准**：
-- [ ] `train.py` 在 CUDA 上正常运行，50k 步完成
-- [ ] 训练 loss 曲线记录完整（JSON lines 可解析）
-- [ ] `eval_benchmark.py` 能加载 checkpoint 并输出 4 个配置的胜率
-- [ ] Baseline 胜率记录到 `docs/t1-baseline-results.md`
-- [ ] 所有 561 测试仍通过
+- [x] `train.py` 在 CUDA 上正常运行，50k 步完成
+- [x] 训练 loss 曲线记录完整（JSON lines 可解析）
+- [x] `eval_benchmark.py` 能加载 checkpoint 并输出 4 个配置的胜率
+- [x] Baseline 胜率记录到 `results/t1-baseline.json`
+- [x] 所有 576 测试通过（原 561 + 新 15）
+
+**实际结果**（PR #23, commit `914d974`）：
+- 训练耗时 134 秒（~385 steps/s on RTX 3070）
+- Entropy: 3.59 → 3.33（策略在收敛）
+- 4 配置 benchmark 评估：全部 0%（预期 baseline，50k 步太短）
+- 额外修复：`pipeline.py` 裸列表 JSON、`self_play.py` 法术终结战斗、`dragon_battle.json` 宽体越界
 
 **预期**：初始随机网络 vs ClassicAI 胜率接近 0%。T1 目标不是赢，而是建立可复现的度量基线。
 
@@ -129,7 +136,7 @@ python scripts/train.py \
 - [ ] Gradient accumulation 等效 batch size = rollout_steps（可配置）
 - [ ] `tensorboard --logdir runs/` 可显示 loss/entropy/eval 曲线
 - [ ] 旧 checkpoint 兼容（GroupNorm 替换后旧权重不加载是预期的，文档说明）
-- [ ] 新旧测试全部通过（561 + 新增）
+- [ ] 新旧测试全部通过（576 + 新增）
 
 **CLI 新参数**：
 ```bash
