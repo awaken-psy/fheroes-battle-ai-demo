@@ -34,6 +34,7 @@ class Unit:
         # than reflecting on backward moves — our AI almost always advances.
         self.is_wide = kwargs.get("is_wide", False)
         self.abilities = set(kwargs.get("abilities", ()))
+        self.ability_params = dict(kwargs.get("ability_params", {}))
         self.symbol = kwargs.get("symbol", name[0])
 
         self.count = kwargs["count"]
@@ -116,6 +117,15 @@ class Unit:
             factor *= e.damage_mult
         return factor
 
+    @property
+    def skip_turn(self) -> bool:
+        """True when a Blind / Paralyze / Petrify effect is active."""
+        return any(e.skip_turn for e in self.effects)
+
+    def break_effects_on_damage(self) -> None:
+        """Remove effects that break when the unit takes damage."""
+        self.effects = [e for e in self.effects if not e.break_on_damage]
+
     # ── spell effects ───────────────────────────────────────
 
     def has_ability(self, name: str) -> bool:
@@ -165,15 +175,24 @@ class Unit:
         if "unlimited_retaliation" in self.abilities:
             damage_potential *= 1.25
 
+        # fheroes2: ALL_ADJACENT and AREA_SHOT share the same multiplier.
+        if "all_adjacent_attack" in self.abilities or "area_shot" in self.abilities:
+            damage_potential *= 1.2
+
         special = 1.0
         if self.is_archer:
-            special += 0.4
+            # fheroes2: NO_MELEE_PENALTY gives +0.5 instead of +0.4.
+            special += 0.5 if "no_melee_penalty" in self.abilities else 0.4
         if self.is_flying:
             special += 0.3
-        if "death_gaze" in self.abilities:  # enemy-halving
+        if "death_gaze" in self.abilities:  # enemy-halving (Medusa legacy)
+            special += 1.0
+        if "enemy_halving" in self.abilities:  # enemy-halving (Genie)
             special += 1.0
         if "hp_drain" in self.abilities:
             special += 0.3
+        if "soul_eater" in self.abilities:
+            special += 2.0
         diff = self.base_speed - SPEED_AVERAGE
         special += diff * (0.1 if diff < 0 else 0.05)
         return math.sqrt(damage_potential * effective_hp) * special

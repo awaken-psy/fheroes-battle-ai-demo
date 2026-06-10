@@ -51,6 +51,8 @@ class Effect:
     remaining: int               # rounds left before it expires
     speed_delta: int = 0
     damage_mult: float = 1.0
+    skip_turn: bool = False          # unit skips its action while active
+    break_on_damage: bool = False    # removed when unit takes damage
 
 
 def spell_damage(spell: Spell, power: int) -> int:
@@ -64,3 +66,26 @@ def make_effect(spell: Spell, power: int) -> Optional[Effect]:
         return None
     return Effect(name=spell.name, remaining=power,
                   speed_delta=spell.speed_delta, damage_mult=spell.damage_mult)
+
+
+# ── spell_caster combat ability effects ───────────────────────
+# These are applied by monster abilities (not hero spellcasting).
+# Blind/Paralyze/Petrify skip the unit's turn; broken when damaged.
+# Curse is the same effect as the hero spell.
+# Dispel removes all existing effects instead of adding one.
+
+_CONTROL_EFFECTS = {
+    "blind":    lambda: Effect("Blind",    remaining=100, skip_turn=True,  break_on_damage=True),
+    "paralyze": lambda: Effect("Paralyze", remaining=100, skip_turn=True,  break_on_damage=True),
+    "petrify":  lambda: Effect("Petrify",  remaining=100, skip_turn=True,  break_on_damage=True),
+    "curse":    lambda: Effect("Curse",    remaining=3,   damage_mult=0.8),
+    # "dispel" is handled specially: remove all effects from target.
+}
+
+
+def make_spell_caster_effect(spell_name: str):
+    """Return an Effect for a spell_caster combat ability, or None for dispel."""
+    factory = _CONTROL_EFFECTS.get(spell_name)
+    if factory is not None:
+        return factory()
+    return None

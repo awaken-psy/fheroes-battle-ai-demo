@@ -17,6 +17,10 @@
 | **M6a** | 兵种扩充(原版精确数值;先 Knight+Barbarian ~20) | P3 | ~92% | ✅ 完成 |
 | **M6b** | 攻城系统(完整) | P4 | ~94% | ✅ 完成 |
 | **M6c** | 验证 / 调参 / 原版对照 | P4 | ~95% | ✅ 完成 |
+| **M7** | 兵种全阵营扩充(4 阵营 + 中立 ~45 种) | P3 | ~96% | ✅ 完成 |
+| **M7b** | 法术扩充(~24 种) | P4 | ~97% | 📋 待做 |
+| **M7c** | AI 行为精细化(审计收尾) | P4 | ~98% | 📋 待做 |
+| **M7d** | 英雄战斗技能 | P4 | ~98% | 📋 待做 |
 
 ---
 
@@ -250,6 +254,232 @@ Troll/War Troll/Cyclops。
 - [x] arena 支持新兵种 + 攻城并跑完（7 预设全跑，野战镜像 PASS，攻城 500 局 50/50）
 - [x] 行为差异清单入档(`docs/ai-audit.md`，逐条标注已对齐/近似/暂缺/范围外)
 - [x] 全部 pytest 绿(160);镜像核心 3 预设 40–60% PASS;指纹 `abb209d4`(TR_MOVED 对齐后有意的变更)
+
+---
+
+# M7 — 兵种全阵营扩充
+
+> 补全 HoMM2 全部 6 阵营 + 中立兵种,使用 fheroes2 原版精确数值。
+> M6a 已打通 Knight+Barbarian 管线,本里程碑将其余 4 阵营机械式补入,
+> 并实现新增能力钩子。遗留兵种(Griffin/Vampire/Medusa)迁移到原版精确值。
+>
+> **依赖顺序**:无硬依赖(M6a 管线已就绪),但应在 M7b(法术扩充)之前,
+> 因为兵种是新法术需求的数据基础(亡灵→Death Ripple/Animate Dead,元素→Summon 等)。
+>
+> **对照源码**:``monster/monster_info.cpp``(`battleStats`/`generalStats`)、
+> ``kingdom/speed.h``(Speed 枚举)。
+
+## M7 — 兵种全阵营 ✅
+
+> **范围决策**:沿用 M6a 的精确数值+能力钩子模式。所有新兵种走 M6a 建立的
+> ``UNIT_TYPES`` → ``Unit.from_type`` 管线。新能力在 ``battle_state.execute``
+> 和 ``_compute_base_strength`` 中挂载,已实现能力复用不动。
+
+### 名册
+
+| 阵营 | 兵种 | 数量 |
+|------|------|:---:|
+| **Sorceress** | Sprite, Dwarf, Battle Dwarf, Elf, Grand Elf, Druid, Greater Druid, Unicorn, Phoenix | 9 |
+| **Warlock** | Centaur, Griffin¹, Minotaur, Minotaur King, Hydra, Green Dragon, Red Dragon, Black Dragon | 8 |
+| **Wizard** | Halfling, Boar, Iron Golem, Steel Golem, Roc, Mage, Archmage, Giant, Titan | 9 |
+| **Necromancer** | Skeleton, Zombie, Mutant Zombie, Mummy, Royal Mummy, Vampire², Vampire Lord, Lich, Power Lich, Bone Dragon | 10 |
+| **中立迁移** | Griffin → 原版精确值, Vampire → 原版精确值, Medusa → 原版精确值 | 3 |
+
+> ¹ Griffin 已有遗留条目,迁移到 Warlock 精确值(补充 race/level/grown 等)。
+> ² Vampire 已有遗留条目,迁移到 Necromancer 精确值;新增 Vampire Lord。
+
+### 能力覆盖表
+
+| 能力 | 兵种 | 本轮 |
+|------|------|------|
+| `DOUBLE_HEX_SIZE`(宽体) | Cavalry/Champion/Wolf(M6a), Green Dragon/Red Dragon/Black Dragon/Phoenix | ✅ 已实现(M5b) |
+| `HP_REGENERATION` | Troll/War Troll(M6a) | ✅ 已实现(self_heal) |
+| `DOUBLE_SHOOTING` | Ranger(M6a), Grand Elf, Mage(?需确认) | ✅ 已实现 |
+| `DOUBLE_MELEE_ATTACK` | Paladin/Crusader/Wolf(M6a) | ✅ 已实现 |
+| `TWO_CELL_MELEE_ATTACK` | Cyclops(M6a) | ✅ 已实现 |
+| `NO_ENEMY_RETALIATION` | Sprite | 🆕 做(战斗钩子+strength已有效) |
+| `AREA_SHOT`(溅射射击) | Lich, Power Lich | 🆕 做(新战斗钩子) |
+| `ALL_ADJACENT_ATTACK`(全邻接) | Hydra | 🆕 做(新战斗钩子) |
+| `MAGIC_IMMUNE`(完全魔免) | Black Dragon | 🆕 做(法术判定) |
+| `MAGIC_RESISTANCE`(概率抗魔) | Dwarf, Battle Dwarf | 🆕 做(法术判定) |
+| `SPELL_CASTER` Blind(20%) | Unicorn | 🆕 做(战斗钩子) |
+| `SPELL_CASTER` Curse(20%) | Mage, Archmage | 🆕 做(战斗钩子) |
+| `SPELL_CASTER` Paralyze(20%) | Cyclops(M6a 档案→升级) | 🆕 做(战斗钩子) |
+| `HP_DRAIN_RESURRECT`(吸血+复活) | Vampire Lord | 🆕 做(heal扩展) |
+| `UNDEAD`(亡灵标签) | 全 Necromancer 阵营 | 🆕 做(种族标签) |
+| `FIRE_IMMUNE` | Phoenix | 📄 档案(等M7b法术后再判定) |
+| `IMMUNE_TO_CERTAIN_SPELL` | Crusader(M6a 档案) | 📄 档案(等M7b法术后再判定) |
+
+### 任务
+
+- [x] **`config/units.py`**:补入 Sorceress/Warlock/Wizard/Necromancer 四阵营精确数据表
+- [x] **遗留迁移**:Griffin/Vampire/Medusa 切到原版精确值(补充 race/level/grown/cost 等)
+- [x] **新能力钩子**(`battle_state.execute`):
+  - `no_enemy_retaliation`:Sprite/Vampire/Hydra/Rogue 攻击时目标不反击
+  - `area_shot`:Lich/Power Lich 射击时溅射目标邻格敌军
+  - `all_adjacent_attack`:Hydra 近战命中所有邻接敌军
+  - `spell_caster`:命中后概率附加 Blind/Paralyze/Petrify/Curse/Dispel 效果
+  - `magic_resistance`:法术命中判定(25%/100%)
+  - `no_melee_penalty`:射手近战无 0.5× 惩罚(Mage/Archmage/Titan)
+  - `enemy_halving`:Genie 10% 概率击杀半数敌军
+  - `undead`:种族标签
+- [x] **strength 公式**:`_compute_base_strength` 补入新能力项(area_shot×1.2 / all_adjacent×1.2 / no_melee_penalty+0.5 / enemy_halving+1.0 / soul_eater+2.0)
+- [x] **状态效果扩展**:Effect 加 skip_turn+break_on_damage,Blind/Paralyze/Petrify 战斗效果
+- [x] **预设**:新增 3 个跨阵营对抗预设 + 2 个旧预设调整(Griffin→Gargoyle/Roc)
+- [x] **测试**:21 新测试(全兵种创建/flags/能力钩子/strength 公式)
+
+### 退出标准
+
+- [x] 全 6 阵营 ~65 种兵种可创建且通过 strength 单调性 sanity
+- [x] 能力覆盖表中 🆕 项均生效且有单测;📄 档案项留后续
+- [x] 遗留 3 兵种迁移到原版精确值,旧测试适配通过
+- [x] 全部 pytest 绿(181);指纹有意重建为 `5029ff98`(兵种数据+预设变更)
+- [x] arena 核心 3 预设镜像 PASS + 3 新预设镜像 PASS
+
+---
+
+## M7b — 法术扩充
+
+> 当前 6 种法术仅覆盖原版 ~20%。本里程碑扩展到 ~30 种(含 Mass 变体),
+> 引入新 Effect 属性(attack/defense 修改)和新机制(控制/传送/召唤)。
+>
+> **依赖**:建议在 M7 之后(亡灵→Death Ripple/Animate Dead,元素→Summon Element
+> 均依赖兵种标签)。若 M7 未完成,法术部分可按依赖关系分批。
+>
+> **对照源码**:``spell/spell.cpp``(法术数据表)、``ai/ai_battle_spell.cpp``(法术 AI)。
+
+### 任务
+
+- [ ] **新 Effect 属性**:
+  - ``attack_delta``:Bloodlust(+3/5/7) / Weakness(未来)
+  - ``defense_delta``:Stone Skin(+3/5/7) / Steel Skin(+5/7/9)
+  - Disrupting Ray:防御 -3,可叠加,不互斥
+  - ``skip_turn``:Blind / Paralyze(被攻击时解除)
+- [ ] **Mass 变体**(Mass Haste/Slow/Bless/Curse):
+  - 遍历友军/敌军分别施法;AI 评估改为总值(累加所有目标 ratio)
+  - 数据层:``SPELLS`` 中新增,或用 ``is_mass=True`` 标志
+- [ ] **控制法术**(Blind / Paralyze):
+  - 新 Effect:``skip_turn=True``,单位跳过行动;受攻击时立即解除
+  - AI 评估:原版 ``ai_battle_spell.cpp:386-470``,ratio 基于目标 strength
+- [ ] **增益/减益**(Bloodlust / Stone Skin / Steel Skin / Disrupting Ray):
+  - Effect 新属性 ``attack_delta`` / ``defense_delta`` 加入 ``Unit`` 有效属性计算
+  - AI 评估:ratio = 0.15 × strength / 法力折价
+- [ ] **AOE 伤害**(Chain Lightning / Meteor Shower / Death Ripple / Destroy Undead):
+  - Chain Lightning:链式溅射(伤害递减);AI 评估累加多目标
+  - Meteor Shower:指定区域溅射;Death Ripple:全体非亡灵;Destroy Undead:全体亡灵
+- [ ] **功能法术**(Teleport / Earthquake / Dispel):
+  - Teleport:传送友方单位到指定位置(AI 选择高价值目标+位置)
+  - Earthquake:攻城法术,伤害城墙(类似投石车)
+  - Dispel:移除目标所有 Effect
+- [ ] **召唤/复活**(Summon Element / Resurrect / Animate Dead):
+  - Summon:在指定位置创建临时单位(需新机制);或简化为临时增加友方单位
+  - Resurrect:复活死亡单位;Animate Dead:仅亡灵
+- [ ] **AI 法术评估**:每种新法术写 ``selectBestSpell`` ratio 评估(对照原版)
+- [ ] **法术消耗/威力表**:补全 ``spells.py`` 数据,含所有原版 cost/base/power 缩放
+- [ ] **测试**:新法术效果+AI 选择+免疫判定(20+ 新测试)
+
+### 退出标准
+
+- [ ] 法术总数 ≥ 25 种(含 Mass 变体),覆盖伤害/增益/减益/控制/AOE/功能
+- [ ] 新 Effect 属性(attack_delta/defense_delta/skip_turn)正确生效和到期
+- [ ] AI 对每种法术都有 ratio 评估;法术免疫(magic_immune/magic_resistance)正确跳过
+- [ ] 全部 pytest 绿;镜像仍 40–60% PASS;带法术局 vs 无法术局胜率显著差异
+
+> 注:Summon/Resurrect/Mirror Image 机制较复杂,可在本里程碑末评估是否简化或延迟。
+> Blind/Paralyze 的 AI 评估是原版 AI 中价值最高的法术之一(比大多数伤害法术优先)。
+
+---
+
+## M7c — AI 行为精细化(审计收尾)
+
+> 对照 ``docs/ai-audit.md`` 中 10 条范围内 ❌ 项逐条补全。
+> M6c 已处理 5 项(A1/A2/A4/A6/A8),本里程碑处理剩余的 AI 决策逻辑缺口。
+>
+> **依赖**:M7+M7b(新兵种/新法术带来新的 AI 需求,先做规则再精细化 AI 避免返工)。
+>
+> **对照源码**:``ai/ai_battle.cpp``。
+
+### 任务
+
+- [ ] **A9 防守第二阶段**(``_defense`` 无射手可掩护时):
+  - 原版 ``ai_battle.cpp:1930-1960``:在己方防区内找目标攻击
+  - 不再直接 fallback 到 ``_offense``,而是先在 ``is_inside_walls``/防区内选最优攻击
+- [ ] **避免堆叠**(``_avoidStackingUnits``):
+  - 原版 ``ai_battle.cpp:1773-1825``:掩护位置远离其他友军/射手
+  - 在 ``_cover_pos`` 和 ``_defense`` 中增加堆叠惩罚评分
+- [ ] **英雄法术威胁**(``analyzeBattleState`` 补充):
+  - 原版 ``ai_battle.cpp:1109-1116``:己方英雄法术能力加入 ``myShootersStrength``
+  - 敌方英雄法术威胁加入 ``enemyShootersStrength``
+  - 影响防守/进攻判断和法术阈值
+- [ ] **宽体攻击方向选择**(``optimalAttackVector``):
+  - 原版 ``ai_battle.cpp:110-155``:宽体/two_cell 攻击时评估不同朝向的溅射价值
+  - 选择使溅射收益最大化的攻击位置
+- [ ] **双击反击折算**(``threat()`` 中):
+  - 原版 ``ai_battle.cpp:1030-1057``:``isDoubleAttack`` 单位在 threat 中折算第二击
+  - 当前 ``expected_damage`` 已含 ×1.75,但 threat 评分未区分
+- [ ] **宽体侧面掩护优先**:
+  - 原版 ``ai_battle.cpp:1782-1810``:掩护站位优先选宽体射手暴露的侧面
+- [ ] **护城河停驻逻辑**(``_chase`` 中):
+  - 原版 ``ai_battle.cpp:1598-1603``:追击终点在护城河时主动停驻
+  - 停在护城河比冲过去给下回合更多自由度
+- [ ] **预计算攻击位置映射**(``evaluatePotentialAttackPositions``):
+  - 原版 ``ai_battle.cpp:202-270``:为所有敌人预建 position→value 映射
+  - 当前实时计算效率较低且缺少全局最优视角
+- [ ] **AREA_SHOT 射手评估**:
+  - 原版 ``ai_battle.cpp:327-375``:AREA_SHOT 单位(Lich)射击时评估溅射优先级
+  - 含友军伤害检查(不射击会误伤己方)
+
+### 退出标准
+
+- [ ] ``docs/ai-audit.md`` 中 10 条范围内 ❌ 全部标注 ✅ 或 ⚠️(含理由)
+- [ ] AI 决策行为覆盖率从 ~74% 提升至 ~85%+
+- [ ] 全部 pytest 绿;指纹有意变化需记录;镜像 40–60% PASS
+- [ ] 攻城场景 AI 表现提升(可观测:防御方在防区内主动攻击、攻方更优接近路线)
+
+---
+
+## M7d — 英雄战斗技能
+
+> 原版英雄的战斗相关二级技能对战场有直接影响。当前 Hero 仅有 power/spell_points,
+> 本里程碑补入战斗相关技能效果。不涉及非战斗技能(Navigation/Estates 等属于战略层)。
+>
+> **依赖**:无硬依赖,可在 M7c 之后或与之并行。
+>
+> **对照源码**:``heroes/heroes.cpp``(skill 数据)、``battle/battle_arena.cpp``(技能效果)。
+
+### 任务
+
+- [ ] **Hero 技能模型**(``engine/hero.py``):
+  - 新增 ``skills`` 字典,键为技能名,值为等级(Basic/Advanced/Expert = 1/2/3)
+  - ``from_config`` 支持可选 ``skills`` 字段
+- [ ] **Archery** (射手伤害加成):
+  - Basic/Advanced/Expert: +10%/+25%/+50% 射手伤害
+  - 替代攻城中固定的 50% 射箭惩罚减免;非攻城时也有加成
+  - 在 ``roll_damage``/``expected_damage`` 中应用
+- [ ] **Ballistics** (投石车加成):
+  - Basic:每回合 2 发 75% 命中;Advanced:2 发 100%;Expert:2 发 100% 且伤害 2
+  - 在 ``Castle.catapult_round`` 中检查守方英雄技能
+- [ ] **Leadership** (士气加成):
+  - Basic/Advanced/Expert: +1/+2/+3 士气
+  - 影响 ``morale`` 初始值;亡灵单位不受士气影响(需 undead 标签)
+- [ ] **Luck** (运气加成):
+  - Basic/Advanced/Expert: +1/+2/+3 运气
+  - 影响 ``luck`` 初始值
+- [ ] **Resistance** (抗魔):
+  - Basic/Advanced/Expert: 5%/10%/20% 敌方法术失效概率
+  - 在 ``_cast`` 中检查目标方英雄技能;与单位级 magic_resistance 叠加
+- [ ] **Wisdom** (法术等级限制):简化为不影响战斗(AI 总选最优法术),可标记为范围外
+- [ ] **预设+测试**:英雄配置支持 skills;新增 Archery/Ballistics/Resistance 单测
+
+### 退出标准
+
+- [ ] Archery/Ballistics/Leadership/Luck/Resistance 5 项技能效果生效且有单测
+- [ ] 非战斗技能标记为范围外,不实现
+- [ ] 全部 pytest 绿;带 Archery 英雄的射手伤害提升可观测
+- [ ] 镜像双英雄(同技能)仍 40–60% PASS;不同技能导致可观测的战术差异
+
+> 注:完成 M7d 后,规则保真度达到 ~98%,AI 决策行为覆盖 ~85%+,
+> 此时规则可正式冻结,安心进入 R2+(观测编码/动作空间/训练环境)阶段。
 
 ---
 

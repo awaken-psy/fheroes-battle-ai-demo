@@ -1,4 +1,4 @@
-"""Special ability tests — retaliation, drain, gaze, regeneration, scoring."""
+"""Special ability tests — retaliation, drain, spell_caster, scoring, new abilities."""
 
 import os
 import sys
@@ -44,7 +44,8 @@ def test_normal_unit_retaliates_only_once_per_round():
 # ── hp drain ────────────────────────────────────────────────────────
 
 def test_hp_drain_heals_attacker():
-    vampire = Unit.from_type("Vampire", 0, 4, 4)
+    # Vampire Lord (not Vampire) has hp_drain in the original.
+    vampire = Unit.from_type("Vampire Lord", 0, 4, 4)
     vampire.take_damage(45)            # leave a wounded creature to heal
     target = Unit.from_type("Pikeman", 1, 5, 4)
     target.retaliated = True           # isolate: no retaliation muddying HP
@@ -55,6 +56,15 @@ def test_hp_drain_heals_attacker():
     assert "drains" in r["desc"]
 
 
+def test_no_enemy_retaliation_skips_counter():
+    # Vampire (no hp_drain) has no_enemy_retaliation — no counterattack.
+    vampire = Unit.from_type("Vampire", 0, 4, 4)
+    target = Unit.from_type("Pikeman", 1, 5, 4)
+    b = _battle([vampire, target])
+    r = b.execute(AttackAction(vampire, target, (4, 4), ranged=False))
+    assert r["ret_dmg"] == 0
+
+
 def test_heal_never_resurrects():
     u = Unit.from_type("Troll", 0, 0, 0)
     u.take_damage(10_000)
@@ -62,13 +72,16 @@ def test_heal_never_resurrects():
     assert u.heal(1000) == 0
 
 
-# ── death gaze ──────────────────────────────────────────────────────
+# ── death gaze (legacy, kept for backward compat) ────────────────
 
 def test_death_gaze_kills_extra():
-    medusa = Unit.from_type("Medusa", 0, 4, 4)
+    # Create a unit with the legacy death_gaze ability for this test.
+    gazer = Unit("Gazer", 0, 4, 4, attack=8, defense=9, hp=35, speed=4,
+                 damage_min=6, damage_max=10, is_archer=False, is_flying=False,
+                 abilities=["death_gaze"], count=5)
     target = Unit.from_type("Pikeman", 1, 5, 4)
-    b = _battle([medusa, target])
-    r = b.execute(AttackAction(medusa, target, (4, 4), ranged=False))
+    b = _battle([gazer, target])
+    r = b.execute(AttackAction(gazer, target, (4, 4), ranged=False))
     assert "gaze" in r["desc"]
     assert r["killed"] >= 1
 
@@ -87,17 +100,21 @@ def test_self_heal_regenerates_at_round_start():
 # ── scoring reflects abilities ──────────────────────────────────────
 
 def test_base_strength_includes_ability_terms():
-    # Griffin's unlimited_retaliation gives damage potential *1.25.
+    # Griffin: unlimited_retaliation → damage *1.25, flying → special += 0.3
     import math
     griffin = Unit.from_type("Griffin", 0, 0, 0)
-    # special = 1 + 0.3(fly) + speed remap(7-4=+3 -> +0.15) = 1.45
-    expected = math.sqrt(3 * 1.25 * 12) * 1.45
+    # damage_avg = 4, hp = 25, unlimited_retal → *1.25
+    dmg_pot = 4.0 * 1.25
+    # special: flying += 0.3, speed=4 (AVERAGE) → no speed diff
+    special = 1.0 + 0.3
+    expected = math.sqrt(dmg_pot * 25) * special
     assert abs(griffin._base_strength - expected) < 1e-6
 
 
 def test_threat_scaled_by_attacker_abilities():
-    medusa = Unit.from_type("Medusa", 0, 4, 4)   # death_gaze -> threat x2
+    # Genie has enemy_halving → threat x2 (same multiplier as old death_gaze)
+    genie = Unit.from_type("Genie", 0, 4, 4)
     target = Unit.from_type("Pikeman", 1, 5, 4)  # adjacent -> dist_mod 1
-    b = _battle([medusa, target])
-    raw = b.expected_damage(medusa, target, ranged=False)
-    assert abs(threat(b, medusa, target) - raw * 2) < 1e-6
+    b = _battle([genie, target])
+    raw = b.expected_damage(genie, target, ranged=False)
+    assert abs(threat(b, genie, target) - raw * 2) < 1e-6

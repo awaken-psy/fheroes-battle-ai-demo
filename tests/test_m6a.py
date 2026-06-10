@@ -56,9 +56,9 @@ def test_damage_min_max_model():
     assert sw.damage_min == 4 and sw.damage_max == 6
     assert sw.damage_avg == 5.0
 
-    # Old unit (Griffin) uses single damage → min == max.
+    # Griffin now has original min/max range (3-5).
     gr = Unit.from_type("Griffin", 0, 0, 0)
-    assert gr.damage_min == gr.damage_max == 3
+    assert gr.damage_min == 3 and gr.damage_max == 5
 
 
 # ── faction / flag consistency ───────────────────────────────────────
