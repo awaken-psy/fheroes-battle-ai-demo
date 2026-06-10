@@ -20,7 +20,7 @@
 | **M7** | 兵种全阵营扩充(4 阵营 + 中立 ~45 种) | P3 | ~96% | ✅ 完成 |
 | **M7b** | 法术扩充(~24 种) | P4 | ~97% | ✅ 完成 |
 | **M7c** | AI 行为精细化(审计收尾) | P4 | ~98% | ✅ 完成 |
-| **M7d** | 英雄战斗技能 | P4 | ~98% | 📋 待做 |
+| **M7d** | 英雄战斗技能 | P4 | ~98% | ✅ 完成 |
 
 ---
 
@@ -449,49 +449,67 @@ Troll/War Troll/Cyclops。
 
 ---
 
-## M7d — 英雄战斗技能
+## M7d — 英雄战斗技能 ✅ 完成
 
 > 原版英雄的战斗相关二级技能对战场有直接影响。当前 Hero 仅有 power/spell_points,
 > 本里程碑补入战斗相关技能效果。不涉及非战斗技能(Navigation/Estates 等属于战略层)。
 >
-> **依赖**:无硬依赖,可在 M7c 之后或与之并行。
+> **依赖**:无硬依赖,在 M7c 之后。
 >
-> **对照源码**:``heroes/heroes.cpp``(skill 数据)、``battle/battle_arena.cpp``(技能效果)。
+> **对照源码**:``heroes/skill.h``/``skill.cpp``(技能数据)、``battle_troop.cpp``(Archery)、
+> ``battle_catapult.cpp``(Ballistics)、``heroes.cpp GetMorale/GetLuck``(Leadership/Luck)。
+
+### 源码确认
+
+Resistance 不在 HoMM2 中(HoMM3 才加入),从 scope 中剔除。
+Ballistics 原版数值与 spec 有偏差,已按源码修正(见下表)。
+
+| 技能 | Basic | Advanced | Expert | 原版对照 |
+|------|-------|----------|--------|----------|
+| Archery 伤害 | +10% | +25% | +50% | ``battle_troop.cpp:526`` |
+| Archery 惩罚 | 免除 | 免除 | 免除 | ``battle_arena.cpp:1415`` |
+| Ballistics | 1发必中+50%双伤 | 2发必中+50%双伤 | 2发必中+100%双伤 | ``battle_catapult.cpp:44-62`` |
+| Leadership | +1士气 | +2士气 | +3士气 | ``skill.cpp`` ``getLeadershipModifiers`` |
+| Luck | +1运气 | +2运气 | +3运气 | ``skill.cpp`` ``getLuckModifiers`` |
 
 ### 任务
 
-- [ ] **Hero 技能模型**(``engine/hero.py``):
-  - 新增 ``skills`` 字典,键为技能名,值为等级(Basic/Advanced/Expert = 1/2/3)
+- [x] **Hero 技能模型**(``engine/hero.py``):
+  - ``SKILL_VALUES`` 常量表(原版 ``game_static.cpp`` 精确数值)
+  - ``skills`` 字典,键为技能名,值为等级(1/2/3)
   - ``from_config`` 支持可选 ``skills`` 字段
-- [ ] **Archery** (射手伤害加成):
+  - ``get_skill_level`` / ``get_skill_value`` 查询方法
+- [x] **Archery** (射手伤害加成+射击惩罚免除):
   - Basic/Advanced/Expert: +10%/+25%/+50% 射手伤害
-  - 替代攻城中固定的 50% 射箭惩罚减免;非攻城时也有加成
-  - 在 ``roll_damage``/``expected_damage`` 中应用
-- [ ] **Ballistics** (投石车加成):
-  - Basic:每回合 2 发 75% 命中;Advanced:2 发 100%;Expert:2 发 100% 且伤害 2
-  - 在 ``Castle.catapult_round`` 中检查守方英雄技能
-- [ ] **Leadership** (士气加成):
+  - 任意等级完全免除攻城射箭 50% 惩罚(原版 ``IsShootingPenalty`` 检查)
+  - 在 ``expected_damage`` / ``roll_damage`` 中作为 multiplier 应用
+- [x] **Ballistics** (投石车加成):
+  - Basic: 1发必中,50%概率双伤;Advanced: 2发必中,50%概率双伤;Expert: 2发必中,必定双伤
+  - ``Castle.catapult_round`` 新增 ``ballistics`` 参数;``BattleState._catapult_round`` 传入技能等级
+  - 旧测试调用签名从位置参数改为 ``rng=rng`` 关键字参数
+- [x] **Leadership** (士气加成):
   - Basic/Advanced/Expert: +1/+2/+3 士气
-  - 影响 ``morale`` 初始值;亡灵单位不受士气影响(需 undead 标签)
-- [ ] **Luck** (运气加成):
+  - ``BattleState.__init__`` 自动将 hero Leadership 加入 army morale,clamp [-3, 3]
+  - 亡灵单位不受士气影响:``roll_morale(team, unit)`` 检查 ``undead`` tag
+- [x] **Luck** (运气加成):
   - Basic/Advanced/Expert: +1/+2/+3 运气
-  - 影响 ``luck`` 初始值
-- [ ] **Resistance** (抗魔):
-  - Basic/Advanced/Expert: 5%/10%/20% 敌方法术失效概率
-  - 在 ``_cast`` 中检查目标方英雄技能;与单位级 magic_resistance 叠加
-- [ ] **Wisdom** (法术等级限制):简化为不影响战斗(AI 总选最优法术),可标记为范围外
-- [ ] **预设+测试**:英雄配置支持 skills;新增 Archery/Ballistics/Resistance 单测
+  - ``BattleState.__init__`` 自动将 hero Luck 加入 army luck,clamp [-3, 3]
+- [x] **Resistance**: HoMM2 无此技能( HoMM3 才加入),从 scope 剔除。单位级 ``magic_resistance`` 已在 M7 实现。
+- [x] **Wisdom**: 标记为范围外(demo 英雄无 spell level 限制)
+- [x] **headless.py**: ``roll_morale(unit.team)`` → ``roll_morale(unit.team, unit)`` 传递亡灵免疫
+- [x] **测试**: 29 新测试(6 Hero模型 + 6 Archery + 5 Ballistics + 6 Leadership/Luck + 5 亡灵士气 + 2 集成)
 
 ### 退出标准
 
-- [ ] Archery/Ballistics/Leadership/Luck/Resistance 5 项技能效果生效且有单测
-- [ ] 非战斗技能标记为范围外,不实现
-- [ ] 全部 pytest 绿;带 Archery 英雄的射手伤害提升可观测
-- [ ] 镜像双英雄(同技能)仍 40–60% PASS;不同技能导致可观测的战术差异
+- [x] Archery/Ballistics/Leadership/Luck 4 项技能效果生效且有单测;Resistance 剔除;Wisdom 标记范围外
+- [x] 全部 pytest 绿(265 = 236旧 + 29新);镜像 40–60% PASS
+- [x] 带 Archery 英雄射手伤害 +50% 可观测(20→30 dmg)
+- [x] Ballistics Expert 投石车 2发必中+双伤有单测
+- [x] Leadership/Luck 自动加入 army morale/luck,亡灵士气免疫生效
 
-> 注:完成 M7d 后,规则保真度达到 ~98%,AI 决策行为覆盖 ~85%+,
-> 此时规则可正式冻结,安心进入 R2+(观测编码/动作空间/训练环境)阶段。
-
+> **实际交付**:4 个战斗技能(Archery/Ballistics/Leadership/Luck)全部按原版源码精确实现,
+> 6 文件改动(``hero.py``/``battle_state.py``/``castle.py``/``headless.py``/``test_siege.py`` 签名修复 + ``test_m7d.py``)。
+> 规则保真度 ~98%,AI 决策行为覆盖 ~87%。规则可正式冻结,安心进入 R2+ 阶段。
 ---
 
 # 路线图 — AI 可插拔化(面向未来深度学习)

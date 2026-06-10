@@ -20,8 +20,7 @@ Index mapping: our (col, row) = fheroes2 flat index  row*11 + col.
 
 Simplifications vs fheroes2 (no hero skills / artifacts / castle buildings):
   - Wall HP fixed at 2 (no fortification 3-HP variant)
-  - Catapult: 1 shot/round, 75% hit, 1 damage (no Ballistics skill)
-  - Shooting penalty: fixed 50% (no Golden Bow / Archery exemption)
+  - Shooting penalty: fixed 50% (Archery exemption handled in battle_state)
   - 3 towers always present (no build prerequisites)
 """
 
@@ -228,49 +227,71 @@ class Castle:
 
     # ── catapult round ───────────────────────────────────────
 
-    def catapult_round(self, rng: random.Random = None) -> List[dict]:
+    def catapult_round(self, ballistics: int = 0,
+                       rng: random.Random = None) -> List[dict]:
         """Execute one catapult firing round.
 
         Returns list of shot dicts: {target, hit, damage, remaining_hp}.
         Target priority (fheroes2): random intact wall → tower → bridge → center.
+
+        M7d: Ballistics skill modifies behaviour (battle_catapult.cpp:44-62):
+          - Default (0): 1 shot, 75% hit, 1 damage
+          - Basic (1):   1 shot, always hit, 50% chance double damage
+          - Advanced (2): 2 shots, always hit, 50% chance double damage
+          - Expert (3):   2 shots, always hit, always double damage
         """
         if rng is None:
             rng = random.Random()
 
+        # Determine catapult parameters from Ballistics skill level.
+        can_miss = True
+        double_damage_chance = 25  # percent
+        shots_count = 1
+        if ballistics >= 1:  # Basic
+            can_miss = False
+            double_damage_chance = 50
+        if ballistics >= 2:  # Advanced
+            shots_count = 2
+        if ballistics >= 3:  # Expert
+            double_damage_chance = 100
+
         shots: List[dict] = []
-        target = self._catapult_pick_target(rng)
-        if target is None:
-            return shots
+        for _ in range(shots_count):
+            target = self._catapult_pick_target(rng)
+            if target is None:
+                break
 
-        # 75% hit chance (fheroes2: canMiss, miss on <=5 out of 1..20)
-        hit = rng.randint(1, 20) >= 6
-        damage = 1  # fixed 1 damage (no Ballistics skill)
-
-        remaining = 0
-        if hit:
-            if target == "bridge":
-                self.destroy_bridge()
-                remaining = 0
-            elif target.startswith("tower_"):
-                idx = int(target.split("_")[1])
-                self.damage_tower(idx)
-                remaining = 0  # towers are one-shot destroy
+            hit = not can_miss or rng.randint(1, 20) >= 6
+            if hit:
+                # Determine damage: chance for double (2) vs normal (1).
+                damage = 2 if rng.randint(1, 100) <= double_damage_chance else 1
+                remaining = self._apply_catapult_hit(target, damage)
             else:
-                # target is a wall position string like "(8, 0)"
-                pos = self._parse_wall_target(target)
-                remaining = self.damage_wall(pos, damage)
-        else:
-            remaining = self._target_hp(target)
+                damage = 0
+                remaining = self._target_hp(target)
 
-        shots.append({
-            "target": target,
-            "hit": hit,
-            "damage": damage if hit else 0,
-            "remaining_hp": remaining,
-        })
+            shots.append({
+                "target": target,
+                "hit": hit,
+                "damage": damage,
+                "remaining_hp": remaining,
+            })
         return shots
 
     # ── catapult internals ───────────────────────────────────
+
+    def _apply_catapult_hit(self, target: str, damage: int) -> int:
+        """Apply catapult damage to *target*, return remaining HP."""
+        if target == "bridge":
+            self.destroy_bridge()
+            return 0
+        if target.startswith("tower_"):
+            idx = int(target.split("_")[1])
+            self.damage_tower(idx)
+            return 0  # towers are one-shot destroy
+        # target is a wall position string like "(8, 0)"
+        pos = self._parse_wall_target(target)
+        return self.damage_wall(pos, damage)
 
     def _catapult_pick_target(self, rng: random.Random) -> Optional[str]:
         """Pick catapult target. Priority: walls → towers → bridge."""

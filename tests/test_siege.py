@@ -156,7 +156,7 @@ class TestCatapult:
         hits = 0
         for _ in range(50):
             c2 = Castle()
-            shots = c2.catapult_round(rng)
+            shots = c2.catapult_round(rng=rng)
             if shots and shots[0]["hit"]:
                 hits += 1
         assert hits > 0  # should almost always have hits in 50 tries
@@ -167,7 +167,7 @@ class TestCatapult:
         # All targets should be walls while walls are intact.
         for _ in range(20):
             c2 = Castle()
-            shots = c2.catapult_round(rng)
+            shots = c2.catapult_round(rng=rng)
             if shots and shots[0]["target"] != "bridge":
                 # Should be a wall position string.
                 target = shots[0]["target"]
@@ -189,7 +189,7 @@ class TestCatapult:
             t.destroyed = True
         c.destroy_bridge()
         rng = random.Random(42)
-        shots = c.catapult_round(rng)
+        shots = c.catapult_round(rng=rng)
         assert shots == []
 
 
