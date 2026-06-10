@@ -289,13 +289,27 @@ class ClassicAI(AIPlayer):
     def _retreat_pos(self, battle: BattleState, unit: Unit,
                      enemies: List[Unit], occ: Set[tuple], moat=None
                      ) -> Optional[Tuple[int, int]]:
-        """Archer retreat logic — ai_battle.cpp:1180-1379"""
+        """Archer retreat logic — ai_battle.cpp:1180-1379
+
+        Uses the UnitRemover pattern (ai_battle.cpp:1200-1249):
+        temporarily remove the archer's cells from the occupied set so
+        enemy pathfinding isn't blocked by the archer's own body when
+        evaluating retreat-position safety.
+        """
         grid = battle.grid
         if any(e.is_flying for e in enemies):
             return None
 
         td = self._tail_dir(unit)
-        reachable = grid.reachable(unit.pos, unit.speed, occ, unit.is_flying, td, moat)
+
+        # ── UnitRemover — ai_battle.cpp:1200-1249 ───────────
+        # Temporarily remove the archer's cells so enemy reachability
+        # checks are not blocked by the archer's own body.
+        unit_cells = unit.occupied_cells()
+        occ_no_self = occ - unit_cells
+
+        reachable = grid.reachable(unit.pos, unit.speed, occ_no_self,
+                                   unit.is_flying, td, moat)
         safe: list = []
         for pos in reachable:
             if pos in occ:
@@ -303,9 +317,23 @@ class ClassicAI(AIPlayer):
             is_threatened = False
             for e in enemies:
                 d = self._pos_dist(grid, pos, e)
+                # Any position directly adjacent to an enemy is threatened
                 if d == 1:
                     is_threatened = True; break
-                if not e.is_archer and d <= e.speed + 1:
+                # Enemy archers not in hand-fighting: treat as melee-only
+                # threat for retreat evaluation — ai_battle.cpp:1283-1286
+                if e.is_archer and not any(
+                        self._dist(grid, e, f) == 1
+                        for f in battle.friends_of(unit)
+                        if f is not unit):
+                    continue
+                # isUnitAbleToApproachPosition — actual reachability check
+                # using occ without the archer (UnitRemover).
+                e_occ = battle._move_occupied(e) - unit_cells
+                e_td = self._tail_dir(e)
+                e_reach = grid.reachable(e.pos, e.speed, e_occ,
+                                         e.is_flying, e_td, moat)
+                if pos in e_reach:
                     is_threatened = True; break
             if not is_threatened:
                 safe.append(pos)
@@ -343,9 +371,10 @@ class ClassicAI(AIPlayer):
         pos_map = build_attack_position_map(battle, unit, enemies, reachable)
 
         # tier 1: target in attack range
-        # Original: e.strength + pos_value().  Enhanced with splash bonus
-        # from optimal_attack_value for wide/two_cell/all_adjacent attackers.
-        best_e, best_pos, best_val = None, None, float('-inf')
+        # BestAttackOutcome: collect candidates, then sort by value desc
+        # with distance to current unit as tiebreaker (closest wins).
+        # ai_battle.cpp:297-350 — positions sorted by distance to attacker.
+        candidates = []
         for e in enemies:
             for nb in self._attack_cells(grid, e):
                 if nb not in reachable and nb != unit.pos:
@@ -357,9 +386,11 @@ class ClassicAI(AIPlayer):
                 if (unit.has_ability("two_cell_melee") or unit.is_wide
                         or unit.has_ability("all_adjacent_attack")):
                     val += optimal_attack_value(battle, unit, e, nb, enemies) * 0.5
-                if val > best_val:
-                    best_val, best_e, best_pos = val, e, nb
-        if best_e:
+                candidates.append((val, grid.distance(unit.pos, nb), e, nb))
+        if candidates:
+            # Best value first; closest distance breaks ties — §5.1-#4
+            candidates.sort(key=lambda c: (-c[0], c[1]))
+            _, _, best_e, best_pos = candidates[0]
             return AttackAction(unit, best_e, best_pos, ranged=False), \
                 f"[ME] attacks {best_e.name} (in range)"
 
@@ -549,17 +580,43 @@ class ClassicAI(AIPlayer):
             if val > best_val:
                 best_val, best_arch, best_cover = val, a, cover
 
-                # If archer is blocked, attack the blocker
+                # If archer is blocked, evaluate each blocker with
+                # BestAttackOutcome compound priority instead of just
+                # nearest — ai_battle.cpp:1957-1983 §6.1-#5
                 if blockers:
-                    tgt = min(blockers, key=lambda e: self._dist(grid, unit, e))
-                    tc = grid.nearest_cell_next_to(unit.pos, tgt.pos, occ,
-                                                    unit.is_flying, unit.speed, td, moat)
-                    if tc:
-                        path = grid.find_path(unit.pos, tc, occ,
-                                              unit.is_flying, unit.speed, td, moat)
-                        if path:
+                    best_b_score = None
+                    for blocker in blockers:
+                        for nb in self._attack_cells(grid, blocker):
+                            if nb not in reachable and nb != unit.pos:
+                                continue
+                            if nb in occ:
+                                continue
+                            can_attack = (nb in reachable or nb == unit.pos)
+                            atk_val = optimal_attack_value(
+                                battle, unit, blocker, nb, enemies)
+                            pv = pos_map.get(nb, 0)
+                            # Compound: canAttack > positionValue > attackValue
+                            score = (can_attack, pv, atk_val)
+                            if best_b_score is None or score > best_b_score[0]:
+                                best_b_score = (score, blocker, nb)
+
+                    if best_b_score:
+                        _, tgt, atk_pos = best_b_score
+                        can_attack_now = best_b_score[0][0]
+                        if can_attack_now:
                             best_blocker_tgt = tgt
-                            best_cover = path[-1]
+                            best_cover = atk_pos
+                        else:
+                            # Move toward the best blocker
+                            tc = grid.nearest_cell_next_to(
+                                unit.pos, tgt.pos, occ,
+                                unit.is_flying, unit.speed, td, moat)
+                            if tc:
+                                path = grid.find_path(
+                                    unit.pos, tc, occ,
+                                    unit.is_flying, unit.speed, td, moat)
+                                if path:
+                                    best_cover = path[-1]
 
         if best_arch:
             # Attack a blocker if found
