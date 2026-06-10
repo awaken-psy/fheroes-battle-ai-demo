@@ -42,7 +42,7 @@ def test_haste_targets_slow_friendly():
     hero = Hero(power=3, spells=["Haste"])
     units = [Unit.from_type("Pikeman", 0, 1, 4),   # slow friendly
              Unit.from_type("Cavalry", 1, 8, 4),
-             Unit.from_type("Griffin", 1, 9, 4)]    # fast enemies
+             Unit.from_type("Champion", 1, 9, 4)]    # fast enemies (speed 7)
     choice = _choose(units, 0, hero)
     assert choice is not None
     assert choice[0].name == "Haste"
@@ -70,7 +70,7 @@ def test_conserves_spell_when_already_dominant():
 def test_does_not_recast_active_effect():
     hero = Hero(power=3, spells=["Haste"])
     slow_friend = Unit.from_type("Pikeman", 0, 1, 4)
-    units = [slow_friend, Unit.from_type("Griffin", 1, 9, 4)]
+    units = [slow_friend, Unit.from_type("Champion", 1, 9, 4)]
     # already hasted -> no friendly target left -> no cast
     from engine.spells import make_effect, SPELLS
     slow_friend.add_effect(make_effect(SPELLS["Haste"], 3))

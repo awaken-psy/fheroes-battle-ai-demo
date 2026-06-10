@@ -38,8 +38,8 @@ def test_first_team_breaks_the_initiative_tie():
 
 
 def test_faster_unit_acts_first_regardless_of_team():
-    slow = Unit.from_type("Pikeman", 0, 0, 1)    # speed 3
-    fast = Unit.from_type("Griffin", 1, 10, 1)   # speed 7
+    slow = Unit.from_type("Pikeman", 0, 0, 1)    # speed 4
+    fast = Unit.from_type("Champion", 1, 10, 1)  # speed 7
     b = _battle([slow, fast], first_team=0)
     assert b.turn_order()[0] is fast
 

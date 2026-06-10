@@ -7,7 +7,7 @@ from .unit import Unit
 from .actions import (Action, MoveAction, AttackAction, SkipAction,
                       CastAction, RetreatAction)
 from .hex_grid import HexGrid
-from .spells import DAMAGE, spell_damage, make_effect
+from .spells import DAMAGE, spell_damage, make_effect, make_spell_caster_effect
 from .castle import Castle, MOAT_CELLS, GATE_POS
 
 
@@ -108,10 +108,13 @@ class BattleState:
         preference then flips to the other side. Equal-speed units therefore
         alternate between armies (A, B, A, B …) rather than one whole army
         acting before the other. (battle_arena.cpp GetCurrentUnit)
+
+        Units with skip_turn (Blind / Paralyze / Petrify) are excluded.
         """
         queues = {0: [], 1: []}
         for u in self.alive():
-            queues[u.team].append(u)
+            if not u.skip_turn:
+                queues[u.team].append(u)
         for team in queues:
             queues[team].sort(key=lambda u: (-u.speed, u.name))
 
@@ -152,8 +155,8 @@ class BattleState:
             mult = min(1 + 0.1 * (atk.attack - dfn_def), 3.0)
         else:
             mult = max(1 - 0.05 * (dfn_def - atk.attack), 0.3)
-        if atk.is_archer and not ranged:
-            mult *= 0.5  # archer melee penalty
+        if atk.is_archer and not ranged and not atk.has_ability("no_melee_penalty"):
+            mult *= 0.5  # archer melee penalty (unless immune)
         return mult
 
     def _in_moat(self, unit: Unit) -> bool:
@@ -253,25 +256,33 @@ class BattleState:
             if killed > 0:
                 desc += f" ({killed} killed)"
 
-            # death gaze: outright kills a few extra creatures, ignoring HP
+            # ── primary target death / break effects ────────────────
+            r['target_alive'] = tgt.is_alive
+            if not tgt.is_alive:
+                self.deaths_this_round += 1
+                desc += " [DEAD]"
+            else:
+                # break Blind / Paralyze / Petrify on the target
+                tgt.break_effects_on_damage()
+
+            # death gaze (legacy): outright kills a few extra creatures
             if atk.has_ability("death_gaze") and tgt.is_alive:
                 _, gaze_killed = tgt.take_damage(max(1, tgt.count // 10) * tgt.max_hp)
                 if gaze_killed:
                     r['killed'] += gaze_killed
                     desc += f" + gaze kills {gaze_killed}"
-            r['target_alive'] = tgt.is_alive
-            if not tgt.is_alive:
-                self.deaths_this_round += 1
-                desc += " [DEAD]"
+                    r['target_alive'] = tgt.is_alive
+                    if not tgt.is_alive:
+                        self.deaths_this_round += 1
+                        desc += " [DEAD]"
 
-            # hp drain (vampirism): the attacker heals by the damage it dealt,
-            # before any retaliation so it can survive the counterattack
+            # ── hp drain (before retaliation, so attacker can survive) ───
             if atk.has_ability("hp_drain") and atk.is_alive and actual > 0:
                 drained = atk.heal(actual)
                 if drained > 0:
                     desc += f" -> {atk.name} drains {drained}"
 
-            # two_cell_melee: splash to unit behind the target (same attack)
+            # ── two_cell_melee: splash behind the target ─────────────
             if not action.ranged and atk.has_ability("two_cell_melee"):
                 from_pos = action.from_pos if action.from_pos else atk.pos
                 behind = self.grid.cell_behind(from_pos, tgt.pos)
@@ -290,9 +301,52 @@ class BattleState:
                             self.deaths_this_round += 1
                             desc += f" {splash_unit.name}[DEAD]"
 
-            # retaliation (melee only; once per round, or always if unlimited)
-            can_retaliate = tgt.has_ability("unlimited_retaliation") or not tgt.retaliated
-            if not action.ranged and can_retaliate and tgt.is_alive:
+            # ── area_shot: splash to enemies adjacent to target ──────
+            if action.ranged and atk.has_ability("area_shot"):
+                for nb in self.grid.neighbors(*tgt.pos):
+                    splash_unit = self.unit_at(nb)
+                    if (splash_unit and splash_unit.is_alive
+                            and splash_unit is not tgt
+                            and splash_unit.team != atk.team):
+                        sp_actual, sp_killed = splash_unit.take_damage(dmg)
+                        r.setdefault('splash_dmg', 0)
+                        r.setdefault('splash_killed', 0)
+                        r['splash_dmg'] += sp_actual
+                        r['splash_killed'] += sp_killed
+                        desc += f" |AoE {splash_unit.name}:{sp_actual}"
+                        if sp_killed > 0:
+                            desc += f" ({sp_killed}k)"
+                        if not splash_unit.is_alive:
+                            self.deaths_this_round += 1
+                            desc += f" {splash_unit.name}[DEAD]"
+
+            # ── all_adjacent_attack: hit all adjacent enemies ────────
+            if not action.ranged and atk.has_ability("all_adjacent_attack"):
+                for nb in self.grid.neighbors(*atk.pos):
+                    adj_unit = self.unit_at(nb)
+                    if (adj_unit and adj_unit.is_alive
+                            and adj_unit is not tgt
+                            and adj_unit.team != atk.team):
+                        adj_dmg = self.roll_damage(atk, adj_unit, ranged=False)
+                        adj_actual, adj_killed = adj_unit.take_damage(adj_dmg)
+                        r.setdefault('splash_dmg', 0)
+                        r.setdefault('splash_killed', 0)
+                        r['splash_dmg'] += adj_actual
+                        r['splash_killed'] += adj_killed
+                        desc += f" |adj {adj_unit.name}:{adj_actual}"
+                        if adj_killed > 0:
+                            desc += f" ({adj_killed}k)"
+                        if not adj_unit.is_alive:
+                            self.deaths_this_round += 1
+                            desc += f" {adj_unit.name}[DEAD]"
+
+            # ── retaliation (melee only) ─────────────────────────────
+            # no_enemy_retaliation: attacker prevents counterattack.
+            can_retaliate = (not atk.has_ability("no_enemy_retaliation")
+                             and tgt.is_alive
+                             and (tgt.has_ability("unlimited_retaliation")
+                                  or not tgt.retaliated))
+            if not action.ranged and can_retaliate:
                 ret = self.roll_damage(tgt, atk)
                 ret_actual, ret_killed = atk.take_damage(ret)
                 tgt.retaliated = True
@@ -305,8 +359,44 @@ class BattleState:
                 if not atk.is_alive:
                     self.deaths_this_round += 1
                     desc += " [DEAD]"
+                else:
+                    atk.break_effects_on_damage()
 
-            # ── M6a: double attacks (after retaliation) ────────────────
+            # ── enemy_halving: chance to kill half the stack ─────────
+            if atk.has_ability("enemy_halving") and tgt.is_alive:
+                params = atk.ability_params.get("enemy_halving", {})
+                chance = params.get("chance", 10)
+                if random.randint(1, 100) <= chance:
+                    half_hp = (tgt.count // 2) * tgt.max_hp
+                    # Only kill if there's more than 1 creature
+                    if tgt.count > 1:
+                        halved = tgt.count // 2
+                        halve_dmg = halved * tgt.max_hp
+                        halve_actual, halve_killed = tgt.take_damage(halve_dmg)
+                        if halve_killed > 0:
+                            r['killed'] += halve_killed
+                            desc += f" |halving kills {halve_killed}"
+                            r['target_alive'] = tgt.is_alive
+                            if not tgt.is_alive:
+                                self.deaths_this_round += 1
+                                desc += " [DEAD]"
+
+            # ── spell_caster: on-hit chance to apply status effect ───
+            if atk.has_ability("spell_caster") and tgt.is_alive:
+                params = atk.ability_params.get("spell_caster", {})
+                spell_name = params.get("spell", "")
+                chance = params.get("chance", 20)
+                if spell_name and random.randint(1, 100) <= chance:
+                    if spell_name == "dispel":
+                        tgt.effects.clear()
+                        desc += f" |dispels {tgt.name}"
+                    else:
+                        effect = make_spell_caster_effect(spell_name)
+                        if effect:
+                            tgt.add_effect(effect)
+                            desc += f" |{spell_name} {tgt.name}"
+
+            # ── M6a: double attacks (after retaliation) ──────────────
 
             # double_shooting: second ranged attack
             if (action.ranged and atk.has_ability("double_shooting")
@@ -367,6 +457,15 @@ class BattleState:
         if hero is None:
             return r
         hero.cast(spell)
+
+        # magic_resistance: percentage chance to resist the spell entirely.
+        if tgt.has_ability("magic_resistance"):
+            params = tgt.ability_params.get("magic_resistance", {})
+            chance = params.get("chance", 0)
+            if chance > 0 and random.randint(1, 100) <= chance:
+                r['desc'] = (f"{hero.name} casts {spell.name} on {tgt.name} "
+                             f"-> RESISTED ({chance}%)")
+                return r
 
         if spell.kind == DAMAGE:
             dmg = spell_damage(spell, hero.power)

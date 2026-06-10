@@ -30,7 +30,9 @@ def threat(battle: BattleState, attacker: Unit, defender: Unit) -> float:
     threat_value = dmg / dist_mod
 
     # Special-ability multipliers (evaluateThreatForUnit ability terms).
-    if attacker.has_ability("death_gaze"):   # enemy-halving
+    if attacker.has_ability("death_gaze"):   # enemy-halving (legacy)
+        threat_value *= 2
+    if attacker.has_ability("enemy_halving"):  # enemy-halving (Genie)
         threat_value *= 2
     if attacker.has_ability("hp_drain"):
         threat_value *= 1.3
