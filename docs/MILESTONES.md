@@ -1,12 +1,13 @@
 # 里程碑 — 战斗 AI 复刻
 
-> **当前阶段：T 系列（训练实战）进行中 — T1 ✅ 完成，准备 T2。**
+> **当前阶段：T 系列（训练实战）进行中 — T1 ✅ T2 ✅ 完成，准备 T3。**
 >
 > - 规则层 M1–M7e：~99% 保真度，63 兵种，38 法术，298 测试
 > - AI 决策层 A1–A4：~97% 决策行为覆盖（126 条审计），356 测试
 > - 深度学习 R1–R7：CNN+PPO 自我博弈训练管线，205 测试
 > - **T1 Baseline 评估框架**：eval_benchmark.py + 15 测试，PR #23
-> - **总计 576 测试，CI 守护**
+> - **T2 模型/训练改进**：GroupNorm + LR decay + Grad accum + TensorBoard，13 测试，PR #25
+> - **总计 589 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
 > AI 行为审计见 [`docs/ai-audit.md`](ai-audit.md)（126 条）。
@@ -111,7 +112,7 @@ python scripts/train.py \
 
 ---
 
-### T2 — 模型架构与训练改进
+### T2 — 模型架构与训练改进 ✅
 
 修复已知问题 + 加入高级训练技巧，为有效训练扫清障碍。
 
@@ -131,12 +132,19 @@ python scripts/train.py \
 | TensorBoard | 写入 loss/entropy/eval/win_rate | 可视化训练过程，`tensorboard --logdir runs/` 查看 |
 
 **退出标准**：
-- [ ] BattleNet 使用 GroupNorm，forward 输出形状和值域不变
-- [ ] LR schedule 在训练过程中可见衰减（日志可验证）
-- [ ] Gradient accumulation 等效 batch size = rollout_steps（可配置）
-- [ ] `tensorboard --logdir runs/` 可显示 loss/entropy/eval 曲线
-- [ ] 旧 checkpoint 兼容（GroupNorm 替换后旧权重不加载是预期的，文档说明）
-- [ ] 新旧测试全部通过（576 + 新增）
+- [x] BattleNet 使用 GroupNorm，forward 输出形状和值域不变
+- [x] LR schedule 在训练过程中可见衰减（日志可验证）
+- [x] Gradient accumulation 等效 batch size 可配置（--grad-accum）
+- [x] `tensorboard --logdir runs/` 可显示 loss/entropy/eval 曲线
+- [x] 旧 checkpoint 不兼容（GroupNorm 替换后旧权重无法加载，预期行为）
+- [x] 新旧测试全部通过（576 + 13 新增 = 589）
+
+**实际结果**（PR #25, commit `50f6186`）：
+- GroupNorm: 9 个 GN 层（1 stem + 2×4 ResBlock），零 BN，batch=1 稳定
+- LR decay: `lr: 0.00025 → 0.0` 线性衰减可见
+- Grad accum: 默认 1（关闭），`--grad-accum 4` 验证通过
+- TensorBoard: loss/entropy/lr/eval 曲线写入 `runs/`
+- 验证训练：20k 步稳定，无 NaN/Inf
 
 **CLI 新参数**：
 ```bash
