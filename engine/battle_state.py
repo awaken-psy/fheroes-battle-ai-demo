@@ -46,6 +46,8 @@ class BattleState:
                     self.morale[team] + hero.get_skill_value("leadership")))
                 self.luck[team] = max(-3, min(3,
                     self.luck[team] + hero.get_skill_value("luck")))
+        # Record initial creature counts for observation encoding (R2).
+        self._initial_counts: dict = {id(u): u.count for u in units}
         # Set to a team index when that side's hero flees.
         self._retreated = None
         # Siege structures (None for open-field battles).
