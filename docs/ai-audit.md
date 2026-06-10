@@ -277,7 +277,7 @@
 | 3 | `ENEMY_HALVING` ×2 | :1059 | `death_gaze` ×2 | ✅ |
 | 4 | `SOUL_EATER` ×3 | :1061 | 无此能力 | ❌ 范围外 |
 | 5 | `HP_DRAIN` ×1.3 | :1063 | 同 | ✅ |
-| 6 | SPELL_CASTER 能力威胁（Blind/Paralyze/Petrify/Curse 概率伤害） | :1068-1120 | 无 | ❌ 范围外 |
+| 6 | SPELL_CASTER 能力威胁（Blind/Paralyze/Petrify/Curse 概率伤害） | :1068-1120 | `threat()` 中 spell_caster Blind/Paralyze/Petrify 概率伤害 + Curse/10 | ✅ A4 |
 | 7 | 镜像单位 ×10 优先 | :1124 | 无（demo 无镜像） | ❌ 范围外 |
 | 8 | 同阵营友军伤害 ×(-2) | :1127-1129 | 无（demo 无 Hypnotize） | ❌ 范围外 |
 | 9 | 变节单位 ×(-1) | :1132 | 无 | ❌ 范围外 |
@@ -292,7 +292,7 @@
 | 2 | 宽体攻击者可达距离 2 的位置 | :226 | `occupied_cells()` 遍历 head+tail | ✅ M7c |
 | 3 | 射手邻接位置：attackValue 累加 | :258 | `val += d` | ✅ |
 | 4 | 非射手邻接位置：取 max | :260 | `val = max(val, d)` | ✅ |
-| 5 | `isAllAdjacentCellsAttack` 时所有邻接单位值相等 | :252-254 | 无 | ❌ 范围外 |
+| 5 | `isAllAdjacentCellsAttack` 时所有邻接单位值相等 | :252-254 | `build_attack_position_map` 中 all_adjacent_attack 跳过合并（值已等价） | ✅ A4 |
 
 ### 8.3 findOptimalPositionForSubsequentAttack（我们的 `_safest_step_on_path`）
 
@@ -329,24 +329,24 @@
 
 | 状态 | 数量 |
 |------|------|
-| ✅ 已对齐 | 102 |
+| ✅ 已对齐 | 104 |
 | ⚠️ 近似 | 11 |
 | ❌ 暂缺（属范围） | 0 |
-| ❌ 暂缺（范围外） | 13 |
+| ❌ 暂缺（范围外） | 11 |
 | **总计** | **126** |
 
 > 文档审计条目修正说明：原计数 111 项有误，实际逐条统计为 126 项。
 > 主要差异来自 M7b 新增法术 AI 评估（§3.4 的 9 项 ❌→✅）此前未纳入统计。
 >
-> 核心决策路径（排除「范围外」的 13 项）：
-> ✅ 102 / (126-13) = 102/113 ≈ **90%** 已对齐
-> ⚠️ 11 / 113 ≈ **10%** 近似（含已确认行为等价项）
-> ❌ 0 / 113 ≈ **0%** 暂缺
+> 核心决策路径（排除「范围外」的 11 项）：
+> ✅ 104 / (126-11) = 104/115 ≈ **90%** 已对齐
+> ⚠️ 11 / 115 ≈ **10%** 近似（含已确认行为等价项）
+> ❌ 0 / 115 ≈ **0%** 暂缺
 >
-> 综合保真度：102 完全对齐 + 11 近似（权重×0.6）≈ 102+7 = 109 / 113 ≈ **96% 决策行为覆盖**
+> 综合保真度：104 完全对齐 + 11 近似（权重×0.6）≈ 104+7 = 111 / 115 ≈ **97% 决策行为覆盖**
 >
-> 范围外 13 项：投降(1) + Berserk/Hypnotize/Summon/Resurrect 法术(4) + Resurrect阈值(1)
-> + SOUL_EATER/SPELL_CASTER/镜像/变节/Immovable/isAllAdjacent 能力(7)
+> 范围外 11 项：投降(1) + Berserk/Hypnotize/Summon/Resurrect 法术(4) + Resurrect阈值(1)
+> + SOUL_EATER/镜像/变节/Immovable 能力(4)
 > 均需全新游戏子系统（单位动态创建/阵营转换/新能力标记/王国经济）。
 >
 > 规则复刻保真度约 **~99%**（MILESTONES.md）。

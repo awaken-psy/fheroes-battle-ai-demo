@@ -37,6 +37,24 @@ def threat(battle: BattleState, attacker: Unit, defender: Unit) -> float:
     if attacker.has_ability("hp_drain"):
         threat_value *= 1.3
 
+    # §8.1-#6: SPELL_CASTER threat — battle_troop.cpp:1093-1125.
+    # Units with spell_caster ability (e.g. Genie, Unicorn) add probabilistic
+    # spell damage to threat based on the triggered spell type.
+    if attacker.has_ability("spell_caster"):
+        params = attacker.ability_params.get("spell_caster", {})
+        spell_name = params.get("spell", "")
+        chance = params.get("chance", 20)
+        # Defender's average damage (used to value disabling them)
+        def_avg_dmg = (defender.damage_min + defender.damage_max) / 2.0
+        if spell_name in ("Blind", "Paralyze", "Petrify"):
+            # Blind/Paralyze/Petrify: probability × defender avg damage
+            # C++ checks AllowApplySpell but we skip immunity check for simplicity
+            threat_value += def_avg_dmg * chance / 100.0
+        elif spell_name == "Curse":
+            # Curse: lower impact, divided by 10
+            threat_value += def_avg_dmg * chance / 100.0 / 10.0
+        # Dispel: TODO (C++ also has TODO here)
+
     # Reduce the priority of enemies that have already got their turn
     # this round — they can't act again until next round.
     # fheroes2: battle_troop.cpp evaluateThreatForUnit, TR_MOVED check.
@@ -169,7 +187,12 @@ def build_attack_position_map(
                 seen_pos.add(nb)
                 a_val = optimal_attack_value(battle, unit, e, nb, enemies)
                 if nb in result:
-                    if e.is_archer:
+                    # §8.2-#5: allAdjacentAttack yields the same total value
+                    # regardless of which enemy triggered the evaluation,
+                    # so no merge is needed (C++ asserts equality).
+                    if unit.has_ability("all_adjacent_attack"):
+                        pass  # value already correct
+                    elif e.is_archer:
                         result[nb] += a_val
                     else:
                         result[nb] = max(result[nb], a_val)
