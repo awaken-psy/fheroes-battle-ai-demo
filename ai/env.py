@@ -1,0 +1,327 @@
+"""R4 — Gymnasium battle environment for RL training.
+
+Wraps the fheroes2 battle engine as a standard Gymnasium environment.
+Each ``step()`` corresponds to one unit activation: the agent picks one
+action from the 13 566-dim flat discrete space (Cast / Move / Attack /
+Wait / Defend / Retreat).  Good morale grants an extra step for the same
+unit; bad morale causes a silent skip.
+
+Observation:  Dict with keys ``"grid"`` (33×9×11), ``"global"`` (20,),
+              ``"mask"`` (13566,).
+Action:       ``int`` in [0, 13 565].
+Reward:       From the current acting team's perspective (see below).
+
+Reward phases (controlled by ``reset(options={...})``):
+  Phase 1  — dense + sparse:  δ_hp + kills + terminal ±1
+  Phase 2  — transition:      dense component scaled by ``dense_weight``
+  Phase 3  — sparse only:     terminal ±1
+
+The training loop manages phase transitions and ``dense_weight`` decay.
+"""
+
+import random
+from typing import Any, Dict, List, Optional
+
+import gymnasium
+from gymnasium import spaces
+import numpy as np
+
+from engine.hex_grid import HexGrid
+from engine.unit import Unit
+from engine.battle_state import BattleState
+from engine.hero import Hero
+from engine.castle import Castle
+from engine.actions import SkipAction, RetreatAction
+from ai.observation import (encode_observation, NUM_GRID_CHANNELS,
+                             GRID_ROWS, GRID_COLS, GLOBAL_DIM)
+from ai.action_space import (ACTION_DIM, index_to_action, legal_mask)
+
+
+class BattleEnv(gymnasium.Env):
+    """Gymnasium environment wrapping the fheroes2 battle engine.
+
+    Parameters
+    ----------
+    battle_config : dict
+        Battle configuration with keys:
+        ``"units"`` — list of (name, team, col, row[, count]) tuples
+        ``"heroes"`` — optional {team: config_dict | None}
+        ``"siege"`` — optional bool
+        ``"morale"`` — optional {team: int}
+        ``"luck"`` — optional {team: int}
+    """
+
+    metadata = {"render_modes": []}
+
+    def __init__(self, battle_config: dict):
+        super().__init__()
+        self._config = battle_config
+
+        # ── Spaces ─────────────────────────────────────────────
+        self.observation_space = spaces.Dict({
+            "grid": spaces.Box(
+                0, 1,
+                shape=(NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS),
+                dtype=np.float32),
+            "global": spaces.Box(
+                -1, 1,
+                shape=(GLOBAL_DIM,),
+                dtype=np.float32),
+            "mask": spaces.Box(
+                0, 1,
+                shape=(ACTION_DIM,),
+                dtype=np.float32),
+        })
+        self.action_space = spaces.Discrete(ACTION_DIM)
+
+        # ── Internal state (set in reset) ──────────────────────
+        self._battle: Optional[BattleState] = None
+        self._current_unit = None
+        self._current_team: int = 0
+        self._actions_remaining: int = 0
+        self._turn_order: List = []
+        self._turn_idx: int = 0
+        self._reward_phase: int = 1
+        self._dense_weight: float = 1.0
+
+        # Reward tracking
+        self._prev_hp: Dict[int, float] = {0: 0.0, 1: 0.0}
+        self._prev_alive: Dict[int, int] = {0: 0, 1: 0}
+        self._initial_hp: Dict[int, float] = {0: 0.0, 1: 0.0}
+
+    # ── Gymnasium interface ─────────────────────────────────────
+
+    def reset(self, *, seed=None, options=None):
+        super().reset(seed=seed)
+        if seed is not None:
+            random.seed(seed)
+
+        options = options or {}
+        self._reward_phase = options.get("reward_phase", 1)
+        self._dense_weight = options.get("dense_weight", 1.0)
+
+        # Build fresh battle
+        self._battle = self._build_battle()
+
+        # Compute turn order, then start first round (mirrors headless.py)
+        self._turn_order = self._battle.turn_order()
+        self._battle.start_round()
+        self._turn_idx = 0
+
+        # Reward baselines
+        self._initial_hp = self._team_hp()
+        self._prev_hp = dict(self._initial_hp)
+        self._prev_alive = self._team_alive()
+
+        # Advance to first acting unit
+        self._current_unit = None
+        self._actions_remaining = 0
+        self._advance_to_next_unit()
+
+        return self._make_obs(), self._make_info()
+
+    def step(self, action_index: int):
+        if self._battle is None or self._battle.is_over():
+            raise RuntimeError(
+                "step() called on ended environment; call reset() first")
+
+        team = self._current_unit.team
+
+        # 1. Convert and execute
+        action = index_to_action(action_index, self._battle, self._current_unit)
+        result = self._battle.execute(action)
+
+        # 2. Dense reward (HP delta from this step only)
+        reward = self._dense_reward(team)
+
+        # 3. Advance — good morale may keep the same unit
+        self._actions_remaining -= 1
+        more = (self._actions_remaining > 0
+                and self._current_unit.is_alive
+                and not self._battle.is_over())
+
+        terminated = False if more else not self._advance_to_next_unit()
+
+        # 4. Update tracking (after action + any round transition)
+        self._prev_hp = self._team_hp()
+        self._prev_alive = self._team_alive()
+
+        # 5. Terminal reward (all phases)
+        if terminated:
+            winner = self._battle.winner()
+            reward += 1.0 if winner == team else -1.0
+
+        obs = self._make_obs()
+        info = self._make_info(result)
+        if terminated:
+            info["winner"] = self._battle.winner()
+            info["end_reason"] = self._end_reason()
+
+        return obs, float(reward), terminated, False, info
+
+    # ── Unit advancement ────────────────────────────────────────
+
+    def _advance_to_next_unit(self) -> bool:
+        """Find next unit needing an agent action.
+
+        Handles dead units, bad-morale skips, and round transitions.
+        Returns False when the battle has ended.
+        """
+        while True:
+            # Walk current round's turn order
+            while self._turn_idx < len(self._turn_order):
+                unit = self._turn_order[self._turn_idx]
+                self._turn_idx += 1
+
+                if not unit.is_alive or self._battle.is_over():
+                    continue
+
+                # Morale roll
+                morale = self._battle.roll_morale(unit.team, unit)
+                if morale < 0:
+                    continue  # bad morale → skip
+
+                self._current_unit = unit
+                self._current_team = unit.team
+                unit._acted = True
+                self._actions_remaining = 2 if morale > 0 else 1
+                return True
+
+            # ── End of round ───────────────────────────────────
+            if self._battle.is_over():
+                return False
+            if (self._battle.is_stalemate()
+                    or self._battle.round_num >= BattleState.MAX_ROUNDS):
+                return False
+
+            # New round (mirrors headless.py: order then start_round)
+            self._turn_order = self._battle.turn_order()
+            self._battle.start_round()
+            self._turn_idx = 0
+
+            if not self._turn_order:
+                return False
+
+    # ── Reward computation ──────────────────────────────────────
+
+    def _dense_reward(self, team: int) -> float:
+        """Per-step dense reward from *team*'s perspective."""
+        if self._reward_phase == 3:
+            return 0.0
+
+        new_hp = self._team_hp()
+        new_alive = self._team_alive()
+        enemy = 1 - team
+
+        reward = 0.0
+
+        # Damage dealt / received (normalised by initial HP)
+        enemy_hp_lost = self._prev_hp[enemy] - new_hp[enemy]
+        my_hp_lost = self._prev_hp[team] - new_hp[team]
+        if self._initial_hp[enemy] > 0:
+            reward += enemy_hp_lost / self._initial_hp[enemy]
+        if self._initial_hp[team] > 0:
+            reward -= my_hp_lost / self._initial_hp[team]
+
+        # Kills
+        reward += 0.1 * (self._prev_alive[enemy] - new_alive[enemy])
+        reward -= 0.1 * (self._prev_alive[team] - new_alive[team])
+
+        # Phase 2: scale dense component
+        if self._reward_phase == 2:
+            reward *= self._dense_weight
+
+        return float(reward)
+
+    # ── Battle construction ─────────────────────────────────────
+
+    def _build_battle(self) -> BattleState:
+        """Create a fresh BattleState from ``self._config``."""
+        units = []
+        for spec in self._config.get("units", []):
+            name, team, col, row = spec[:4]
+            count = spec[4] if len(spec) > 4 else None
+            units.append(Unit.from_type(name, team, col, row, count=count))
+
+        heroes = {0: None, 1: None}
+        for k, cfg in self._config.get("heroes", {}).items():
+            heroes[int(k)] = Hero.from_config(cfg) if cfg else None
+
+        castle = Castle() if self._config.get("siege") else None
+        grid = HexGrid()
+
+        morale = {int(k): v
+                  for k, v in self._config.get("morale", {}).items()} or None
+        luck = {int(k): v
+                for k, v in self._config.get("luck", {}).items()} or None
+
+        # Randomise first_team to cancel initiative bias
+        first_team = int(self.np_random.integers(0, 2))
+
+        return BattleState(
+            grid, units,
+            first_team=first_team,
+            attacker_team=0,
+            heroes=heroes,
+            castle=castle,
+            morale=morale,
+            luck=luck,
+        )
+
+    # ── Helpers ─────────────────────────────────────────────────
+
+    def _team_hp(self) -> Dict[int, float]:
+        hp = {0: 0.0, 1: 0.0}
+        if self._battle is None:
+            return hp
+        for u in self._battle.alive():
+            hp[u.team] += u._total_hp
+        return hp
+
+    def _team_alive(self) -> Dict[int, int]:
+        if self._battle is None:
+            return {0: 0, 1: 0}
+        return {t: len(self._battle.alive(t)) for t in (0, 1)}
+
+    def _make_obs(self) -> Dict[str, np.ndarray]:
+        if self._current_unit is None or self._battle is None:
+            return {k: np.zeros(s.shape, dtype=s.dtype)
+                    for k, s in self.observation_space.spaces.items()}
+        grid, gvec = encode_observation(self._battle, self._current_unit)
+        mask = legal_mask(self._battle, self._current_unit)
+        return {"grid": grid, "global": gvec, "mask": mask}
+
+    def _make_info(self, result: dict = None) -> Dict[str, Any]:
+        info: Dict[str, Any] = {
+            "current_team": self._current_team,
+            "current_unit_name": (self._current_unit.name
+                                  if self._current_unit else ""),
+            "round_num": (self._battle.round_num
+                          if self._battle else 0),
+        }
+        if result is not None:
+            info["action_result"] = result
+        return info
+
+    def _end_reason(self) -> str:
+        if self._battle._retreated is not None:
+            return "retreat"
+        if self._battle.is_stalemate():
+            return "stalemate"
+        if self._battle.round_num >= BattleState.MAX_ROUNDS:
+            return "cap"
+        return "elim"
+
+
+# ── Gymnasium registration ──────────────────────────────────────
+
+def register_envs():
+    """Register fheroes2 environments with gymnasium.
+
+    Call once before using ``gymnasium.make("fheroes2-battle-v0", ...)``.
+    """
+    if "fheroes2-battle-v0" not in gymnasium.envs.registry:
+        gymnasium.register(
+            id="fheroes2-battle-v0",
+            entry_point="ai.env:BattleEnv",
+        )

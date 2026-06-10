@@ -196,7 +196,7 @@ team 0 行动时"我方"= team 0，team 1 行动时"我方"= team 1。
 
 ---
 
-### R4 — 环境封装 `ai/env.py`
+### R4 — 环境封装 `ai/env.py` ✅
 
 基于 **Gymnasium** 标准接口的战斗环境，整合观测、动作、奖励。
 
@@ -245,14 +245,14 @@ class SelfPlayRunner:
 ```
 
 **退出标准**：
-- [ ] `reset()` 返回合法观测（符合 gymnasium 空间定义）
-- [ ] `step()` 返回合法 `(obs, reward, terminated, truncated, info)` 五元组
-- [ ] 完整 episode 从开始到结束正常运行
-- [ ] 奖励在三个阶段的行为符合设计
-- [ ] 自我博弈 runner 能跑完一局并收集 trajectory
-- [ ] 与 ClassicAI 对战的 `eval_game()` 可用
-- [ ] 兼容 `gymnasium.make()` 注册
-- [ ] 单元测试覆盖 episode 生命周期 + 奖励计算
+- [x] `reset()` 返回合法观测（符合 gymnasium 空间定义）
+- [x] `step()` 返回合法 `(obs, reward, terminated, truncated, info)` 五元组
+- [x] 完整 episode 从开始到结束正常运行
+- [x] 奖励在三个阶段的行为符合设计
+- [x] 自我博弈 runner 能跑完一局并收集 trajectory
+- [x] 与 ClassicAI 对战的 `eval_vs_classic()` 可用
+- [x] 兼容 `gymnasium.make()` 注册
+- [x] 单元测试覆盖 episode 生命周期 + 奖励计算（32 tests）
 
 ---
 
