@@ -1,0 +1,16 @@
+{
+  "units": [
+    {"team": 0, "type": "Pikeman", "col": 1, "row": 2, "count": 10},
+    {"team": 0, "type": "Archer",  "col": 0, "row": 4, "count": 8},
+    {"team": 0, "type": "Cavalry", "col": 2, "row": 6, "count": 4},
+    {"team": 1, "type": "Pikeman", "col": 9, "row": 2, "count": 10},
+    {"team": 1, "type": "Archer",  "col": 10, "row": 4, "count": 8},
+    {"team": 1, "type": "Cavalry", "col": 8, "row": 6, "count": 4}
+  ],
+  "heroes": {
+    "0": {"name": "Solmyr", "power": 8, "spell_points": 30,
+          "spells": ["Lightning Bolt", "Cold Ray", "Fireball", "Chain Lightning", "Haste", "Slow", "Bless", "Curse", "Shield"]},
+    "1": {"name": "Dawn", "power": 6, "spell_points": 25,
+          "spells": ["Magic Arrow", "Fireball", "Slow", "Bless", "Cure", "Bloodlust"]}
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "units": [
+    {"team": 0, "type": "Hydra",     "col": 2, "row": 4, "count": 3},
+    {"team": 0, "type": "Unicorn",   "col": 0, "row": 2, "count": 4},
+    {"team": 0, "type": "Sprite",    "col": 1, "row": 6, "count": 20},
+    {"team": 1, "type": "Cyclops",   "col": 8, "row": 4, "count": 3},
+    {"team": 1, "type": "Medusa",    "col": 10, "row": 2, "count": 4},
+    {"team": 1, "type": "Genie",     "col": 9, "row": 6, "count": 2}
+  ]
+}
