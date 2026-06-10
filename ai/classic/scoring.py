@@ -53,48 +53,43 @@ def threat(battle: BattleState, attacker: Unit, defender: Unit) -> float:
 
 def splash_value(battle: BattleState, attacker: Unit, target: Unit,
                  attack_pos: Tuple[int, int]) -> float:
-    """doubleCellAttackValue — ai_battle.cpp:98.
+    """doubleCellAttackValue + optimalAttackVector — ai_battle.cpp:98-155.
 
-    When a wide or two_cell attacker strikes `target` from `attack_pos`,
-    the cell *behind* the target (relative to the attack direction) may
-    contain a secondary target.  Return its threat value if so.
+    Enumerate all valid (attackCell, targetCell) pairs where they are
+    adjacent, compute the cell *behind* the target for each attack
+    direction using ``grid.cell_behind``, and return the highest splash
+    value from secondary targets hit by the two-cell attack.
     """
     grid = battle.grid
-    # Direction from attack_pos toward target
-    dx = target.col - attack_pos[0]
-    dy = target.row - attack_pos[1]
-    # "Behind" the target: one more step in the same direction.
-    # Hex grids have 6 directions so we use a simpler approach:
-    # find the neighbor of target that is furthest from attack_pos
-    # and not target's own cells.
-    target_cells = set(target.occupied_cells())
-    best_behind = None
-    best_dist = -1
-    for nb in grid.neighbors(*target.pos):
-        if nb in target_cells or nb == attack_pos:
-            continue
-        d = grid.distance(attack_pos, nb)
-        if d > best_dist:
-            best_dist = d
-            best_behind = nb
-    if best_behind is None:
-        return 0.0
-    # Check tail cell for wide targets too
-    if target.is_wide:
-        for nb in grid.neighbors(*target.tail_cell):
-            if nb in target_cells or nb == attack_pos:
+    best_splash = 0.0
+
+    # Attack cells: head and (for wide attackers) tail at attack_pos
+    attack_cells = [attack_pos]
+    if attacker.is_wide:
+        tail_offset = -1 if attacker.team == 0 else 1
+        tail = (attack_pos[0] + tail_offset, attack_pos[1])
+        if grid.is_valid(*tail):
+            attack_cells.append(tail)
+
+    # Target cells: all occupied cells (head + tail for wide targets)
+    target_cells = list(target.occupied_cells())
+
+    for ac in attack_cells:
+        for tc in target_cells:
+            if grid.distance(ac, tc) != 1:
                 continue
-            d = grid.distance(attack_pos, nb)
-            if d > best_dist:
-                best_dist = d
-                best_behind = nb
-    # Is there a unit at the behind cell?
-    for u in battle.alive():
-        if u is attacker or u is target:
-            continue
-        if best_behind in u.occupied_cells():
-            return threat(battle, attacker, u)
-    return 0.0
+            # Cell behind the target from this attack direction
+            behind = grid.cell_behind(ac, tc)
+            if behind is None:
+                continue
+            # Check for a secondary unit at the behind cell
+            for u in battle.alive():
+                if u is attacker or u is target:
+                    continue
+                if behind in u.occupied_cells():
+                    best_splash = max(best_splash,
+                                      threat(battle, attacker, u))
+    return best_splash
 
 
 def optimal_attack_value(battle: BattleState, attacker: Unit,

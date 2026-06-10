@@ -171,7 +171,7 @@
 | # | 原版行为 | 源码位置 | 我们的实现 | 状态 |
 |---|---------|---------|-----------|------|
 | 1 | 有飞行敌人 → 不尝试撤退 | :1182-1187 | 同 | ✅ |
-| 2 | 评估**所有可达位置**的安全性（用 `UnitRemover` 临时移除当前单位） | :189-254 | 评估 reachable 内的位置（不移除自身） | ⚠️ 近似 |
+| 2 | 评估**所有可达位置**的安全性（用 `UnitRemover` 临时移除当前单位） | :189-254 | `_retreat_pos` UnitRemover 模式 + 实际寻路可达性检查 | ✅ A3 |
 | 3 | 当前位置无威胁 → 不撤退 | :256-260 | `not cur_threatened → return None` | ✅ |
 | 4 | 威胁者全部 `enemySpeed + 2 < currentUnitSpeed` → 值得撤退 | :264-276 | 同（`e.speed + 2 < unit.speed`） | ✅ |
 | 5 | 安全位置选择：`(distanceToNearestEnemy, 1.0/distanceToCenter)` 最大 | :286-295 | `(minDist, -distToCenter)` 最大（等价） | ✅ |
@@ -203,7 +203,7 @@
 | 1 | `evaluatePotentialAttackPositions` 预计算所有攻击位置价值 | :202-270 | `build_attack_position_map` 预计算，archer→sum/non-archer→max | ✅ M7c |
 | 2 | `BestAttackOutcome` 复合优先级：canAttackImmediately > positionValue > attackValue | :297-350 | `strength + pos_value` + splash bonus for wide/two_cell | ✅ M7c |
 | 3 | `optimalAttackValue`：含双格攻击溅射价值 + 全邻接攻击价值 | :160-199 | `optimal_attack_value` 含 splash/all_adjacent | ✅ M7c |
-| 4 | 位置排序：优先距当前单位最近的位置 | :312-316 | 无排序 | ⚠️ 简化 |
+| 4 | 位置排序：优先距当前单位最近的位置 | :312-316 | 候选按 `(−val, dist)` 排序 | ✅ A3 |
 
 ### 5.2 远距追击
 
@@ -235,7 +235,7 @@
 | 2 | 遍历友军射手，计算掩护价值 `archerStr - dist * modifier` | :1768-1770 | 同 | ✅ |
 | 3 | `_avoidStackingUnits`：掩护位置远离射手/其他掩护单位 | :1773-1825 | `_cover_pos` avoid_stacking 排除距友军≤1位置 | ✅ M7c |
 | 4 | 宽体侧面掩护优先方向逻辑 | :1782-1810 | `_cover_pos` side_bonus 排序 | ✅ M7c |
-| 5 | 射手被堵 → 攻击堵截的敌人（`BestAttackOutcome`） | :1855-1875 | 同（攻击最近敌人） | ⚠️ 近似 |
+| 5 | 射手被堵 → 攻击堵截的敌人（`BestAttackOutcome`） | :1855-1875 | `_cover_archers` 对每个堵截者计算复合优先级 | ✅ A3 |
 | 6 | 无视反击单位 + AREA_SHOT 友军：掩护时主动攻击邻接敌人 | :1905-1920 | `_attack_from_cover` | ✅ M7c |
 | 7 | 2回合内不可达但有即击目标 → 忽略远距离射手 | :1843-1847 | `_cover_archers` 中 `d > speed*2` + `has_immediate` 检查 | ✅ M7c |
 
@@ -307,7 +307,7 @@
 | # | 原版行为 | 源码位置 | 我们的实现 | 状态 |
 |---|---------|---------|-----------|------|
 | 1 | 选择最优攻击方向（双格溅射价值最大化） | :110-155 | 无（宽体攻击时不评估溅射方向） | ❌ |
-| 2 | 双格攻击：身后格有单位时累加 `evaluateThreatForUnit` | :98-107 | `two_cell` 能力在战斗钩子中实现，AI 不考虑溅射选择 | ⚠️ 简化 |
+| 2 | 双格攻击：身后格有单位时累加 `evaluateThreatForUnit` | :98-107 | `splash_value` 枚举所有攻击方向用 `cell_behind` | ✅ A3 |
 
 ---
 
@@ -316,10 +316,10 @@
 | # | 原版行为 | 我们的实现 | 状态 |
 |---|---------|---------|------|
 | 1 | `isPositionLocatedInDefendedArea` 在城堡时用 `isCastleIndex` | 无城堡区域检查 | ❌ |
-| 2 | `getUnitMovementTarget` 处理不可直接到达位置（`getClosestReachablePosition`） | 直接用路径终点 | ⚠️ 近似 |
+| 2 | `getUnitMovementTarget` 处理不可直接到达位置（`getClosestReachablePosition`） | `nearest_cell_next_to` + `find_path` + 路径截断 | ⚠️ 近似(等价,A3确认) |
 | 3 | 原版 `planUnitTurn` Step 3 返回法术后直接 return（不执行单位行动） | 同（`maybe_cast_spell` 返回后 break） | ✅ |
 | 4 | 原版法术 `isDisableCastSpell` 检查（如 Arena 静默） | 无 | ⚠️ 简化 |
-| 5 | 原版射手被堵 `isHandFighting` 含宽体碰撞检测 | 仅 `dist==1` | ⚠️ 近似 |
+| 5 | 原版射手被堵 `isHandFighting` 含宽体碰撞检测 | `_dist` 用 `occupied_cells` 全组合 | ⚠️ 近似(等价,A3确认) |
 
 ---
 
@@ -327,23 +327,23 @@
 
 | 状态 | 数量 |
 |------|------|
-| ✅ 已对齐 | 75 |
-| ⚠️ 近似 | 14 |
+| ✅ 已对齐 | 79 |
+| ⚠️ 近似 | 10 |
 | ❌ 暂缺（属范围） | 0 |
 | ❌ 暂缺（范围外） | 22 |
 | **总计** | **111** |
 
-> A2 完成后，核心决策路径（排除「范围外」的 22 项）：
-> ✅ 75 / (111-22) = 75/89 ≈ **84%** 已对齐
-> ⚠️ 14 / 89 ≈ **16%** 近似
+> A3 完成后，核心决策路径（排除「范围外」的 22 项）：
+> ✅ 79 / (111-22) = 79/89 ≈ **89%** 已对齐
+> ⚠️ 10 / 89 ≈ **11%** 近似（含 2 项 A3 确认等价）
 > ❌ 0 / 89 ≈ **0%** 暂缺
 >
-> 综合保真度估算：75 完全对齐 + 14 近似（权重×0.6）≈ 75+8 = 83 / 89 ≈ **93% 决策行为覆盖**
-> 若含范围外项目（法术/能力/镜像等）：111 总项，对齐+近似 ≈ **85% 行为覆盖**
+> 综合保真度估算：79 完全对齐 + 10 近似（权重×0.6）≈ 79+6 = 85 / 89 ≈ **96% 决策行为覆盖**
+> 若含范围外项目（法术/能力/镜像等）：111 总项，对齐+近似 ≈ **89% 行为覆盖**
 >
 > 规则复刻保真度（以游戏规则子系统为分母）约 **~99%**（MILESTONES.md）。
 >
-> 更新日期：2026-06-10（A2 完成）
+> 更新日期：2026-06-10（A3 完成）
 
 ---
 
