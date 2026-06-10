@@ -89,7 +89,7 @@ def random_legal_action(obs: Dict, info: Dict) -> int:
     return int(np.random.choice(legal))
 
 
-def _classic_ai_action(battle, unit, classic_ai) -> int:
+def _classic_ai_action(battle, unit, classic_ai):
     """Resolve one ClassicAI unit turn and return the final action index.
 
     ClassicAI may cast a spell AND take a unit action (full game mechanics).
@@ -99,6 +99,9 @@ def _classic_ai_action(battle, unit, classic_ai) -> int:
 
     This asymmetry (ClassicAI can cast+act, learning agent only acts) is
     intentional — ClassicAI serves as a strong benchmark opponent.
+
+    Returns ``None`` if the battle ended after casting (e.g. lethal spell
+    killed the last enemy unit), signalling the caller to skip ``env.step()``.
     """
     from ai.action_space import action_to_index
 
@@ -106,6 +109,9 @@ def _classic_ai_action(battle, unit, classic_ai) -> int:
     cast = classic_ai.maybe_cast_spell(battle, unit)
     if cast is not None:
         battle.execute(cast[0])
+        # Spell may have ended the battle (e.g. lethal damage)
+        if battle.is_over():
+            return None
 
     # ClassicAI: unit action
     action, _ = classic_ai.decide(battle, unit)
@@ -186,6 +192,14 @@ def eval_vs_classic(
             else:
                 action = _classic_ai_action(
                     env._battle, env._current_unit, classic)
+
+            # ClassicAI's spell may have ended the battle externally
+            if action is None:
+                winner = env._battle.winner()
+                if winner == learning_team:
+                    wins += 1
+                total_rounds += env._battle.round_num
+                break
 
             obs, _, terminated, _, info = env.step(action)
 
