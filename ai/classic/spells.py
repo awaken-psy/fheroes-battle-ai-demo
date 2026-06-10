@@ -16,6 +16,9 @@ from engine.spells import (Spell, DAMAGE, AOE, BUFF, DEBUFF, CONTROL,
 
 from .evaluation import AIState
 
+# fheroes2 Speed::INSTANT — maximum battlefield speed (HoMM2 range 1-11).
+SPEED_INSTANT = 11
+
 
 def select_best_spell(battle: BattleState, team: int, s: AIState,
                       retreating: bool = False
@@ -87,6 +90,32 @@ def _spell_value(battle: BattleState, hero: Hero, spell: Spell,
 
     # BUFF / DEBUFF / CONTROL — single or mass
     return _effect_value(battle, hero, spell, friendly, enemies, s)
+
+
+# ── shared helpers ────────────────────────────────────────────────
+
+def _spell_duration_multiplier(hero: Hero, target: Unit) -> int:
+    """spellDurationMultiplier — ai_battle_spell.cpp:275.
+
+    Returns 0 if the spell would have no meaningful duration
+    (hero power < 2 and target already acted this round), else 1.
+    """
+    if hero.power < 2 and target._acted:
+        return 0
+    return 1
+
+
+def _distance_from_starting_edge(target: Unit, grid) -> int:
+    """ReduceEffectivenessByDistance — ai_battle_spell.cpp:56-63.
+
+    Distance from the target's own starting board edge along the X axis.
+    fheroes2: GetDistanceFromBoardEdgeAlongXAxis(headIndex, isReflect).
+    Team 0 (facing right): col + 1  (1-based from left edge).
+    Team 1 (facing left):  cols - col (from right edge).
+    """
+    if target.team == 0:
+        return target.col + 1
+    return grid.cols - target.col
 
 
 # ── damage ───────────────────────────────────────────────────────
@@ -255,11 +284,12 @@ def _effect_value(battle: BattleState, hero: Hero, spell: Spell,
         if spell.exclude_tags:
             if any(t.has_tag(tag) for tag in spell.exclude_tags):
                 continue
-        ratio = _effect_ratio(spell, t, enemies, s)
+        ratio = _effect_ratio(spell, t, enemies, s, battle)
         if ratio <= 0:
             continue
-        v = t.strength * ratio
-        # Duration multiplier (simplified: spell lasts power rounds)
+        # A2 §3.5-#35/#36: multiply by spellDurationMultiplier.
+        # fheroes2: target.GetStrength() * ratio * spellDurationMultiplier(target)
+        v = t.strength * ratio * _spell_duration_multiplier(hero, t)
         if v > best_single:
             best_single = v
             best_t = t
@@ -271,12 +301,13 @@ def _effect_value(battle: BattleState, hero: Hero, spell: Spell,
 
 
 def _effect_ratio(spell: Spell, target: Unit,
-                  enemies: List[Unit], s: AIState) -> float:
+                  enemies: List[Unit], s: AIState, battle=None) -> float:
     """Per-spell value ratio (spellEffectValue switch in the original)."""
     name = spell.name
 
     if name == "Slow" or name == "Mass Slow":
-        return _slow_ratio(target, s)
+        grid = battle.grid if battle is not None else None
+        return _slow_ratio(target, s, grid)
     if name == "Haste" or name == "Mass Haste":
         return _haste_ratio(target, s)
     if name in ("Bless", "Mass Bless"):
@@ -324,21 +355,31 @@ def _effect_ratio(spell: Spell, target: Unit,
 
 # ── individual ratio functions ───────────────────────────────────
 
-def _slow_ratio(target: Unit, s: AIState) -> float:
+def _slow_ratio(target: Unit, s: AIState, grid=None) -> float:
     # Slow is useless against archers or troops defending castle.
     if target.is_archer or s.attacking_castle:
         return 0.01
-    lost = 2  # Haste/Slow change speed by 2
+    # A2 §3.3-#11: dynamic speed loss — Speed::getSlowSpeedFromSpell.
+    current_speed = target.speed
+    new_speed = max(1, current_speed - 2)
+    lost = current_speed - new_speed  # usually 2
     ratio = 0.1 * lost
-    if target.speed < s.my_avg_speed:
+    if current_speed < s.my_avg_speed:
         ratio /= 2  # already slower than our army
     if target.has_effect("Haste"):
         ratio *= 2
+    # A2 §3.3-#14: distance reduction for non-flying, non-Haste targets.
+    # fheroes2: else if (!target.isFlying()) ratio /= ReduceEffectivenessByDistance(target)
+    elif not target.is_flying and grid is not None:
+        ratio /= _distance_from_starting_edge(target, grid)
     return ratio
 
 
 def _haste_ratio(target: Unit, s: AIState) -> float:
-    gained = 2
+    # A2 §3.3-#15: dynamic speed gain — Speed::getHasteSpeedFromSpell.
+    current_speed = target.speed
+    new_speed = min(SPEED_INSTANT, current_speed + 2)
+    gained = new_speed - current_speed  # usually 2
     ratio = 0.05 * gained
     if target.speed < s.enemy_avg_speed:
         ratio *= 2  # very useful if slower than the enemy army
@@ -411,7 +452,7 @@ def _dispel_value(battle: BattleState, hero: Hero, spell: Spell,
         for e in unit.effects:
             if not e.is_positive:
                 # Value of removing this debuff
-                ratio = _effect_ratio_for_removal(e, unit, enemies, s)
+                ratio = _effect_ratio_for_removal(e, unit, enemies, s, battle.grid if battle else None)
                 unit_v += unit.strength * ratio
         if is_mass:
             best_v += unit_v
@@ -428,7 +469,7 @@ def _dispel_value(battle: BattleState, hero: Hero, spell: Spell,
             unit_v = 0.0
             for e in unit.effects:
                 if e.is_positive:
-                    ratio = _effect_ratio_for_removal(e, unit, enemies, s)
+                    ratio = _effect_ratio_for_removal(e, unit, enemies, s, battle.grid if battle else None)
                     unit_v += unit.strength * ratio
             if is_mass:
                 best_v += unit_v
@@ -439,11 +480,12 @@ def _dispel_value(battle: BattleState, hero: Hero, spell: Spell,
 
 
 def _effect_ratio_for_removal(effect, unit: Unit,
-                               enemies: List[Unit], s: AIState) -> float:
+                               enemies: List[Unit], s: AIState,
+                               grid=None) -> float:
     """Estimate the value of removing an effect (for Dispel evaluation)."""
     name = effect.name
     if name in ("Slow", "Mass Slow"):
-        return _slow_ratio(unit, s)
+        return _slow_ratio(unit, s, grid)
     if name in ("Haste", "Mass Haste"):
         return _haste_ratio(unit, s)
     if name in ("Bless", "Mass Bless", "Curse", "Mass Curse"):

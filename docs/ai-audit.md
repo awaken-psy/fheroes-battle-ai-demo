@@ -123,16 +123,16 @@
 | # | 原版行为 | 源码位置 | 我们的实现 | 状态 |
 |---|---------|---------|-----------|------|
 | 10 | Slow 对射手 → ratio=0.01 | :326-329 | 同 | ✅ |
-| 11 | Slow 速度损失动态计算 `currentSpeed - newSpeed` | :332-333 | 硬编码 `lost = 2` | ⚠️ 近似 |
+| 11 | Slow 速度损失动态计算 `currentSpeed - newSpeed` | :332-333 | `lost = speed - max(1, speed-2)` | ✅ A2 |
 | 12 | Slow：`currentSpeed < myAvgSpeed` → ratio /= 2 | :335-337 | 同（`target.speed < s.my_avg_speed`） | ✅ |
 | 13 | Slow：目标有 Haste → ratio ×2 | :338-339 | 同 | ✅ |
-| 14 | Slow：非飞行非射手 → `ratio /= ReduceEffectivenessByDistance` | :341-342 | 无距离衰减 | ⚠️ 简化 |
-| 15 | Haste 速度增益动态计算 | :318-320 | 硬编码 `gained = 2` | ⚠️ 近似 |
+| 14 | Slow：非飞行非射手 → `ratio /= ReduceEffectivenessByDistance` | :341-342 | `_distance_from_starting_edge` 非飞行非Haste时衰减 | ✅ A2 |
+| 15 | Haste 速度增益动态计算 | :318-320 | `gained = min(11, speed+2) - speed` | ✅ A2 |
 | 16 | Haste：`speed < enemyAvgSpeed` → ratio ×2 | :322-324 | 同 | ✅ |
 | 17 | Haste：目标有 Slow → ratio ×2 | :325 | 同 | ✅ |
 | 18 | Haste：射手或防守中 → ratio /= 2 | :327-328 | 同 | ✅ |
 | 19 | Bless/Curse ratio = 0.15 | :396,412 | 同 | ✅ |
-| 20 | Bless/Curse：目标 min=max 伤害 → 无效返回 0 | :397-399,408-410 | 无此检查（我们单 damage 值） | ⚠️ 简化 |
+| 20 | Bless/Curse：目标 min=max 伤害 → 无效返回 0 | :397-399,408-410 | 已有 `damage_min == damage_max` 检查 | ✅ A2(改标) |
 | 21 | `isSpellcastUselessForUnit` 检查已有同类效果 | :372 | `has_effect(spell.name)` | ✅ |
 
 ### 3.4 未实现的法术（范围外）
@@ -157,8 +157,8 @@
 
 | # | 原版行为 | 源码位置 | 我们的实现 | 状态 |
 |---|---------|---------|-----------|------|
-| 35 | `spellDurationMultiplier`：power<2 且目标已行动 → 返回 0 | :275-282 | 无（固定 3 回合） | ⚠️ 简化 |
-| 36 | 效果值 = `strength * ratio * spellDurationMultiplier` | :559 | 效果值 = `strength * ratio`（无持续乘数） | ⚠️ 简化 |
+| 35 | `spellDurationMultiplier`：power<2 且目标已行动 → 返回 0 | :275-282 | `_spell_duration_multiplier(hero, target)` | ✅ A2 |
+| 36 | 效果值 = `strength * ratio * spellDurationMultiplier` | :559 | `strength * ratio * duration_multiplier` | ✅ A2 |
 
 ---
 
@@ -327,23 +327,23 @@
 
 | 状态 | 数量 |
 |------|------|
-| ✅ 已对齐 | 60 |
-| ⚠️ 近似 | 29 |
+| ✅ 已对齐 | 75 |
+| ⚠️ 近似 | 14 |
 | ❌ 暂缺（属范围） | 0 |
 | ❌ 暂缺（范围外） | 22 |
 | **总计** | **111** |
 
-> M7c 精细化后，核心决策路径（排除「范围外」的 22 项）：
-> ✅ 60 / (111-22) = 60/89 ≈ **67%** 已对齐
-> ⚠️ 29 / 89 ≈ **33%** 近似
+> A2 完成后，核心决策路径（排除「范围外」的 22 项）：
+> ✅ 75 / (111-22) = 75/89 ≈ **84%** 已对齐
+> ⚠️ 14 / 89 ≈ **16%** 近似
 > ❌ 0 / 89 ≈ **0%** 暂缺
 >
-> 综合保真度估算：60 完全对齐 + 29 近似（权重×0.6）≈ 60+17 = 77 / 89 ≈ **87% 决策行为覆盖**
-> 若含范围外项目（法术/能力/镜像等）：111 总项，对齐+近似 ≈ **80% 行为覆盖**
+> 综合保真度估算：75 完全对齐 + 14 近似（权重×0.6）≈ 75+8 = 83 / 89 ≈ **93% 决策行为覆盖**
+> 若含范围外项目（法术/能力/镜像等）：111 总项，对齐+近似 ≈ **85% 行为覆盖**
 >
-> 规则复刻保真度（以游戏规则子系统为分母）约 **~98%**（MILESTONES.md）。
+> 规则复刻保真度（以游戏规则子系统为分母）约 **~99%**（MILESTONES.md）。
 >
-> 更新日期：2026-06-10（M7c 完成）
+> 更新日期：2026-06-10（A2 完成）
 
 ---
 
