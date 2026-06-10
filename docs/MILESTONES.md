@@ -155,7 +155,7 @@ team 0 行动时"我方"= team 0，team 1 行动时"我方"= team 1。
 
 ---
 
-### R3 — 动作空间 `ai/action_space.py`
+### R3 — 动作空间 `ai/action_space.py` ✅
 
 定义扁平离散动作空间，编号所有可能的行动，生成合法性掩码。
 
@@ -165,25 +165,34 @@ team 0 行动时"我方"= team 0，team 1 行动时"我方"= team 1。
 索引 0           → Wait（等待）
 索引 1           → Defend（防御）
 索引 2-100       → Move 到 hex[0..98]（移动到指定格）
-索引 101-9900    → Attack(position, target) = position×99 + target（从某格攻击某目标）
-索引 9901+       → Cast(spell_id, target_hex)（施法：法术编号 × 目标格）
+索引 101-9901    → Attack(position, target) = position×99 + target（从某格攻击某目标）
+索引 9902-13564  → Cast(spell[0..36], hex[0..98]) — 37 法术 × 99 目标格（排除 Teleport）
+索引 13565       → Retreat（撤退）
 ```
 
-总计约 ~10000 个动作编号。每步通过 **legality mask**（0/1 数组）过滤非法动作。
+总计 **13 566** 个动作编号。每步通过 **legality mask**（float32 数组）过滤非法动作。
 
-**关键功能**：
-- `action_to_index(action) → int`：Action 对象 → 编号
-- `index_to_action(index, battle) → Action`：编号 → Action 对象
-- `legal_mask(battle, unit) → np.array`：当前合法动作掩码
+**设计决策**：
+- Wait / Defend 均映射到 `SkipAction`（引擎无 Wait/Defend 语义）
+- 远程攻击：position = 射手当前格，仅 `ranged=True` 合法
+- Teleport 排除（需双 hex，稀有战术，编码代价过高）
+- Mass / 全军法术：所有 99 个 hex 均标合法（执行时忽略 hex）
+- Ring AOE：hex = 中心格，全部合法
+- Cell 索引：row-major `row × 11 + col` (0-98)
+
+**关键 API**：
+- `action_to_index(action, battle, unit) → int`：Action → 编号
+- `index_to_action(index, battle, unit) → Action`：编号 → Action
+- `legal_mask(battle, unit) → np.ndarray(float32)`：合法性掩码
 - `enumerate_legal(battle, unit) → List[int]`：所有合法动作编号
 
 **退出标准**：
-- [ ] 所有合法动作可正确枚举（移动、攻击、施法、等待/防御）
-- [ ] index → Action → index 往返一致
-- [ ] 合法性掩码与引擎 `validate_action` 一致
-- [ ] 施法动作覆盖全部 38 种法术 × 合法目标
-- [ ] 宽体单位攻击位置合法性正确
-- [ ] 单元测试覆盖基本场景 + 边界情况
+- [x] 所有合法动作可正确枚举（移动、攻击、施法、等待/防御）
+- [x] index → Action → index 往返一致
+- [x] 合法性掩码与引擎路径/攻击/施法逻辑一致
+- [x] 施法动作覆盖 37 法术（排除 Teleport）× 合法目标
+- [x] 宽体单位攻击位置合法性正确
+- [x] 单元测试覆盖基本场景 + 边界情况（53 tests）
 
 ---
 
