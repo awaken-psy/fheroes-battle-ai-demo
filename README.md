@@ -8,13 +8,14 @@
 
 ## 项目进度
 
-里程碑 M1–M7e（规则层）+ A1–A4（经典 AI 决策层）+ R1–R7（深度学习训练管线）**全部完成**。
+里程碑 M1–M7e（规则层）+ A1–A4（经典 AI 决策层）+ R1–R7（深度学习训练管线）+ T1–T4（训练实战）**全部完成**。
 
-- **561 个测试**全通过，CI 守护
+- **605 个测试**全通过，CI 守护
 - **63 种兵种**，**38 种法术**，规则保真度 ~99%
 - 经典 AI 决策覆盖率 ~97%（126 条审计逐条对齐）
 - 3600 局实战验证
 - 完整 PPO 自我博弈训练管线（PyTorch + Gymnasium）
+- 训练后 DeepAI 在镜像近战配置 vs ClassicAI 胜率 **88%**
 
 详见 [docs/MILESTONES.md](docs/MILESTONES.md)。
 
@@ -25,6 +26,20 @@
 | **规则层** | M1–M7e | 战斗引擎完整实现：63 兵种、38 法术、攻城、士气/运气、特殊能力 |
 | **经典 AI** | A1–A4 | 忠实复刻 fheroes2 C++ 源码决策链，~97% 覆盖率 |
 | **深度学习** | R1–R7 | CNN+PPO 自我博弈训练管线，从观测编码到训练脚本 |
+| **训练实战** | T1–T4 | Baseline 评估 → 模型改进 → 对手池 → 200k 步训练战役 |
+
+### 训练实战 T 系列路线
+
+```
+T1(Baseline评估) → T2(GroupNorm/LR衰减/梯度累积) → T3(对手池) → T4(训练战役)
+```
+
+| 里程碑 | 说明 | 测试 |
+|--------|------|------|
+| T1 | eval_benchmark.py 评估框架 + 50k 步基线 | 15 |
+| T2 | GroupNorm + LR decay + Grad accum + TensorBoard | 13 |
+| T3 | 自博弈对手池（防策略坍塌）+ 磁盘持久化 | 16 |
+| T4 | 200k 步完整训练，best.pt 达 88% 胜率 | — |
 
 ### 深度学习 R 系列路线
 
@@ -49,27 +64,35 @@ R1(可插拔骨架) → R2(观测编码) ──┐
 uv sync                                    # 安装依赖（含 PyTorch）
 uv run main.py                             # GUI 模式
 uv run main.py configs/example.json        # CLI 无头模式
-uv run pytest                              # 跑测试（561 个）
+uv run pytest                              # 跑测试（605 个）
 uv run python scripts/arena.py --preset Balanced --games 500 --mirror   # 经典 AI 批量自对弈
 ```
 
 ### 训练深度学习 AI
 
 ```bash
-# 从零训练
+# 从零训练（快速验证）
 uv run python scripts/train.py --total-steps 100000 --eval-interval 5000
 
-# 从 checkpoint 恢复
-uv run python scripts/train.py --resume checkpoints/checkpoint_5000.pt
+# 启用全部改进（推荐）
+uv run python scripts/train.py --total-steps 200000 --device cuda \
+  --lr-decay --grad-accum 4 --tensorboard --opponent-pool 5 \
+  --checkpoint-dir checkpoints/my-training
 
-# 自定义阵容
-uv run python scripts/train.py --config configs/even_clash.json --eval-games 50
+# 从 checkpoint 恢复（自动恢复对手池）
+uv run python scripts/train.py --resume checkpoints/my-training/final.pt \
+  --opponent-pool 5
+
+# 评估 checkpoint
+uv run python scripts/eval_benchmark.py checkpoints/my-training/best.pt \
+  --games 100 --device cuda --json results.json
 
 # 训练输出 JSON lines 日志，可用 jq 过滤
 uv run python scripts/train.py --total-steps 50000 | jq 'select(.type=="eval")'
 ```
 
 训练参数全部可通过 CLI 控制（`--lr`, `--gamma`, `--clip-eps`, `--phase1-steps` 等）。
+训练结果详见 [docs/t4-training-report.md](docs/t4-training-report.md)。
 
 ## 使用方式
 
@@ -224,7 +247,8 @@ fheroes-battle-ai-demo/
 │
 ├── scripts/
 │   ├── arena.py             批量 AI-vs-AI 自对弈（镜像/置信区间/撤退率）
-│   ├── train.py             PPO 自我博弈训练脚本（R7）
+│   ├── train.py             PPO 自我博弈训练脚本（R7/T2/T3/T4）
+│   ├── eval_benchmark.py    训练后基准评估（T1: 4配置 × Wilson CI）
 │   ├── ai_validation.py     AI 决策审计工具
 │   └── fingerprint.py       代码指纹生成
 │
@@ -267,7 +291,8 @@ fheroes-battle-ai-demo/
 │   │   └── strategy.py      策略枚举
 │   └── deep/                深度学习 AI
 │       ├── model.py         BattleNet CNN（R5: ResBlock + Policy/Value 双头）
-│       ├── trainer.py       PPOTrainer（R6: GAE + PPO-Clip）
+│       ├── trainer.py       PPOTrainer（R6: GAE + PPO-Clip + 对手池集成）
+│       ├── opponent_pool.py 自博弈对手池（T3: FIFO + 磁盘持久化）
 │       ├── player.py        DeepAI(AIPlayer) + make_agent_fn（R7）
 │       └── pipeline.py      训练工具（配置/课程/checkpoint）（R7）
 │
@@ -280,7 +305,7 @@ fheroes-battle-ai-demo/
 │       ├── setup.py         布阵界面
 │       └── battle.py        战斗界面 + 动画引擎
 │
-├── tests/                   自动化测试（561 个，无需显示器）
+├── tests/                   自动化测试（605 个，无需显示器）
 └── log/                     战斗日志（自动生成，gitignore）
 ```
 
@@ -306,11 +331,11 @@ fheroes-battle-ai-demo/
 
 ## 后续发展方向
 
-核心复刻 + 深度学习管线已完成。以下为留待选做（未排期）：
+核心复刻 + 深度学习管线 + 训练实战已完成。以下为留待选做（未排期）：
 
-- [ ] **实际训练与调参**：运行 `train.py`，观察 vs ClassicAI 胜率曲线，调优超参数
+- [ ] **多配置混合训练**：每局随机选一个配置，提升泛化能力
+- [ ] **更长训练 + 调参**：500k+ 步、cosine LR、更长课程阶段
 - [ ] **宽体单位 + 双格攻击**：单位占两格 → 改占位/寻路/邻接
-- [ ] **更多阵容训练**：扩展到多兵种/带英雄/攻城场景
 - [ ] **arena 权重调优**：经典 AI threat / 姿态阈值参数搜索
 - [ ] **与原版决策对照**：把 fheroes2 C++ AI 当 oracle 跑同一快照比一致率
 

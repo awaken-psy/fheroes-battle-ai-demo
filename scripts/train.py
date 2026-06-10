@@ -175,6 +175,7 @@ def main(argv=None):
         log_step(total_steps, {"msg": f"opponent pool enabled (capacity={args.opponent_pool}, loaded={len(pool)})"})
 
     last_eval = total_steps
+    best_win_rate = 0.0
     t0 = time.time()
 
     # ── Train ─────────────────────────────────────────────────────
@@ -257,6 +258,17 @@ def main(argv=None):
             # Add to opponent pool (T3)
             if pool is not None:
                 pool.add(model.state_dict(), total_steps)
+
+            # Track best checkpoint (T4)
+            if eval_info["win_rate"] > best_win_rate:
+                best_win_rate = eval_info["win_rate"]
+                best_path = os.path.join(args.checkpoint_dir, "best.pt")
+                save_checkpoint(trainer, total_steps, best_path)
+
+            # TensorBoard best win rate
+            if writer is not None:
+                writer.add_scalar("eval/best_win_rate", best_win_rate,
+                                  total_steps)
 
     # ── Final checkpoint ──────────────────────────────────────────
     final_path = os.path.join(args.checkpoint_dir, "final.pt")
