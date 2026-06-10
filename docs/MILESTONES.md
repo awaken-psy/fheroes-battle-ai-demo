@@ -21,6 +21,7 @@
 | **M7b** | 法术扩充(~24 种) | P4 | ~97% | ✅ 完成 |
 | **M7c** | AI 行为精细化(审计收尾) | P4 | ~98% | ✅ 完成 |
 | **M7d** | 英雄战斗技能 | P4 | ~98% | ✅ 完成 |
+| **M7e** | 规则保真度收尾 | P4 | ~99% | ✅ 完成 |
 
 ---
 
@@ -531,6 +532,29 @@ Ballistics 原版数值与 spec 有偏差,已按源码修正(见下表)。
 - ✅ AI 输出是干净的 `Action` 对象,引擎用 `battle.execute()` 消费。
 - ⚠️ 替换 DL 的 4 个障碍:(1) 无抽象接口+工厂,8 处硬编码 `BattleAI()`;(3) 无观测编码层;
   (4) 无形式化动作空间+合法掩码+训练环境。障碍 2(三段式接口)向前兼容,DL 可内部委托统一策略。
+
+## M7e — 规则保真度收尾 ✅ 完成
+
+> 修正 rules-audit 中 1 处分类错误(英雄 attack/defense 误标"范围外")+
+> 5 处有意简化提精度。规则保真度从理论 ~97% 提升到实测 ~99% 无争议。
+
+任务:
+- [x] 英雄 attack/defense → 部队加成:Hero 加 `attack`/`defense` 字段,
+      `_damage_mult` 传入 hero bonus,修正 army_troop.cpp 规则(之前误分类为"范围外")
+- [x] 士气/运气概率 d24/d12:好士气 d24 (~4.2%/点),坏士气 d12 (~8.3%/点),
+      运气 d24 (~4.2%/点)。原 M4 用 d10 (10%/点),差异显著(士气 3: 12.5% vs 30%)
+- [x] Golem 元素法术减伤:Iron/Steel Golem 对元素法术伤害 -50%。
+      Spell 加 `elemental` 标记(10 种),`_apply_elemental_reduction` 钩子
+- [x] Bone Dragon 士气 -1:敌方有 Bone Dragon 时非亡灵士气 -1。
+      UNIT_TAGS 加 `bone_dragon_morale` 标签,`roll_morale` 动态检查
+- [x] AI 坏士气 25% 免疫:headless.py 中 `randint(1,4)==1` 跳过坏士气
+- [x] Genie 减半替换:ENEMY_HALVING 替换正常伤害而非追加(原版行为)
+
+**退出标准:**
+- [x] 298 测试全绿(33 新 M7e + 265 旧)
+- [x] Arena 预设无回归
+- [x] rules-audit.md 6 项从 ⚠️/📄 升级为 ✅
+- [x] 规则保真度 ~99% 无争议项
 
 ## R1 — 可插拔骨架(障碍 1)✅ 完成
 

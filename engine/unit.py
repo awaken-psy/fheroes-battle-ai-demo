@@ -118,11 +118,25 @@ class Unit:
         delta = sum(e.attack_delta for e in self.effects)
         return max(0, self.attack + delta)
 
+    def effective_attack_with_hero(self, hero_attack: int = 0) -> int:
+        """Attack including spell bonuses + hero primary attribute.
+
+        fheroes2 ArmyTroop::GetAttack() = Troop::GetAttack() + hero.attack.
+        """
+        return max(0, self.effective_attack + hero_attack)
+
     @property
     def effective_defense(self) -> int:
         """Defense stat including spell bonuses (Stone Skin, Disrupting Ray)."""
         delta = sum(e.defense_delta for e in self.effects)
         return max(0, self.defense + delta)
+
+    def effective_defense_with_hero(self, hero_defense: int = 0) -> int:
+        """Defense including spell bonuses + hero primary attribute.
+
+        fheroes2 ArmyTroop::GetDefense() = Troop::GetDefense() + hero.defense.
+        """
+        return max(0, self.effective_defense + hero_defense)
 
     @property
     def damage_factor(self) -> float:
