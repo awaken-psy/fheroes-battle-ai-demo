@@ -1,6 +1,6 @@
 """AI factory — create a battle AI by name, without importing concrete classes.
 
-Callers do ``create_ai("classic")`` (or, in future, ``create_ai("deep")``) and
+Callers do ``create_ai("classic")`` or ``create_ai("deep")`` and
 get back an :class:`~ai.base.AIPlayer`. New AIs register themselves here, so
 switching the active AI is a one-string change at the call site.
 """
@@ -39,4 +39,10 @@ def _make_classic(**kwargs) -> AIPlayer:
     return ClassicAI(**kwargs)
 
 
+def _make_deep(**kwargs) -> AIPlayer:
+    from ai.deep.player import DeepAI
+    return DeepAI(**kwargs)
+
+
 register_ai("classic", _make_classic)
+register_ai("deep", _make_deep)
