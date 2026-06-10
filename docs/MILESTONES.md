@@ -256,7 +256,7 @@ class SelfPlayRunner:
 
 ---
 
-### R5 — 神经网络 `ai/deep/model.py`
+### R5 — 神经网络 `ai/deep/model.py` ✅
 
 CNN 骨干 + Policy/Value 双头的 PyTorch 模型。
 
@@ -287,12 +287,12 @@ CNN 骨干 + Policy/Value 双头的 PyTorch 模型。
 - **Value Head**：输出 1 维值（tanh → [-1, 1]）
 
 **退出标准**：
-- [ ] forward pass 输出 (policy_logits, value) 形状正确
-- [ ] mask 后非法动作概率为零
-- [ ] value 输出在 [-1, 1] 范围内
-- [ ] 参数量合理（~1-5M），单次 forward < 5ms
-- [ ] 可序列化保存/加载
-- [ ] 单元测试覆盖形状、mask、边界情况
+- [x] forward pass 输出 (policy_logits, value) 形状正确
+- [x] mask 后非法动作概率为零
+- [x] value 输出在 [-1, 1] 范围内
+- [x] 参数量合理（~4.15M），单次 forward < 5ms
+- [x] 可序列化保存/加载
+- [x] 单元测试覆盖形状、mask、边界情况（21 tests）
 
 ---
 
