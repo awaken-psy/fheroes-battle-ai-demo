@@ -58,6 +58,8 @@ class Spell:
     exclude_tags: tuple = ()    # skip units with these tags
     # Cure
     heal_base: int = 0
+    # Elemental flag: subject to Golem elemental_spell_reduction
+    elemental: bool = False
     # Effect behavior (for BUFF / DEBUFF / CONTROL effects)
     effect_break_on_damage: bool = False
     effect_skip_turn: bool = False
@@ -72,7 +74,8 @@ class Spell:
 
 SPELLS = {
     # ── Level 1 ──────────────────────────────────────────────────
-    "Magic Arrow":    Spell("Magic Arrow",  DAMAGE, cost=3,  base_damage=10),
+    "Magic Arrow":    Spell("Magic Arrow",  DAMAGE, cost=3,  base_damage=10,
+                           elemental=True),
     "Bloodlust":      Spell("Bloodlust",    BUFF,   cost=3,  attack_delta=3,
                            side_friendly=True),
     "Bless":          Spell("Bless",        BUFF,   cost=3,  damage_mult=1.2,
@@ -93,14 +96,16 @@ SPELLS = {
     # ── Level 2 ──────────────────────────────────────────────────
     "Blind":          Spell("Blind",        CONTROL, cost=6,
                            effect_skip_turn=True, effect_break_on_damage=True),
-    "Cold Ray":       Spell("Cold Ray",     DAMAGE,  cost=6,  base_damage=20),
+    "Cold Ray":       Spell("Cold Ray",     DAMAGE,  cost=6,  base_damage=20,
+                           elemental=True),
     "Death Ripple":   Spell("Death Ripple", AOE,     cost=6,  base_damage=5,
                            aoe_pattern="all_tagged", exclude_tags=("undead",)),
     "Disrupting Ray": Spell("Disrupting Ray", DEBUFF, cost=7, defense_delta=-3,
                            effect_stackable=True),
     "Dragon Slayer":  Spell("Dragon Slayer", BUFF,   cost=6,  attack_delta=5,
                            side_friendly=True),
-    "Lightning Bolt": Spell("Lightning Bolt", DAMAGE, cost=7,  base_damage=25),
+    "Lightning Bolt": Spell("Lightning Bolt", DAMAGE, cost=7,  base_damage=25,
+                           elemental=True),
     "Steel Skin":     Spell("Steel Skin",    BUFF,   cost=6,  defense_delta=5,
                            side_friendly=True),
 
@@ -108,12 +113,12 @@ SPELLS = {
     "Anti-Magic":     Spell("Anti-Magic",    BUFF,    cost=7,
                            effect_anti_magic=True, side_friendly=True),
     "Cold Ring":      Spell("Cold Ring",      AOE,     cost=9,  base_damage=10,
-                           aoe_pattern="ring_outer"),
+                           aoe_pattern="ring_outer", elemental=True),
     "Death Wave":     Spell("Death Wave",     AOE,     cost=10, base_damage=10,
                            aoe_pattern="all_tagged", exclude_tags=("undead",)),
     "Earthquake":     Spell("Earthquake",     UTILITY, cost=15),
     "Fireball":       Spell("Fireball",       AOE,     cost=9,  base_damage=10,
-                           aoe_pattern="ring1"),
+                           aoe_pattern="ring1", elemental=True),
     "Holy Word":      Spell("Holy Word",      AOE,     cost=9,  base_damage=10,
                            aoe_pattern="all_tagged", target_tags=("undead",)),
     "Mass Bless":     Spell("Mass Bless",     BUFF,    cost=12, damage_mult=1.2,
@@ -133,11 +138,11 @@ SPELLS = {
 
     # ── Level 4 ──────────────────────────────────────────────────
     "Chain Lightning": Spell("Chain Lightning", AOE, cost=15, base_damage=40,
-                           aoe_pattern="chain"),
+                           aoe_pattern="chain", elemental=True),
     "Elemental Storm": Spell("Elemental Storm", AOE, cost=15, base_damage=25,
-                           aoe_pattern="all_units"),
+                           aoe_pattern="all_units", elemental=True),
     "Fireblast":      Spell("Fireblast",       AOE, cost=15, base_damage=10,
-                           aoe_pattern="ring2"),
+                           aoe_pattern="ring2", elemental=True),
     "Holy Shout":     Spell("Holy Shout",       AOE, cost=12, base_damage=20,
                            aoe_pattern="all_tagged", target_tags=("undead",)),
     "Mass Cure":      Spell("Mass Cure",        CURE, cost=15, heal_base=5,
@@ -146,11 +151,11 @@ SPELLS = {
                            effect_ranged_shield=0.5, side_friendly=True,
                            is_mass=True),
     "Meteor Shower":  Spell("Meteor Shower",    AOE, cost=15, base_damage=25,
-                           aoe_pattern="ring1"),
+                           aoe_pattern="ring1", elemental=True),
 
     # ── Level 5 ──────────────────────────────────────────────────
     "Armageddon":     Spell("Armageddon",       AOE, cost=20, base_damage=50,
-                           aoe_pattern="all_units"),
+                           aoe_pattern="all_units", elemental=True),
 }
 
 DEFAULT_SPELLBOOK = list(SPELLS.keys())

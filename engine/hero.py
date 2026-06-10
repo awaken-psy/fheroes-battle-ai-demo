@@ -26,9 +26,12 @@ SKILL_VALUES: Dict[str, Dict[int, int]] = {
 class Hero:
     def __init__(self, power: int = 3, max_spell_points: int = 15,
                  spells: Optional[List[str]] = None, name: str = "Hero",
-                 skills: Optional[Dict[str, int]] = None):
+                 skills: Optional[Dict[str, int]] = None,
+                 attack: int = 0, defense: int = 0):
         self.name = name
         self.power = power
+        self.attack = attack
+        self.defense = defense
         self.max_spell_points = max_spell_points
         self.spell_points = max_spell_points
         self.spells = list(spells) if spells is not None else list(DEFAULT_SPELLBOOK)
@@ -90,4 +93,6 @@ class Hero:
             spells=data.get("spells"),
             name=data.get("name", "Hero"),
             skills=data.get("skills"),
+            attack=data.get("attack", 0),
+            defense=data.get("defense", 0),
         )

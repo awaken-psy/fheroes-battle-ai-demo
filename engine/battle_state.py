@@ -166,16 +166,19 @@ class BattleState:
 
     @staticmethod
     def _damage_mult(atk: Unit, dfn: Unit, ranged: bool = False,
-                     moat_def_penalty: bool = False) -> float:
+                     moat_def_penalty: bool = False,
+                     atk_bonus: int = 0, dfn_bonus: int = 0) -> float:
         """Deterministic damage multiplier (attack/defense + archer penalty).
 
         ``moat_def_penalty``: if True, the defender is in a moat cell and
         suffers -3 defense (fheroes2: GetBattleMoatReduceDefense() = 3).
+        ``atk_bonus`` / ``dfn_bonus``: hero primary attribute bonuses
+        (fheroes2: ArmyTroop adds hero.attack / hero.defense).
         """
-        dfn_def = dfn.effective_defense
+        dfn_def = dfn.effective_defense_with_hero(dfn_bonus)
         if moat_def_penalty:
             dfn_def = max(0, dfn_def - 3)
-        atk_val = atk.effective_attack
+        atk_val = atk.effective_attack_with_hero(atk_bonus)
         if atk_val > dfn_def:
             mult = min(1 + 0.1 * (atk_val - dfn_def), 3.0)
         else:
@@ -183,6 +186,16 @@ class BattleState:
         if atk.is_archer and not ranged and not atk.has_ability("no_melee_penalty"):
             mult *= 0.5  # archer melee penalty (unless immune)
         return mult
+
+    def _hero_attack(self, team: int) -> int:
+        """Hero primary attack bonus for *team*'s units."""
+        hero = self.heroes.get(team)
+        return hero.attack if hero else 0
+
+    def _hero_defense(self, team: int) -> int:
+        """Hero primary defense bonus for *team*'s units."""
+        hero = self.heroes.get(team)
+        return hero.defense if hero else 0
 
     def _in_moat(self, unit: Unit) -> bool:
         """Is *unit* currently standing in a moat cell?"""
@@ -193,7 +206,10 @@ class BattleState:
         """Average damage — used by the AI for decisions and by tests."""
         moat = self._in_moat(dfn)
         base = atk.count * atk.damage_avg * atk.damage_factor
-        dmg = max(1, int(base * self._damage_mult(atk, dfn, ranged, moat)))
+        dmg = max(1, int(base * self._damage_mult(
+            atk, dfn, ranged, moat,
+            atk_bonus=self._hero_attack(atk.team),
+            dfn_bonus=self._hero_defense(dfn.team))))
         # Archery skill: ranged damage +X% (battle_troop.cpp:526).
         if ranged:
             archery = self._archery_bonus(atk.team)
@@ -227,7 +243,10 @@ class BattleState:
             rolled = sum(random.randint(atk.damage_min, atk.damage_max)
                          for _ in range(atk.count))
         base = rolled * atk.damage_factor
-        mult = self._damage_mult(atk, dfn, ranged, moat) * self._roll_luck(atk.team)
+        mult = self._damage_mult(
+            atk, dfn, ranged, moat,
+            atk_bonus=self._hero_attack(atk.team),
+            dfn_bonus=self._hero_defense(dfn.team)) * self._roll_luck(atk.team)
         # Archery skill: ranged damage +X% (battle_troop.cpp:526).
         if ranged:
             archery = self._archery_bonus(atk.team)
@@ -243,11 +262,14 @@ class BattleState:
         return dmg
 
     def _roll_luck(self, team: int) -> float:
-        """Return 2.0 (good luck), 0.5 (bad luck) or 1.0, by army luck value."""
+        """Return 2.0 (good luck), 0.5 (bad luck) or 1.0, by army luck value.
+
+        fheroes2: d24 roll — probability = luck/24 per point (~4.2%/point).
+        """
         lk = self.luck.get(team, 0)
-        if lk > 0 and random.random() < lk * 0.10:
+        if lk > 0 and random.randint(1, 24) <= lk:
             return 2.0
-        if lk < 0 and random.random() < -lk * 0.10:
+        if lk < 0 and random.randint(1, 24) <= -lk:
             return 0.5
         return 1.0
 
@@ -255,13 +277,22 @@ class BattleState:
         """+1 good morale (extra action), -1 bad (skip), 0 none — by army morale.
 
         M7d: undead units are immune to morale effects (fheroes2 rule).
+        M7e: Bone Dragon in enemy army gives -1 morale to non-undead units.
+        fheroes2: good morale d24 (~4.2%/point), bad morale d12 (~8.3%/point).
         """
         if unit and unit.has_tag("undead"):
             return 0
         mr = self.morale.get(team, 0)
-        if mr > 0 and random.random() < mr * 0.10:
+        # Bone Dragon passive: enemy having Bone Dragon reduces morale by 1.
+        if unit and mr != 0:
+            enemy_team = 1 - team
+            for eu in self.alive(enemy_team):
+                if eu.has_tag("bone_dragon_morale"):
+                    mr -= 1
+                    break
+        if mr > 0 and random.randint(1, 24) <= mr:
             return 1
-        if mr < 0 and random.random() < -mr * 0.10:
+        if mr < 0 and random.randint(1, 12) <= -mr:
             return -1
         return 0
 
@@ -293,15 +324,34 @@ class BattleState:
             if not action.ranged and action.from_pos:
                 atk.pos = action.from_pos
 
-            dmg = self.roll_damage(atk, tgt, action.ranged)
-            actual, killed = tgt.take_damage(dmg)
-            r['dmg'] = actual
-            r['killed'] = killed
-
             verb = "shoots" if action.ranged else "attacks"
-            desc = f"{atk.name} {verb} {tgt.name}: {actual} dmg"
-            if killed > 0:
-                desc += f" ({killed} killed)"
+
+            # ── enemy_halving: chance to REPLACE normal damage ────────
+            # fheroes2: halving triggers BEFORE normal damage; if it
+            # triggers, normal damage is skipped entirely.
+            halving_triggered = False
+            if atk.has_ability("enemy_halving"):
+                params = atk.ability_params.get("enemy_halving", {})
+                chance = params.get("chance", 10)
+                if random.randint(1, 100) <= chance and tgt.count > 1:
+                    halved = tgt.count // 2
+                    halve_dmg = halved * tgt.max_hp
+                    actual, killed = tgt.take_damage(halve_dmg)
+                    halving_triggered = True
+                    r['dmg'] = actual
+                    r['killed'] = killed
+                    desc = f"{atk.name} {verb} {tgt.name}: halving {actual} dmg"
+                    if killed > 0:
+                        desc += f" ({killed} killed)"
+
+            if not halving_triggered:
+                dmg = self.roll_damage(atk, tgt, action.ranged)
+                actual, killed = tgt.take_damage(dmg)
+                r['dmg'] = actual
+                r['killed'] = killed
+                desc = f"{atk.name} {verb} {tgt.name}: {actual} dmg"
+                if killed > 0:
+                    desc += f" ({killed} killed)"
 
             # ── primary target death / break effects ────────────────
             r['target_alive'] = tgt.is_alive
@@ -408,25 +458,6 @@ class BattleState:
                     desc += " [DEAD]"
                 else:
                     atk.break_effects_on_damage()
-
-            # ── enemy_halving: chance to kill half the stack ─────────
-            if atk.has_ability("enemy_halving") and tgt.is_alive:
-                params = atk.ability_params.get("enemy_halving", {})
-                chance = params.get("chance", 10)
-                if random.randint(1, 100) <= chance:
-                    half_hp = (tgt.count // 2) * tgt.max_hp
-                    # Only kill if there's more than 1 creature
-                    if tgt.count > 1:
-                        halved = tgt.count // 2
-                        halve_dmg = halved * tgt.max_hp
-                        halve_actual, halve_killed = tgt.take_damage(halve_dmg)
-                        if halve_killed > 0:
-                            r['killed'] += halve_killed
-                            desc += f" |halving kills {halve_killed}"
-                            r['target_alive'] = tgt.is_alive
-                            if not tgt.is_alive:
-                                self.deaths_this_round += 1
-                                desc += " [DEAD]"
 
             # ── spell_caster: on-hit chance to apply status effect ───
             if atk.has_ability("spell_caster") and tgt.is_alive:
@@ -556,9 +587,24 @@ class BattleState:
                 return True
         return False
 
+    @staticmethod
+    def _apply_elemental_reduction(unit: Unit, spell, dmg: int) -> int:
+        """Reduce elemental spell damage for Golem-type units.
+
+        fheroes2 battle_troop.cpp:1302 — Iron/Steel Golem take 50% damage from
+        elemental spells (ELEMENTAL_SPELL_DAMAGE_REDUCTION).
+        """
+        if spell.elemental and unit.has_ability("elemental_spell_reduction"):
+            params = unit.ability_params.get("elemental_spell_reduction", {})
+            factor = params.get("factor", 0.5)
+            dmg = max(1, int(dmg * factor))
+        return dmg
+
     def _cast_damage(self, r: dict, hero, spell, tgt: Unit) -> None:
         """Resolve a single-target DAMAGE spell."""
         dmg = spell_damage(spell, hero.power)
+        # Golem elemental spell reduction (battle_troop.cpp:1302).
+        dmg = self._apply_elemental_reduction(tgt, spell, dmg)
         actual, killed = tgt.take_damage(dmg)
         r['dmg'] = actual
         r['killed'] = killed
@@ -581,6 +627,8 @@ class BattleState:
             return 0, 0
         if self._try_spell_resist(unit, hero, spell):
             return 0, 0
+        # Golem elemental spell reduction (battle_troop.cpp:1302).
+        dmg = self._apply_elemental_reduction(unit, spell, dmg)
         actual, killed = unit.take_damage(dmg)
         r['dmg'] += actual
         r['killed'] += killed

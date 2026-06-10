@@ -96,7 +96,11 @@ def _take_unit_turn(battle, ai, unit, log=None):
     # Morale: bad -> skip the turn; good -> an extra action after acting.
     morale = battle.roll_morale(unit.team, unit)
     if morale < 0:
-        return
+        # AI gets 25% bad morale immunity (fheroes2 battle_troop.cpp:301).
+        if random.randint(1, 4) == 1:
+            morale = 0  # immunity triggered, continue acting
+        else:
+            return
     for _ in range(2 if morale > 0 else 1):
         if not unit.is_alive or battle.is_over():
             break
