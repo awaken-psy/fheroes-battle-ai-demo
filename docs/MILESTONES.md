@@ -1,6 +1,6 @@
 # 里程碑 — 战斗 AI 复刻
 
-> **T 系列（训练实战）进行中 — T1✅ T2✅ T3✅ T4✅ 完成，准备 T5 多配置训练。**
+> **T 系列（训练实战）进行中 — T1✅ T2✅ T3✅ T4✅ T5✅ 完成，准备 T6 稳定性优化。**
 >
 > - 规则层 M1–M7e：~99% 保真度，63 兵种，38 法术，298 测试
 > - AI 决策层 A1–A4：~97% 决策行为覆盖（126 条审计），356 测试
@@ -9,10 +9,11 @@
 > - **T2 模型/训练改进**：GroupNorm + LR decay + Grad accum + TensorBoard，13 测试，PR #25
 > - **T3 自博弈对手池**：OpponentPool + 50/50 池采样 + 磁盘持久化，16 测试，PR #27
 > - **T4 训练战役**：200k 步，best.pt 胜率 88%（example.json），训练报告已写
-> - **T5 多配置训练**：📋 下一步
+> - **T5 多配置训练**：✅ 每 rollout 随机选配置，多配置 eval，平均 best.pt
+> - **T6 稳定性优化**：📋 下一步
 > - **T6 稳定性优化**：📋
 > - **T7 模型升级**：📋（实验性）
-> - **总计 605 测试，CI 守护**
+> - **总计 622 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
 > AI 行为审计见 [`docs/ai-audit.md`](ai-audit.md)（126 条）。
@@ -225,13 +226,14 @@ python scripts/train.py \
 
 ---
 
-### T5 — 多配置混合训练
+### T5 — 多配置混合训练 ✅
 
 每局随机选一个配置训练，让 DeepAI 接触英雄/法术/高级兵种，解决零泛化问题。
 
 **修改文件**：
 - `scripts/train.py` — `--config` 接受多个文件，每 rollout 随机选一个；eval 遍历所有训练配置
 - `ai/deep/trainer.py` — `collect_rollout` 接受可选 `env_config` 参数覆盖默认配置
+- 新增 `tests/test_multi_config.py` — 17 个测试
 
 **设计**：
 ```python
@@ -251,12 +253,12 @@ for i, cfg in enumerate(configs):
 ```
 
 **退出标准**：
-- [ ] `--config` 接受多个文件路径
-- [ ] 每 rollout 随机选择一个配置
-- [ ] eval 报告每个配置的独立胜率
-- [ ] `best.pt` 按所有配置平均胜率选择
-- [ ] 新增测试覆盖多配置选择逻辑
-- [ ] 所有测试通过
+- [x] `--config` 接受多个文件路径
+- [x] 每 rollout 随机选择一个配置
+- [x] eval 报告每个配置的独立胜率
+- [x] `best.pt` 按所有配置平均胜率选择
+- [x] 新增测试覆盖多配置选择逻辑（17 个测试）
+- [x] 所有测试通过（622 passed）
 
 ---
 

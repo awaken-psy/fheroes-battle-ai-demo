@@ -56,8 +56,9 @@ def parse_args(argv=None):
                    help="Total env steps to train (default: 100k)")
     p.add_argument("--rollout-steps", type=int, default=2048,
                    help="Steps per rollout collection (default: 2048)")
-    p.add_argument("--config", type=str, default=None,
-                   help="Path to battle config JSON (default: 1v1 Swordsman)")
+    p.add_argument("--config", type=str, nargs="+", default=None,
+                   help="Path(s) to battle config JSON. Multiple files enable "
+                        "multi-config training (T5). Default: 1v1 Swordsman")
     p.add_argument("--device", type=str, default="cpu",
                    help="torch device (default: cpu)")
 
@@ -129,7 +130,15 @@ def main(argv=None):
     args = parse_args(argv)
 
     # ── Setup ─────────────────────────────────────────────────────
-    env_config = load_battle_config(args.config)
+    # Load one or more battle configs (T5 multi-config)
+    config_paths = args.config or [None]
+    configs = [load_battle_config(p) for p in config_paths]
+    config_names = [
+        os.path.splitext(os.path.basename(p))[0] if p else "default"
+        for p in config_paths
+    ]
+    env_config = configs[0]  # default for trainer init
+
     model = BattleNet()
     trainer = PPOTrainer(
         model, env_config,
@@ -139,6 +148,10 @@ def main(argv=None):
         value_coeff=args.value_coeff, max_grad_norm=args.max_grad_norm,
         grad_accum_steps=args.grad_accum, device=args.device,
     )
+
+    multi_config = len(configs) > 1
+    if multi_config:
+        log_step(0, {"msg": f"multi-config training: {config_names}"})
 
     # ── LR scheduler (T2) ─────────────────────────────────────────
     scheduler = None
@@ -193,17 +206,29 @@ def main(argv=None):
                 opponent_model.to(args.device)
                 opponent_model.eval()
 
+        # Select config for this rollout (T5)
+        if multi_config:
+            idx = random.randrange(len(configs))
+            rollout_config = configs[idx]
+            rollout_config_name = config_names[idx]
+        else:
+            rollout_config = None
+            rollout_config_name = config_names[0]
+
         info = trainer.train_step(
             num_steps=args.rollout_steps,
             reward_phase=phase,
             dense_weight=dense_weight,
             opponent_model=opponent_model,
+            env_config=rollout_config,
         )
         total_steps += info.pop("steps")
 
         info["phase"] = phase
         info["dense_w"] = round(dense_weight, 3)
         info["elapsed"] = round(time.time() - t0, 1)
+        if multi_config:
+            info["config"] = rollout_config_name
 
         # Log current LR
         current_lr = trainer.optimizer.param_groups[0]["lr"]
@@ -237,15 +262,36 @@ def main(argv=None):
         if total_steps - last_eval >= args.eval_interval:
             model.eval()
             agent_fn = make_agent_fn(model, device=args.device)
-            eval_info = eval_vs_classic(
-                env_config, agent_fn,
-                learning_team=0, games=args.eval_games, seed=42)
-            model.train()
-            log_eval(total_steps, eval_info)
 
-            # TensorBoard eval metrics
+            # Eval across all training configs (T5)
+            per_config_wr = {}
+            total_wins = 0
+            total_games = 0
+            for i, cfg in enumerate(configs):
+                eval_info = eval_vs_classic(
+                    cfg, agent_fn,
+                    learning_team=0, games=args.eval_games, seed=42)
+                per_config_wr[config_names[i]] = eval_info["win_rate"]
+                total_wins += eval_info["wins"]
+                total_games += eval_info["games"]
+
+                if writer is not None:
+                    writer.add_scalar(
+                        f"eval/{config_names[i]}/win_rate",
+                        eval_info["win_rate"], total_steps)
+
+            avg_win_rate = total_wins / total_games if total_games > 0 else 0.0
+            model.train()
+
+            eval_log = {
+                "win_rate": round(avg_win_rate, 4),
+                "configs": {k: round(v, 4) for k, v in per_config_wr.items()},
+                "avg_rounds": eval_info["avg_rounds"],
+            }
+            log_eval(total_steps, eval_log)
+
             if writer is not None:
-                writer.add_scalar("eval/win_rate", eval_info["win_rate"],
+                writer.add_scalar("eval/win_rate", avg_win_rate,
                                   total_steps)
                 writer.add_scalar("eval/avg_rounds", eval_info["avg_rounds"],
                                   total_steps)
@@ -259,9 +305,9 @@ def main(argv=None):
             if pool is not None:
                 pool.add(model.state_dict(), total_steps)
 
-            # Track best checkpoint (T4)
-            if eval_info["win_rate"] > best_win_rate:
-                best_win_rate = eval_info["win_rate"]
+            # Track best checkpoint by average win rate (T5)
+            if avg_win_rate > best_win_rate:
+                best_win_rate = avg_win_rate
                 best_path = os.path.join(args.checkpoint_dir, "best.pt")
                 save_checkpoint(trainer, total_steps, best_path)
 

@@ -240,6 +240,7 @@ class PPOTrainer:
         dense_weight: float = 1.0,
         seed: Optional[int] = None,
         opponent_model: Optional[BattleNet] = None,
+        env_config: Optional[dict] = None,
     ) -> Dict[str, float]:
         """Collect *num_steps* env steps of experience.
 
@@ -252,10 +253,13 @@ class PPOTrainer:
         *opponent_model* and its transitions are **not** stored — only the
         learning agent's steps enter the buffer.
 
+        When *env_config* is provided, it overrides ``self.env_config`` for
+        this rollout only (T5 multi-config training).
+
         Returns summary dict with keys: steps, episodes, mean_reward,
         mean_length, opponent ("self_play" or "pool").
         """
-        env = BattleEnv(self.env_config)
+        env = BattleEnv(env_config or self.env_config)
         self.buffer.clear()
 
         obs, info = env.reset(seed=seed, options={
@@ -466,13 +470,17 @@ class PPOTrainer:
         dense_weight: float = 1.0,
         seed: Optional[int] = None,
         opponent_model=None,
+        env_config: Optional[dict] = None,
     ) -> Dict[str, float]:
         """One training iteration: collect + update.
+
+        When *env_config* is provided, it overrides the trainer's default
+        config for this step only (T5 multi-config training).
 
         Returns combined summary from collection and update phases.
         """
         collect_info = self.collect_rollout(
             num_steps, reward_phase, dense_weight, seed,
-            opponent_model=opponent_model)
+            opponent_model=opponent_model, env_config=env_config)
         update_info = self.update()
         return {**collect_info, **update_info}
