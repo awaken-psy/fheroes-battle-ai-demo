@@ -36,12 +36,12 @@
 > 最终在与 ClassicAI 的对战中胜出。
 >
 > **技术路线**：
-> - 观测：Hex Grid 多通道 CNN（11×9 棋盘 ≈ 20-30 通道）
+> - 观测：Hex Grid 多通道 CNN（11×9 棋盘，33 通道，player-relative 编码）
 > - 动作：扁平离散 ~10000 + 合法性掩码
 > - 决策粒度：三步合一（施法 + 行动一次输出）
-> - 训练：PPO + 自我博弈（先打最新自己）
+> - 训练：PPO（CleanRL 实现）+ 自我博弈（先打最新自己）
 > - 奖励：课程式混合（稠密引导 → 纯稀疏胜负）
-> - 框架：PyTorch
+> - 框架：PyTorch + Gymnasium + CleanRL
 > - 评估：定期 vs ClassicAI 对战测胜率
 
 ### 依赖关系
@@ -53,44 +53,105 @@ R3 ──┤         ├──→ R6 ──→ R7
      └──→ R5 ──┘
 ```
 
+### 外部依赖
+
+```
+torch >= 2.0
+gymnasium >= 0.29
+cleanrl  # PPO 单文件实现，参考/内联
+numpy
+```
+
 ---
 
 ### R2 — 观测编码 `ai/observation.py`
 
 将 `BattleState` 编码为神经网络的输入张量。
 
-**输入**：`BattleState`（hex grid、单位、英雄、效果、攻城状态）
+**输入**：`BattleState` + `current_unit`（当前行动单位）
 
 **输出**：
-- `grid_tensor`：形状 `(C, 9, 11)`，C ≈ 20-30 通道，每通道是一层 11×9 的 hex 格信息
-- `global_vector`：形状 `(G,)`，G ≈ 15-20 维，全局信息（英雄法力、回合数等）
+- `grid_tensor`：形状 `(33, 9, 11)` — 33 通道 hex grid 特征图
+- `global_vector`：形状 `(20,)` — 全局标量信息
 
-**Grid 通道设计**（初步）：
+**Player-Relative 编码**：始终以当前行动方的视角编码。
+team 0 行动时"我方"= team 0，team 1 行动时"我方"= team 1。
+网络参数共享，数据效率翻倍（AlphaStar 方式）。
 
-| 通道组 | 通道 | 内容 |
-|--------|------|------|
-| team 0 存在 | 0 | 当前单位所在格 (0/1) |
-| team 0 HP | 1 | 单位 HP 比例 (0~1) |
-| team 0 数量 | 2 | count / 初始 count (0~1) |
-| team 0 射手 | 3 | is_archer (0/1) |
-| team 0 飞行 | 4 | is_flying (0/1) |
-| team 0 宽体 | 5 | is_wide tail 格 (0/1) |
-| team 0 攻击力 | 6 | effective_attack 归一化 |
-| team 0 防御力 | 7 | effective_defense 归一化 |
-| team 1 ×7 | 8-14 | 同上，敌方 |
-| 已行动标记 | 15-16 | 双方已行动单位格 |
-| 状态效果 | 17-22 | Haste/Slow/Blind/Paralyze/Bless/Curse 等效果层 |
-| 攻城 | 23-26 | 城墙 HP / 护城河 / 箭塔 / 可通行 |
+**Grid 通道设计**（33 通道）：
 
-**全局向量**：
-英雄法力 / 英雄 power / 回合数 / 攻城方 team / 法术列表 one-hot 等
+| 通道 | 内容 | 值域 |
+|------|------|------|
+| **我方单位 (0-9)** | | |
+| 0 | 我方单位存在（head + tail 格） | 0/1 |
+| 1 | 我方 HP 比例 (`_total_hp / _max_total_hp`) | 0~1 |
+| 2 | 我方数量比例 (`count / initial_count`) | 0~1 |
+| 3 | 我方攻击力 (`effective_attack / 30`) | 0~1 |
+| 4 | 我方防御力 (`effective_defense / 30`) | 0~1 |
+| 5 | 我方速度 (`speed / 10`) | 0~1 |
+| 6 | 我方射手标记 | 0/1 |
+| 7 | 我方飞行标记 | 0/1 |
+| 8 | 我方宽体尾格（仅 tail 格标 1） | 0/1 |
+| 9 | 我方已行动标记 | 0/1 |
+| **敌方单位 (10-19)** | | |
+| 10-19 | 同上，敌方 | |
+| **状态效果 (20-29)** | | |
+| 20 | Haste (+speed) | 0/1 |
+| 21 | Slow (-speed) | 0/1 |
+| 22 | Bless (×1.2 dmg) | 0/1 |
+| 23 | Curse (×0.8 dmg) | 0/1 |
+| 24 | Blind/Paralyze (skip_turn) | 0/1 |
+| 25 | Bloodlust (+3 atk) | 0/1 |
+| 26 | Stone Skin / Steel Skin (+def) | 0/1 |
+| 27 | Shield (ranged ×0.5) | 0/1 |
+| 28 | Anti-Magic | 0/1 |
+| 29 | Disrupting Ray 层数 (`stacks / 5`) | 0~1 |
+| **攻城 (30-32)** | | |
+| 30 | 城墙 HP (`0 / 0.5 / 1`) | 0~1 |
+| 31 | 护城河格 | 0/1 |
+| 32 | 箭塔存在 | 0/1 |
+
+> 注：效果层和攻城层不做 player-relative（效果属于单位本身，攻城是地形）。
+> 宽体单位的属性（HP/数量/攻击等）只在 head 格标值，tail 格只在"存在"通道标 1。
+
+**全局向量**（20 维）：
+
+| 维度 | 内容 | 值域 |
+|------|------|------|
+| 0 | 回合数 / MAX_ROUNDS | 0~1 |
+| 1 | 攻击方 team (0/1) | 0/1 |
+| 2 | 我方存活单位数 / 7 | 0~1 |
+| 3 | 敌方存活单位数 / 7 | 0~1 |
+| 4 | 我方总 HP 比例 | 0~1 |
+| 5 | 敌方总 HP 比例 | 0~1 |
+| 6 | 我方英雄法力 / max_sp | 0~1 |
+| 7 | 敌方英雄法力 / max_sp | 0~1 |
+| 8 | 我方英雄 power / 15 | 0~1 |
+| 9 | 敌方英雄 power / 15 | 0~1 |
+| 10 | 我方英雄 attack / 15 | 0~1 |
+| 11 | 敌方英雄 attack / 15 | 0~1 |
+| 12 | 我方英雄 defense / 15 | 0~1 |
+| 13 | 敌方英雄 defense / 15 | 0~1 |
+| 14 | 是否攻城战 | 0/1 |
+| 15 | 存活箭塔数 / 3 | 0~1 |
+| 16 | 完好城墙数 / 4 | 0~1 |
+| 17 | 我方士气 / 3 | -1~1 |
+| 18 | 我方运气 / 3 | -1~1 |
+| 19 | 当前行动单位在存活队列中的索引 / 14 | 0~1 |
+
+**关键实现细节**：
+- `BattleState` 需记录 `_initial_counts: dict` 以计算数量比例
+- 无英雄时法力/power 等通道填 0
+- 无攻城时攻城通道全填 0
+- 效果通道在单位的 occupied_cells 上都标 1
 
 **退出标准**：
-- [ ] 给定任意 `BattleState`，输出 `(grid_tensor, global_vector)` 形状正确
-- [ ] 通道内容与战场状态一致（单位位置、HP、状态效果）
-- [ ] 镜像对称：交换 team 0/1 后张量对应翻转
-- [ ] 归一化：所有值在 [0, 1] 或 [-1, 1] 范围内
-- [ ] 单元测试覆盖基本场景 + 攻城场景
+- [ ] 给定任意 `BattleState + unit`，输出 `(33, 9, 11)` + `(20,)` 形状正确
+- [ ] Player-relative：同一战局 team 0 和 team 1 行动时，张量正确翻转
+- [ ] 通道内容与战场状态一致（单位位置、HP、效果）
+- [ ] 归一化：所有值在 [-1, 1] 或 [0, 1] 范围内
+- [ ] 宽体单位 head/tail 通道分离正确
+- [ ] 单元测试覆盖基本场景 + 攻城场景 + player-relative 翻转
 
 ---
 
@@ -128,14 +189,23 @@ R3 ──┤         ├──→ R6 ──→ R7
 
 ### R4 — 环境封装 `ai/env.py`
 
-Gym 风格的战斗环境，提供 `reset/step` 接口，整合观测、动作、奖励。
+基于 **Gymnasium** 标准接口的战斗环境，整合观测、动作、奖励。
 
-**核心接口**：
+**核心接口**（继承 `gymnasium.Env`）：
 
 ```python
-class BattleEnv:
-    def reset(preset=None, config=None) -> Observation
-    def step(action_index: int) -> (Observation, reward: float, done: bool, info: dict)
+import gymnasium
+from gymnasium import spaces
+
+class BattleEnv(gymnasium.Env):
+    obs_space = spaces.Dict({
+        "grid":   spaces.Box(0, 1, shape=(33, 9, 11), dtype=np.float32),
+        "global": spaces.Box(-1, 1, shape=(20,), dtype=np.float32),
+        "mask":   spaces.Box(0, 1, shape=(ACTION_DIM,), dtype=np.float32),
+    })
+
+    def reset(self, *, seed=None, options=None) -> (obs, info)
+    def step(self, action_index: int) -> (obs, reward, terminated, truncated, info)
 ```
 
 **决策粒度**：三步合一。每个单位回合调用一次 `step()`，
@@ -166,11 +236,13 @@ class SelfPlayRunner:
 ```
 
 **退出标准**：
-- [ ] `reset()` 返回合法观测，`step()` 返回合法转移
+- [ ] `reset()` 返回合法观测（符合 gymnasium 空间定义）
+- [ ] `step()` 返回合法 `(obs, reward, terminated, truncated, info)` 五元组
 - [ ] 完整 episode 从开始到结束正常运行
 - [ ] 奖励在三个阶段的行为符合设计
 - [ ] 自我博弈 runner 能跑完一局并收集 trajectory
 - [ ] 与 ClassicAI 对战的 `eval_game()` 可用
+- [ ] 兼容 `gymnasium.make()` 注册
 - [ ] 单元测试覆盖 episode 生命周期 + 奖励计算
 
 ---
@@ -182,13 +254,13 @@ CNN 骨干 + Policy/Value 双头的 PyTorch 模型。
 **网络结构**：
 
 ```
-输入: grid_tensor (C, 9, 11) + global_vector (G,)
+输入: grid_tensor (33, 9, 11) + global_vector (20,)
           │
     ┌─────┴─────┐
     │  CNN 骨干  │  4-6 个残差卷积块 (Conv2d → BatchNorm → ReLU → Conv2d + skip)
     │  (共享)    │
     └─────┬─────┘
-          │
+          │ + global_vector 拼接
     ┌─────┴──────┐
     │             │
 ┌───┴───┐   ┌────┴────┐
@@ -197,11 +269,11 @@ CNN 骨干 + Policy/Value 双头的 PyTorch 模型。
 └───┬───┘   └────┬────┘
     │             │
 动作概率     胜率预测
-(ACTIONS,)   标量 [-1, 1]
+(ACTION_DIM,)   标量 [-1, 1]
 ```
 
 - **CNN 骨干**：4-6 层残差块，处理 hex grid 空间结构
-- **全局融合**：global_vector 在骨干后拼接
+- **全局融合**：global_vector 在骨干后与 CNN 特征展平拼接
 - **Policy Head**：输出 ACTION_DIM 维 logits，乘以 legality mask 后 softmax
 - **Value Head**：输出 1 维值（tanh → [-1, 1]）
 
@@ -217,15 +289,20 @@ CNN 骨干 + Policy/Value 双头的 PyTorch 模型。
 
 ### R6 — PPO 训练器 `ai/deep/trainer.py`
 
-近端策略优化（PPO）训练循环，从自我博弈数据中学习。
+基于 **CleanRL** PPO 实现的训练循环。
+
+**策略**：参考 CleanRL 的 `ppo_atari.py` 或 `ppo_continuous_action.py` 单文件实现，
+根据我们的 `BattleEnv`（Dict obs + mask action）适配，而非从零实现 PPO 算法。
+CleanRL 代码简洁可读（~300 行），方便理解和调试。
 
 **核心组件**：
 
 - **Trajectory Buffer**：存储 (obs, action, reward, value, log_prob, mask) 序列
-- **GAE 优势估计**：λ=0.95, γ=0.99，计算 each step 的 advantage
+- **GAE 优势估计**：λ=0.95, γ=0.99
 - **PPO Clip 更新**：ε=0.2，多 epoch mini-batch 更新
 - **Value Loss**：MSE 回归价值函数
 - **Entropy Bonus**：鼓励探索
+- **Action Masking**：在 policy head 直接 mask 非法动作
 
 **训练流程**：
 1. 自我博弈收集 N 局 trajectory
