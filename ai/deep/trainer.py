@@ -1,9 +1,10 @@
-"""R6 — PPO trainer for self-play battle learning.
+"""R6/T2 — PPO trainer for self-play battle learning.
 
 CleanRL-style PPO implementation with:
   - TrajectoryBuffer: stores (obs, action, reward, value, log_prob, done)
   - compute_gae: Generalized Advantage Estimation (λ=0.95, γ=0.99)
   - PPOTrainer: self-play collection + PPO-Clip update + curriculum scheduling
+  - Gradient accumulation: accumulate N minibatches before optimizer step
 
 Design choices:
   - Single-file, ~300 lines (CleanRL convention)
@@ -164,6 +165,10 @@ class PPOTrainer:
         Value loss coefficient.
     max_grad_norm : float
         Max gradient norm for clipping.
+    grad_accum_steps : int
+        Number of minibatches to accumulate gradients over before an
+        optimizer step.  Default 1 (no accumulation).  When > 1 the
+        effective batch size equals ``minibatch_size * grad_accum_steps``.
     device : str
         "cpu" or "cuda".
     """
@@ -181,6 +186,7 @@ class PPOTrainer:
         entropy_coeff: float = 0.01,
         value_coeff: float = 0.5,
         max_grad_norm: float = 0.5,
+        grad_accum_steps: int = 1,
         device: str = "cpu",
     ):
         self.model = model.to(device)
@@ -194,6 +200,7 @@ class PPOTrainer:
         self.entropy_coeff = entropy_coeff
         self.value_coeff = value_coeff
         self.max_grad_norm = max_grad_norm
+        self.grad_accum_steps = max(1, grad_accum_steps)
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr, eps=1e-5)
         self.buffer = TrajectoryBuffer()
@@ -335,6 +342,7 @@ class PPOTrainer:
         total_entropy = 0.0
         total_approx_kl = 0.0
         n_updates = 0
+        accum_count = 0  # minibatches since last optimizer step
 
         for _ in range(self.update_epochs):
             # Shuffle indices for mini-batch updates
@@ -368,17 +376,24 @@ class PPOTrainer:
                 # Value loss
                 value_loss = ((value_pred.squeeze() - mb_ret) ** 2).mean()
 
-                # Total loss
+                # Total loss (scaled by accumulation factor)
                 loss = (policy_loss
                         + self.value_coeff * value_loss
                         - self.entropy_coeff * entropy)
+                scaled_loss = loss / self.grad_accum_steps
 
-                # Gradient step
-                self.optimizer.zero_grad()
-                loss.backward()
-                nn.utils.clip_grad_norm_(
-                    self.model.parameters(), self.max_grad_norm)
-                self.optimizer.step()
+                # Accumulate gradients
+                scaled_loss.backward()
+                accum_count += 1
+
+                # Step optimizer every grad_accum_steps minibatches
+                # (or at the last minibatch of the epoch)
+                if accum_count >= self.grad_accum_steps:
+                    nn.utils.clip_grad_norm_(
+                        self.model.parameters(), self.max_grad_norm)
+                    self.optimizer.step()
+                    self.optimizer.zero_grad()
+                    accum_count = 0
 
                 total_policy_loss += float(policy_loss.item())
                 total_value_loss += float(value_loss.item())
