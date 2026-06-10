@@ -35,6 +35,7 @@ class Unit:
         self.is_wide = kwargs.get("is_wide", False)
         self.abilities = set(kwargs.get("abilities", ()))
         self.ability_params = dict(kwargs.get("ability_params", {}))
+        self.tags = set(kwargs.get("tags", ()))
         self.symbol = kwargs.get("symbol", name[0])
 
         self.count = kwargs["count"]
@@ -56,6 +57,8 @@ class Unit:
         t = dict(config.UNIT_TYPES[type_name])
         if count is not None:
             t["count"] = count
+        # Merge tags from UNIT_TAGS (M7b spell targeting).
+        t["tags"] = config.UNIT_TAGS.get(type_name, [])
         return Unit(type_name, team, col, row, **t)
 
     # ── properties ──────────────────────────────────────────
@@ -110,6 +113,18 @@ class Unit:
         return (self.damage_min + self.damage_max) / 2.0
 
     @property
+    def effective_attack(self) -> int:
+        """Attack stat including spell bonuses (Bloodlust, Dragon Slayer)."""
+        delta = sum(e.attack_delta for e in self.effects)
+        return max(0, self.attack + delta)
+
+    @property
+    def effective_defense(self) -> int:
+        """Defense stat including spell bonuses (Stone Skin, Disrupting Ray)."""
+        delta = sum(e.defense_delta for e in self.effects)
+        return max(0, self.defense + delta)
+
+    @property
     def damage_factor(self) -> float:
         """Combined damage multiplier from Bless / Curse effects."""
         factor = 1.0
@@ -118,9 +133,26 @@ class Unit:
         return factor
 
     @property
+    def incoming_ranged_factor(self) -> float:
+        """Multiplier on incoming ranged damage (Shield effect)."""
+        factor = 1.0
+        for e in self.effects:
+            factor *= e.ranged_shield
+        return factor
+
+    @property
     def skip_turn(self) -> bool:
         """True when a Blind / Paralyze / Petrify effect is active."""
         return any(e.skip_turn for e in self.effects)
+
+    @property
+    def is_immune_to_spells(self) -> bool:
+        """True when an Anti-Magic effect is active."""
+        return any(e.anti_magic for e in self.effects)
+
+    def has_tag(self, tag: str) -> bool:
+        """Check if this unit has a specific tag (undead, dragon, elemental)."""
+        return tag in self.tags
 
     def break_effects_on_damage(self) -> None:
         """Remove effects that break when the unit takes damage."""
@@ -135,9 +167,17 @@ class Unit:
         return any(e.name == name for e in self.effects)
 
     def add_effect(self, effect) -> None:
-        """Apply (or refresh) a timed effect; one of each name at a time."""
-        self.effects = [e for e in self.effects if e.name != effect.name]
-        self.effects.append(effect)
+        """Apply (or refresh) a timed effect.
+
+        Stackable effects (e.g. Disrupting Ray) are appended without removing
+        existing ones.  Non-stackable effects replace any existing effect of
+        the same name (one of each name at a time).
+        """
+        if effect.stackable:
+            self.effects.append(effect)
+        else:
+            self.effects = [e for e in self.effects if e.name != effect.name]
+            self.effects.append(effect)
 
     def tick_effects(self) -> None:
         """Count down effects at the start of a round, dropping expired ones."""

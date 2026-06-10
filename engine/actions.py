@@ -30,12 +30,20 @@ class SkipAction(Action):
 
 
 class CastAction(Action):
-    """A hero casts one spell on a target unit (damage / buff / debuff)."""
+    """A hero casts one spell on a target unit (damage / buff / debuff).
 
-    def __init__(self, team: int, spell, target: Unit):
+    For AOE spells, ``cell`` is the center of the area.
+    For Teleport, ``destination`` is where the unit moves to.
+    """
+
+    def __init__(self, team: int, spell, target: Unit,
+                 cell: Optional[Tuple[int, int]] = None,
+                 destination: Optional[Tuple[int, int]] = None):
         self.team = team
         self.spell = spell
         self.target = target
+        self.cell = cell
+        self.destination = destination
 
 
 class RetreatAction(Action):

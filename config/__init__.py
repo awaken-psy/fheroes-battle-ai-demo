@@ -13,6 +13,6 @@ GRID_OFFSET_X = 210
 GRID_OFFSET_Y = 80
 
 from .colors import *
-from .units import UNIT_TYPES
+from .units import UNIT_TYPES, UNIT_TAGS
 from .presets import PRESETS
 from .timing import *

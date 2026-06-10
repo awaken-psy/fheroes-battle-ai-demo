@@ -18,7 +18,7 @@
 | **M6b** | 攻城系统(完整) | P4 | ~94% | ✅ 完成 |
 | **M6c** | 验证 / 调参 / 原版对照 | P4 | ~95% | ✅ 完成 |
 | **M7** | 兵种全阵营扩充(4 阵营 + 中立 ~45 种) | P3 | ~96% | ✅ 完成 |
-| **M7b** | 法术扩充(~24 种) | P4 | ~97% | 📋 待做 |
+| **M7b** | 法术扩充(~24 种) | P4 | ~97% | ✅ 完成 |
 | **M7c** | AI 行为精细化(审计收尾) | P4 | ~98% | 📋 待做 |
 | **M7d** | 英雄战斗技能 | P4 | ~98% | 📋 待做 |
 
@@ -338,55 +338,56 @@ Troll/War Troll/Cyclops。
 
 ---
 
-## M7b — 法术扩充
+## M7b — 法术扩充 ✅ 完成
 
-> 当前 6 种法术仅覆盖原版 ~20%。本里程碑扩展到 ~30 种(含 Mass 变体),
-> 引入新 Effect 属性(attack/defense 修改)和新机制(控制/传送/召唤)。
->
-> **依赖**:建议在 M7 之后(亡灵→Death Ripple/Animate Dead,元素→Summon Element
-> 均依赖兵种标签)。若 M7 未完成,法术部分可按依赖关系分批。
+> 从 6 种扩展到 38 种战斗法术(含 Mass 变体),覆盖伤害/增益/减益/控制/AOE/功能。
+> Summon/Resurrect/Mirror Image/Hypnotize/Berserker 因机制复杂延迟到后续里程碑。
 >
 > **对照源码**:``spell/spell.cpp``(法术数据表)、``ai/ai_battle_spell.cpp``(法术 AI)。
 
 ### 任务
 
-- [ ] **新 Effect 属性**:
-  - ``attack_delta``:Bloodlust(+3/5/7) / Weakness(未来)
-  - ``defense_delta``:Stone Skin(+3/5/7) / Steel Skin(+5/7/9)
-  - Disrupting Ray:防御 -3,可叠加,不互斥
-  - ``skip_turn``:Blind / Paralyze(被攻击时解除)
-- [ ] **Mass 变体**(Mass Haste/Slow/Bless/Curse):
-  - 遍历友军/敌军分别施法;AI 评估改为总值(累加所有目标 ratio)
-  - 数据层:``SPELLS`` 中新增,或用 ``is_mass=True`` 标志
-- [ ] **控制法术**(Blind / Paralyze):
-  - 新 Effect:``skip_turn=True``,单位跳过行动;受攻击时立即解除
-  - AI 评估:原版 ``ai_battle_spell.cpp:386-470``,ratio 基于目标 strength
-- [ ] **增益/减益**(Bloodlust / Stone Skin / Steel Skin / Disrupting Ray):
-  - Effect 新属性 ``attack_delta`` / ``defense_delta`` 加入 ``Unit`` 有效属性计算
-  - AI 评估:ratio = 0.15 × strength / 法力折价
-- [ ] **AOE 伤害**(Chain Lightning / Meteor Shower / Death Ripple / Destroy Undead):
-  - Chain Lightning:链式溅射(伤害递减);AI 评估累加多目标
-  - Meteor Shower:指定区域溅射;Death Ripple:全体非亡灵;Destroy Undead:全体亡灵
-- [ ] **功能法术**(Teleport / Earthquake / Dispel):
-  - Teleport:传送友方单位到指定位置(AI 选择高价值目标+位置)
-  - Earthquake:攻城法术,伤害城墙(类似投石车)
-  - Dispel:移除目标所有 Effect
-- [ ] **召唤/复活**(Summon Element / Resurrect / Animate Dead):
-  - Summon:在指定位置创建临时单位(需新机制);或简化为临时增加友方单位
-  - Resurrect:复活死亡单位;Animate Dead:仅亡灵
-- [ ] **AI 法术评估**:每种新法术写 ``selectBestSpell`` ratio 评估(对照原版)
-- [ ] **法术消耗/威力表**:补全 ``spells.py`` 数据,含所有原版 cost/base/power 缩放
-- [ ] **测试**:新法术效果+AI 选择+免疫判定(20+ 新测试)
+- [x] **新 Effect 属性**:
+  - ``attack_delta``:Bloodlust(+3) / Dragon Slayer(+5)
+  - ``defense_delta``:Stone Skin(+3) / Steel Skin(+5) / Disrupting Ray(-3,可叠加)
+  - ``ranged_shield``:Shield(×0.5)
+  - ``anti_magic``:Anti-Magic(完全免疫)
+  - ``is_positive``:区分增益/减益(用于 Cure/Dispel)
+- [x] **Mass 变体**(7 种):
+  - Mass Haste/Slow/Bless/Curse/Cure/Dispel/Shield
+  - ``is_mass=True`` 标志 + 遍历全体;AI 评估累加所有目标 ratio
+- [x] **控制法术**(Blind / Paralyze):
+  - hero 施放版:Effect ``skip_turn=True`` + ``break_on_damage=True``
+  - AI 评估:Blind 0.8(多敌)/0.4(最后);Paralyze 0.85/0.5
+- [x] **增益**(Bloodlust / Stone Skin / Steel Skin / Shield / Anti-Magic / Dragon Slayer):
+  - ``effective_attack`` / ``effective_defense`` / ``incoming_ranged_factor`` 属性
+  - AI ratio 对照原版(bloodLustRatio=0.1, stoneSkin=0.1, steelSkin=0.2)
+- [x] **AOE 伤害**(14 种):
+  - Fireball/Fireblast/Cold Ring/Meteor Shower(ring1/ring2/ring_outer)
+  - Chain Lightning(4 跳链式溅射)
+  - Death Ripple/Death Wave(全体非亡灵) / Holy Word/Holy Shout(全体亡灵)
+  - Armageddon/Elemental Storm(全体双方)
+  - Cold Ray(单目标) / Magic Arrow/Lightning Bolt(原有)
+- [x] **功能法术**(Teleport / Earthquake / Dispel / Cure):
+  - Teleport:CastAction.destination 传送友方;Earthquake:城墙伤害
+  - Dispel:移除 effects;Cure:移除减益 + 回复 HP
+- [x] **单位标签**(UNIT_TAGS):
+  - undead(11 种) / dragon(4 种) / elemental(4 种)
+  - 法术按标签过滤目标
+- [x] **AI 法术评估**:全部 38 种法术有 ratio 评估(对照原版)
+- [x] **法术消耗/威力表**:38 种法术完整数据(原版 spell.cpp)
+- [x] **测试**:33 新测试,总计 214
 
 ### 退出标准
 
-- [ ] 法术总数 ≥ 25 种(含 Mass 变体),覆盖伤害/增益/减益/控制/AOE/功能
-- [ ] 新 Effect 属性(attack_delta/defense_delta/skip_turn)正确生效和到期
-- [ ] AI 对每种法术都有 ratio 评估;法术免疫(magic_immune/magic_resistance)正确跳过
-- [ ] 全部 pytest 绿;镜像仍 40–60% PASS;带法术局 vs 无法术局胜率显著差异
+- [x] 法术总数 = 38 种(含 Mass 变体),覆盖伤害/增益/减益/控制/AOE/功能
+- [x] 新 Effect 属性(attack_delta/defense_delta/skip_turn/ranged_shield/anti_magic)正确生效
+- [x] AI 对每种法术都有 ratio 评估;Anti-Magic + magic_resistance 免疫
+- [x] 214 pytest 全绿;镜像 40–60% PASS;带英雄 Balanced 52.5/47.5 PASS
 
-> 注:Summon/Resurrect/Mirror Image 机制较复杂,可在本里程碑末评估是否简化或延迟。
-> Blind/Paralyze 的 AI 评估是原版 AI 中价值最高的法术之一(比大多数伤害法术优先)。
+> **范围外(延迟)**:Summon Elementals(×4)/Resurrect/Resurrect True/Animate Dead/
+> Mirror Image/Hypnotize/Berserker — 需要新机制(graveyard/spawn/duplicate/allegiance)。
+> 这些可在 M7c 后单独处理。
 
 ---
 
