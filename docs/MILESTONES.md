@@ -1,6 +1,6 @@
 # 里程碑 — 战斗 AI 复刻
 
-> **T 系列（训练实战）全部完成。**
+> **T 系列（训练实战）进行中 — T1✅ T2✅ T3✅ T4✅ 完成，准备 T5 多配置训练。**
 >
 > - 规则层 M1–M7e：~99% 保真度，63 兵种，38 法术，298 测试
 > - AI 决策层 A1–A4：~97% 决策行为覆盖（126 条审计），356 测试
@@ -9,6 +9,9 @@
 > - **T2 模型/训练改进**：GroupNorm + LR decay + Grad accum + TensorBoard，13 测试，PR #25
 > - **T3 自博弈对手池**：OpponentPool + 50/50 池采样 + 磁盘持久化，16 测试，PR #27
 > - **T4 训练战役**：200k 步，best.pt 胜率 88%（example.json），训练报告已写
+> - **T5 多配置训练**：📋 下一步
+> - **T6 稳定性优化**：📋
+> - **T7 模型升级**：📋（实验性）
 > - **总计 605 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
@@ -222,8 +225,110 @@ python scripts/train.py \
 
 ---
 
+### T5 — 多配置混合训练
+
+每局随机选一个配置训练，让 DeepAI 接触英雄/法术/高级兵种，解决零泛化问题。
+
+**修改文件**：
+- `scripts/train.py` — `--config` 接受多个文件，每 rollout 随机选一个；eval 遍历所有训练配置
+- `ai/deep/trainer.py` — `collect_rollout` 接受可选 `env_config` 参数覆盖默认配置
+
+**设计**：
+```python
+# train.py
+p.add_argument("--config", nargs="+", default=None)
+
+# 多配置加载
+configs = [load_battle_config(c) for c in args.config]
+
+# 每 rollout 随机选一个
+selected_config = random.choice(configs)
+info = trainer.train_step(..., env_config=selected_config)
+
+# eval 遍历所有训练配置
+for i, cfg in enumerate(configs):
+    eval_info = eval_vs_classic(cfg, agent_fn, ...)
+```
+
+**退出标准**：
+- [ ] `--config` 接受多个文件路径
+- [ ] 每 rollout 随机选择一个配置
+- [ ] eval 报告每个配置的独立胜率
+- [ ] `best.pt` 按所有配置平均胜率选择
+- [ ] 新增测试覆盖多配置选择逻辑
+- [ ] 所有测试通过
+
+---
+
+### T6 — 训练稳定性优化
+
+改进超参数和训练策略，减少 eval 胜率震荡，提升最终性能。
+
+**修改文件**：
+- `scripts/train.py` — 新增 `--lr-schedule` 参数（linear / cosine）
+- `ai/deep/trainer.py` — 支持 cosine annealing LR
+
+**改进项**：
+
+| 改进 | 说明 | 原因 |
+|------|------|------|
+| Cosine annealing LR | 学习率余弦退火，周期性重启 | 线性衰减末期 LR≈0 导致停滞，cosine 可跳出局部最优 |
+| 对手池扩容 | 默认 5→10 或更多 | 更多对手多样性，减少循环主导策略 |
+| 课程阶段延长 | phase1 10k→30k，phase2 30k→100k | 多配置训练更复杂，需要更多时间学基础 |
+| 更长训练 | 500k+ 步 | T4 的 200k 步仍在震荡，需要更多步数收敛 |
+
+**训练命令**（T5 完成后执行）：
+```bash
+python scripts/train.py \
+  --total-steps 500000 \
+  --rollout-steps 2048 \
+  --config configs/example.json configs/even_clash.json \
+           configs/mage_duel.json configs/dragon_battle.json \
+  --eval-interval 10000 \
+  --eval-games 100 \
+  --device cuda \
+  --lr-schedule cosine \
+  --grad-accum 4 \
+  --tensorboard \
+  --opponent-pool 10 \
+  --phase1-steps 30000 \
+  --phase2-steps 100000 \
+  --checkpoint-dir checkpoints/t6-stability
+```
+
+**退出标准**：
+- [ ] Cosine annealing LR scheduler 选项添加
+- [ ] 500k 步混合配置训练完成
+- [ ] 4 配置 benchmark 与 T4 baseline 对比（期望 3/4 以上配置有非零胜率）
+- [ ] 训练报告写入 `docs/t6-training-report.md`
+- [ ] 所有测试通过
+
+---
+
+### T7 — 模型架构升级（实验性）
+
+探索更好的网络架构是否带来性能提升。仅在 T5+T6 完成后、且有明确瓶颈证据时启动。
+
+**修改文件**：
+- `ai/deep/model.py` — 新增架构选项（attention / 更深更宽网络）
+
+**候选架构**：
+
+| 方案 | 说明 | 参数量估算 |
+|------|------|-----------|
+| Attention 增强型 | 在 ResBlock 后加 spatial attention 层 | ~5M |
+| 更深网络 | 4→6 ResBlock | ~6M |
+| 更宽网络 | 64→128 通道 | ~16M |
+
+**退出标准**：
+- [ ] 至少 1 种新架构可选
+- [ ] 与 T6 baseline 的消融对比实验完成
+- [ ] 最优架构记录在训练报告中
+- [ ] 所有测试通过
+
+---
+
 ### 可选扩展（未排期）
 
-- [ ] 多配置混合训练（`--config` 接受多个文件，每局随机选一个）
 - [ ] 与原版 fheroes2 C++ AI 决策对照（oracle 一致率）
 - [ ] 经典 AI arena 权重调优（threat / 姿态阈值参数搜索）
