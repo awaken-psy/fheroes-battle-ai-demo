@@ -319,7 +319,7 @@ minibatch=64, entropy_coeff=0.01, value_coeff=0.5, max_grad_norm=0.5
 
 ---
 
-### R7 — 训练管线 `scripts/train.py`
+### R7 — 训练管线 `scripts/train.py` ✅
 
 完整的训练脚本，串联自我博弈、训练、评估、日志。
 
@@ -352,9 +352,9 @@ for iteration in range(total):
 - Value loss / Policy loss
 
 **退出标准**：
-- [ ] `python scripts/train.py` 能完整跑通
-- [ ] 评估 vs ClassicAI 自动进行并输出胜率
-- [ ] Checkpoint 保存和恢复正常
-- [ ] 日志清晰可读
-- [ ] DeepAI 注册进工厂：`create_ai("deep")` 可用
-- [ ] DeepAI 与 ClassicAI 同台对战（arena 兼容）
+- [x] `python scripts/train.py` 能完整跑通
+- [x] 评估 vs ClassicAI 自动进行并输出胜率
+- [x] Checkpoint 保存和恢复正常
+- [x] 日志清晰可读
+- [x] DeepAI 注册进工厂：`create_ai("deep")` 可用
+- [x] DeepAI 与 ClassicAI 同台对战（arena 兼容）
