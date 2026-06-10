@@ -1,13 +1,14 @@
 # 里程碑 — 战斗 AI 复刻
 
-> **当前阶段：T 系列（训练实战）进行中 — T1 ✅ T2 ✅ 完成，准备 T3。**
+> **当前阶段：T 系列（训练实战）进行中 — T1 ✅ T2 ✅ T3 ✅ 完成，准备 T4。**
 >
 > - 规则层 M1–M7e：~99% 保真度，63 兵种，38 法术，298 测试
 > - AI 决策层 A1–A4：~97% 决策行为覆盖（126 条审计），356 测试
 > - 深度学习 R1–R7：CNN+PPO 自我博弈训练管线，205 测试
 > - **T1 Baseline 评估框架**：eval_benchmark.py + 15 测试，PR #23
 > - **T2 模型/训练改进**：GroupNorm + LR decay + Grad accum + TensorBoard，13 测试，PR #25
-> - **总计 589 测试，CI 守护**
+> - **T3 自博弈对手池**：OpponentPool + 50/50 池采样 + 磁盘持久化，16 测试，PR #27
+> - **总计 605 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
 > AI 行为审计见 [`docs/ai-audit.md`](ai-audit.md)（126 条）。
@@ -155,39 +156,29 @@ python scripts/train.py \
 
 ---
 
-### T3 — 自博弈对手池
+### T3 — 自博弈对手池 ✅
 
 保存历史 checkpoint 作为对手，防止策略坍塌到单一打法。
 
 **新增文件**：
 - `ai/deep/opponent_pool.py` — 对手池管理
 
-**设计**：
-```python
-class OpponentPool:
-    """保存最近 N 个 checkpoint，自博弈时随机采样对手。"""
+**修改文件**：
+- `ai/deep/trainer.py` — `collect_rollout` 支持 `opponent_model` 参数
+- `scripts/train.py` — `--opponent-pool N` CLI + 50/50 自博弈/池采样
 
-    def __init__(self, capacity: int = 5):
-        """保留最近 capacity 个 checkpoint。"""
-
-    def add(self, model_state_dict, step: int) -> None:
-        """添加一个 checkpoint，超出容量时淘汰最旧的。"""
-
-    def sample(self) -> dict:
-        """随机返回一个对手的 state_dict。"""
-
-    def __len__(self) -> int:
-        """当前池中对手数量。"""
-```
-
-**集成**：训练循环中，每个 rollout 随机选择对手（50% 当前策略自博弈，50% 对手池采样）。
+**实际实现**（PR #27, commit `85d15f0`）：
+- `OpponentPool`：FIFO 淘汰 + 磁盘持久化 + `load_from_disk()` 恢复
+- 对手方 transition 不存入 buffer，仅学习方参与 PPO 更新
+- 日志 `pool_play: 0.0/1.0` 标识 rollout 来源
+- 端到端验证：池空→自博弈，池满后 50% vs 对手
 
 **退出标准**：
-- [ ] `OpponentPool` 类实现完整（add/sample/容量管理）
-- [ ] 训练循环集成对手池，日志显示对手来源
-- [ ] 对手池 checkpoint 持久化到磁盘（重启可恢复）
-- [ ] 新增测试覆盖池操作
-- [ ] 所有测试通过
+- [x] `OpponentPool` 类实现完整（add/sample/容量管理）
+- [x] 训练循环集成对手池，日志显示对手来源
+- [x] 对手池 checkpoint 持久化到磁盘（重启可恢复）
+- [x] 新增测试覆盖池操作（16 个新测试）
+- [x] 所有测试通过（605 passed）
 
 ---
 
