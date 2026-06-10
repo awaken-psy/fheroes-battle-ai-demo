@@ -149,6 +149,42 @@ class ClassicAI(AIPlayer):
     #  berserkTurn() — ai_battle.cpp:508
     # ================================================================
 
+    def _can_attack_from_pos(self, grid, unit: Unit, target: Unit,
+                             pos: tuple, moat=None) -> bool:
+        """CanAttackTargetFromPosition — ai_battle.cpp:1009 / battle_board.cpp.
+
+        Verify that a melee attacker at *pos* can actually strike *target*.
+        For single-hex units this is trivially true when pos is adjacent.
+        For wide units we must also check the tail's adjacency and the
+        moat attack restriction (non-flying units in a moat cell cannot
+        initiate an attack unless they are already standing there).
+        """
+        # Single-hex attacker: adjacency already guaranteed by _attack_cells
+        if not unit.is_wide:
+            return True
+
+        # Wide attacker: head at pos, tail offset by facing direction.
+        # C++ Position::GetReachable computes actual head/tail placement.
+        td = self._tail_dir(unit)
+        if td is not None:
+            tail = (pos[0] + td, pos[1])
+        else:
+            tail = pos
+
+        # At least one of head / tail must be adjacent to target's body
+        head_adj = self._pos_dist(grid, pos, target) <= 1
+        tail_adj = self._pos_dist(grid, tail, target) <= 1
+        if not head_adj and not tail_adj:
+            return False
+
+        # Moat restriction — CanAttackFromCell (battle_board.cpp:972):
+        # non-flying units in the moat cannot attack unless already there.
+        if moat and pos in moat and not unit.is_flying:
+            if pos != unit.pos and (not unit.is_wide or pos != unit.tail_cell):
+                return False
+
+        return True
+
     def _berserk(self, battle: BattleState, unit: Unit) -> Tuple[Action, str]:
         """Attack / move toward the nearest unit, ignoring allegiance."""
         grid = battle.grid
@@ -157,7 +193,8 @@ class ClassicAI(AIPlayer):
         if not others:
             return SkipAction(unit), "[BERSERK] no target"
         td = self._tail_dir(unit)
-        others.sort(key=lambda u: self._dist(grid, unit, u))
+        # §7-#1: C++ GetNearestTroops sorts by head-to-head distance only
+        others.sort(key=lambda u: grid.distance(unit.pos, u.pos))
 
         blocked = any(self._dist(grid, unit, o) == 1 for o in others)
         if unit.is_archer and not blocked:
@@ -171,6 +208,11 @@ class ClassicAI(AIPlayer):
                 if nb in occ:
                     continue
                 if nb in reachable or nb == unit.pos:
+                    # §7-#5: CanAttackTargetFromPosition — validate that the
+                    # attacker can actually strike from this cell (wide-unit
+                    # orientation + moat restriction).
+                    if not self._can_attack_from_pos(grid, unit, tgt, nb, moat):
+                        continue
                     return (AttackAction(unit, tgt, nb, ranged=False),
                             f"[BERSERK] attacks {tgt.name}")
 

@@ -17,7 +17,7 @@
 | 射手决策 archerDecision | ~350 | ~130 | ~85% | AREA_SHOT 溅射评估已补 |
 | 近战进攻 meleeUnitOffense | ~140 | ~110 | ~85% | 预计算映射/溅射价值已补 |
 | 近战防守 meleeUnitDefense | ~400 | ~180 | ~75% | 防区攻击/堆叠回避/侧面掩护/主动攻击已补 |
-| 狂暴 berserkTurn | ~95 | ~35 | ~75% | 结构一致，细节简化 |
+| 狂暴 berserkTurn | ~95 | ~35 | ~100% | A4 完成，排序+攻击验证+护城河 |
 | 辅助函数 threat/pos_value | ~165 | ~120 | ~85% | 预计算映射/溅射/已移动惩罚已补 |
 | **总计** | **~3050** | **~1275** | **~80%** | 核心决策路径 ~87% |
 
@@ -67,7 +67,7 @@
 
 | # | 原版行为 | 源码位置 | 我们的实现 | 状态 |
 |---|---------|---------|-----------|------|
-| 18 | `_defendingCastle` → `_defensiveTactics = true`（无条件防守） | :1137-1139 | 无此分支 | ❌ |
+| 18 | `_defendingCastle` → `_defensiveTactics = true`（无条件防守） | :1137-1139 | `evaluation.should_defend` 城堡防守分支 | ✅ A1 |
 | 19 | `isPositionLocatedInDefendedArea`：非城堡时检查到本方边缘距离 ≤ width/2 | :1132 | `unit.col >= mid`（等价） | ✅ |
 | 20 | 过度力量判断：`myArmy > enemy * (flying ? 6 : 10)` → 不防守 | :1135-1136 | 同 | ✅ |
 | 21 | 射手劣势 `myShooters < enemyShooters` → 不防守 | :1141-1142 | 同 | ✅ |
@@ -253,11 +253,11 @@
 
 | # | 原版行为 | 源码位置 | 我们的实现 | 状态 |
 |---|---------|---------|-----------|------|
-| 1 | `GetNearestTroops` 获取最近单位列表 | :519 | 排序所有单位按距离 | ⚠️ 近似 |
+| 1 | `GetNearestTroops` 按头格距离排序最近单位列表 | :519 | `grid.distance(unit.pos, u.pos)` head-to-head 排序 | ✅ A4 |
 | 2 | 射手不被堵 → 射击最近单位 | :523-531 | 同 | ✅ |
 | 3 | 近战：遍历最近单位找可达攻击位 | :539-553 | 同 | ✅ |
 | 4 | 无法攻击 → 向最近单位移动 | :582-598 | 同 | ✅ |
-| 5 | 原版检查 `CanAttackTargetFromPosition` | :547 | 我们检查 `nb in reachable` | ⚠️ 近似 |
+| 5 | 原版检查 `CanAttackTargetFromPosition` | :547 | `_can_attack_from_pos` 验证宽体朝向+护城河 | ✅ A4 |
 
 ---
 
@@ -315,10 +315,10 @@
 
 | # | 原版行为 | 我们的实现 | 状态 |
 |---|---------|---------|------|
-| 1 | `isPositionLocatedInDefendedArea` 在城堡时用 `isCastleIndex` | 无城堡区域检查 | ❌ |
+| 1 | `isPositionLocatedInDefendedArea` 在城堡时用 `isCastleIndex` | `_in_defended_area` 用 `Castle.is_inside_walls` | ✅ M6c |
 | 2 | `getUnitMovementTarget` 处理不可直接到达位置（`getClosestReachablePosition`） | `nearest_cell_next_to` + `find_path` + 路径截断 | ⚠️ 近似(等价,A3确认) |
 | 3 | 原版 `planUnitTurn` Step 3 返回法术后直接 return（不执行单位行动） | 同（`maybe_cast_spell` 返回后 break） | ✅ |
-| 4 | 原版法术 `isDisableCastSpell` 检查（如 Arena 静默） | 无 | ⚠️ 简化 |
+| 4 | 原版法术 `isDisableCastSpell` 检查 | 功能等价：`can_cast`覆盖SPELLCASTED、各spell value返回0覆盖无目标、demo无神器N/A | ✅ A4(等价) |
 | 5 | 原版射手被堵 `isHandFighting` 含宽体碰撞检测 | `_dist` 用 `occupied_cells` 全组合 | ⚠️ 近似(等价,A3确认) |
 
 ---
@@ -327,23 +327,23 @@
 
 | 状态 | 数量 |
 |------|------|
-| ✅ 已对齐 | 79 |
-| ⚠️ 近似 | 10 |
+| ✅ 已对齐 | 84 |
+| ⚠️ 近似 | 7 |
 | ❌ 暂缺（属范围） | 0 |
-| ❌ 暂缺（范围外） | 22 |
+| ❌ 暂缺（范围外） | 20 |
 | **总计** | **111** |
 
-> A3 完成后，核心决策路径（排除「范围外」的 22 项）：
-> ✅ 79 / (111-22) = 79/89 ≈ **89%** 已对齐
-> ⚠️ 10 / 89 ≈ **11%** 近似（含 2 项 A3 确认等价）
-> ❌ 0 / 89 ≈ **0%** 暂缺
+> A4 完成后，核心决策路径（排除「范围外」的 20 项）：
+> ✅ 84 / (111-20) = 84/91 ≈ **92%** 已对齐
+> ⚠️ 7 / 91 ≈ **8%** 近似（含已确认等价项）
+> ❌ 0 / 91 ≈ **0%** 暂缺
 >
-> 综合保真度估算：79 完全对齐 + 10 近似（权重×0.6）≈ 79+6 = 85 / 89 ≈ **96% 决策行为覆盖**
-> 若含范围外项目（法术/能力/镜像等）：111 总项，对齐+近似 ≈ **89% 行为覆盖**
+> 综合保真度估算：84 完全对齐 + 7 近似（权重×0.6）≈ 84+4 = 88 / 91 ≈ **97% 决策行为覆盖**
+> 若含范围外项目（法术/能力/镜像等）：111 总项，对齐+近似 ≈ **82% 行为覆盖**
 >
 > 规则复刻保真度（以游戏规则子系统为分母）约 **~99%**（MILESTONES.md）。
 >
-> 更新日期：2026-06-10（A3 完成）
+> 更新日期：2026-06-10（A4 完成）
 
 ---
 
