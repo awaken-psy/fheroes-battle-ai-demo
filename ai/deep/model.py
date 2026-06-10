@@ -1,11 +1,11 @@
-"""R5 — CNN residual backbone + Policy/Value dual-head network.
+"""R5/T2 — CNN residual backbone + Policy/Value dual-head network.
 
 Architecture (Plan A — ~4.15M parameters):
     grid (33, 9, 11)                           global (20,)
          │                                         │
-    Conv2d(33→64, 3×3) + BN + ReLU                │
+    Conv2d(33→64, 3×3) + GN + ReLU                │
          │                                         │
-    ResBlock × 4  (64→64, Conv3×3+BN+ReLU ×2 + skip)
+    ResBlock × 4  (64→64, Conv3×3+GN+ReLU ×2 + skip)
          │                                         │
     Flatten → 6336 ───────────────── concat ──────┘
                        │
@@ -21,6 +21,11 @@ Action masking: ``logits.masked_fill(mask == 0, -inf)`` before returning,
 so the caller (PPO) can safely apply softmax.
 
 Weight init: orthogonal (gain=√2 for ReLU, gain=1 otherwise).
+
+T2 change: BatchNorm2d → GroupNorm(8, 64).
+GroupNorm splits channels into 8 groups (8 channels each) and normalises
+within each group independently, removing the dependency on batch size
+that makes BatchNorm unstable during batch=1 inference.
 """
 
 import math
@@ -40,27 +45,28 @@ _NUM_RES_BLOCKS = 4
 _BOTTLENECK_DIM = 192
 _FLAT_GRID_DIM = _CONV_CHANNELS * GRID_ROWS * GRID_COLS  # 64 * 9 * 11 = 6336
 _FUSED_DIM = _FLAT_GRID_DIM + GLOBAL_DIM                   # 6336 + 20 = 6356
+_GN_GROUPS = 8  # GroupNorm groups: 64 channels / 8 groups = 8 ch/group
 
 
 # ── Building blocks ─────────────────────────────────────────────
 
 
 class ResidualBlock(nn.Module):
-    """Conv2d → BN → ReLU → Conv2d → BN + skip → ReLU."""
+    """Conv2d → GN → ReLU → Conv2d → GN + skip → ReLU."""
 
-    def __init__(self, channels: int):
+    def __init__(self, channels: int, gn_groups: int = _GN_GROUPS):
         super().__init__()
         self.conv1 = nn.Conv2d(channels, channels, kernel_size=3,
                                padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(channels)
+        self.gn1 = nn.GroupNorm(gn_groups, channels)
         self.conv2 = nn.Conv2d(channels, channels, kernel_size=3,
                                padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(channels)
+        self.gn2 = nn.GroupNorm(gn_groups, channels)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
+        out = F.relu(self.gn1(self.conv1(x)))
+        out = self.gn2(self.conv2(out))
         return F.relu(out + identity)
 
 
@@ -89,7 +95,7 @@ class BattleNet(nn.Module):
         # ── Stem ──────────────────────────────────────────────
         self.stem_conv = nn.Conv2d(grid_channels, _CONV_CHANNELS,
                                    kernel_size=3, padding=1, bias=False)
-        self.stem_bn = nn.BatchNorm2d(_CONV_CHANNELS)
+        self.stem_gn = nn.GroupNorm(_GN_GROUPS, _CONV_CHANNELS)
 
         # ── Residual backbone ─────────────────────────────────
         self.res_blocks = nn.Sequential(
@@ -126,7 +132,7 @@ class BattleNet(nn.Module):
             value:         ``(B, 1)`` — value estimate in [-1, 1].
         """
         # CNN backbone
-        x = F.relu(self.stem_bn(self.stem_conv(grid)))
+        x = F.relu(self.stem_gn(self.stem_conv(grid)))
         x = self.res_blocks(x)
 
         # Flatten spatial dims + concat global vector
@@ -162,6 +168,6 @@ class BattleNet(nn.Module):
                 nn.init.orthogonal_(module.weight, gain=math.sqrt(2))
                 if module.bias is not None:
                     nn.init.zeros_(module.bias)
-            elif isinstance(module, nn.BatchNorm2d):
+            elif isinstance(module, nn.GroupNorm):
                 nn.init.ones_(module.weight)
                 nn.init.zeros_(module.bias)

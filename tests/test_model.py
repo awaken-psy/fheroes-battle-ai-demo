@@ -32,6 +32,7 @@ from ai.deep.model import (
     _NUM_RES_BLOCKS,
     _BOTTLENECK_DIM,
     _FUSED_DIM,
+    _GN_GROUPS,
 )
 
 
@@ -272,3 +273,67 @@ class TestConstants:
     def test_fused_dim(self):
         flat_grid = _CONV_CHANNELS * GRID_ROWS * GRID_COLS
         assert _FUSED_DIM == flat_grid + GLOBAL_DIM
+
+
+# ── 11. T2: GroupNorm migration ─────────────────────────────────
+
+
+class TestGroupNormMigration:
+    """Verify BatchNorm → GroupNorm replacement (T2)."""
+
+    def test_resblock_uses_groupnorm(self):
+        block = ResidualBlock(_CONV_CHANNELS)
+        assert isinstance(block.gn1, torch.nn.GroupNorm)
+        assert isinstance(block.gn2, torch.nn.GroupNorm)
+        assert block.gn1.num_groups == _GN_GROUPS
+        assert block.gn2.num_groups == _GN_GROUPS
+        assert not hasattr(block, "bn1")
+        assert not hasattr(block, "bn2")
+
+    def test_stem_uses_groupnorm(self):
+        model = BattleNet()
+        assert isinstance(model.stem_gn, torch.nn.GroupNorm)
+        assert model.stem_gn.num_groups == _GN_GROUPS
+        assert not hasattr(model, "stem_bn")
+
+    def test_no_batchnorm_anywhere(self):
+        model = BattleNet()
+        bn_count = sum(1 for m in model.modules()
+                       if isinstance(m, torch.nn.BatchNorm2d))
+        assert bn_count == 0
+
+    def test_groupnorm_count(self):
+        """1 stem GN + 2 per ResBlock × 4 = 9 total."""
+        model = BattleNet()
+        gn_count = sum(1 for m in model.modules()
+                       if isinstance(m, torch.nn.GroupNorm))
+        assert gn_count == 1 + 2 * _NUM_RES_BLOCKS
+
+    def test_batch1_no_nan(self):
+        """GroupNorm should produce stable output at batch=1."""
+        model = BattleNet().eval()
+        grid = torch.randn(1, NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS)
+        gvec = torch.randn(1, GLOBAL_DIM)
+        mask = torch.ones(1, ACTION_DIM)
+        logits, value = model(grid, gvec, mask)
+        assert not logits.isnan().any()
+        assert not value.isnan().any()
+
+    def test_train_eval_consistent(self):
+        """GroupNorm output should be identical in train and eval mode
+        (unlike BatchNorm which uses running stats in eval)."""
+        model = BattleNet()
+        grid = torch.randn(2, NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS)
+        gvec = torch.randn(2, GLOBAL_DIM)
+        mask = torch.ones(2, ACTION_DIM)
+
+        model.train()
+        with torch.no_grad():
+            out_train = model(grid, gvec, mask)
+
+        model.eval()
+        with torch.no_grad():
+            out_eval = model(grid, gvec, mask)
+
+        assert torch.allclose(out_train[0], out_eval[0], atol=1e-5)
+        assert torch.allclose(out_train[1], out_eval[1], atol=1e-5)

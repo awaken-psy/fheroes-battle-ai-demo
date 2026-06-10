@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""R7 — Training pipeline for fheroes2 battle DeepAI.
+"""R7/T2 — Training pipeline for fheroes2 battle DeepAI.
 
 Usage::
 
@@ -11,6 +11,9 @@ Usage::
 
     # Custom battle config
     python scripts/train.py --config configs/even_clash.json
+
+    # With all T2 improvements
+    python scripts/train.py --device cuda --lr-decay --grad-accum 4 --tensorboard
 
 All training progress is printed as JSON lines (one per rollout).
 Evaluation results are JSON lines with an ``"eval"`` key.
@@ -24,6 +27,8 @@ import time
 
 # Add project root to import path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import torch
 
 from ai.deep.model import BattleNet
 from ai.deep.pipeline import (
@@ -64,6 +69,14 @@ def parse_args(argv=None):
     p.add_argument("--entropy-coeff", type=float, default=0.01)
     p.add_argument("--value-coeff", type=float, default=0.5)
     p.add_argument("--max-grad-norm", type=float, default=0.5)
+
+    # T2 improvements
+    p.add_argument("--lr-decay", action="store_true",
+                   help="Enable linear LR decay to 0 over training")
+    p.add_argument("--grad-accum", type=int, default=1,
+                   help="Gradient accumulation steps (default: 1, no accumulation)")
+    p.add_argument("--tensorboard", action="store_true",
+                   help="Enable TensorBoard logging to runs/")
 
     # Curriculum
     p.add_argument("--phase1-steps", type=int, default=10_000,
@@ -118,8 +131,27 @@ def main(argv=None):
         clip_eps=args.clip_eps, update_epochs=args.update_epochs,
         minibatch_size=args.minibatch_size, entropy_coeff=args.entropy_coeff,
         value_coeff=args.value_coeff, max_grad_norm=args.max_grad_norm,
-        device=args.device,
+        grad_accum_steps=args.grad_accum, device=args.device,
     )
+
+    # ── LR scheduler (T2) ─────────────────────────────────────────
+    scheduler = None
+    if args.lr_decay:
+        # Total optimizer steps ≈ total_rollouts × update_epochs
+        # We approximate: scheduler steps once per rollout
+        # LinearLR decays from lr to end_lr over total_iters
+        scheduler = torch.optim.lr_scheduler.LinearLR(
+            trainer.optimizer,
+            start_factor=1.0,
+            end_factor=0.0,
+            total_iters=args.total_steps // args.rollout_steps,
+        )
+
+    # ── TensorBoard writer (T2) ──────────────────────────────────
+    writer = None
+    if args.tensorboard:
+        from torch.utils.tensorboard import SummaryWriter
+        writer = SummaryWriter(log_dir="runs")
 
     # ── Resume ────────────────────────────────────────────────────
     total_steps = 0
@@ -145,7 +177,34 @@ def main(argv=None):
         info["phase"] = phase
         info["dense_w"] = round(dense_weight, 3)
         info["elapsed"] = round(time.time() - t0, 1)
+
+        # Log current LR
+        current_lr = trainer.optimizer.param_groups[0]["lr"]
+        info["lr"] = current_lr
+
         log_step(total_steps, info)
+
+        # TensorBoard logging
+        if writer is not None:
+            writer.add_scalar("train/policy_loss", info["policy_loss"],
+                              total_steps)
+            writer.add_scalar("train/value_loss", info["value_loss"],
+                              total_steps)
+            writer.add_scalar("train/entropy", info["entropy"],
+                              total_steps)
+            writer.add_scalar("train/total_loss", info["total_loss"],
+                              total_steps)
+            writer.add_scalar("train/approx_kl", info["approx_kl"],
+                              total_steps)
+            writer.add_scalar("train/mean_reward", info["mean_reward"],
+                              total_steps)
+            writer.add_scalar("train/mean_length", info["mean_length"],
+                              total_steps)
+            writer.add_scalar("train/lr", current_lr, total_steps)
+
+        # Step LR scheduler
+        if scheduler is not None:
+            scheduler.step()
 
         # ── Periodic eval + checkpoint ────────────────────────────
         if total_steps - last_eval >= args.eval_interval:
@@ -157,6 +216,13 @@ def main(argv=None):
             model.train()
             log_eval(total_steps, eval_info)
 
+            # TensorBoard eval metrics
+            if writer is not None:
+                writer.add_scalar("eval/win_rate", eval_info["win_rate"],
+                                  total_steps)
+                writer.add_scalar("eval/avg_rounds", eval_info["avg_rounds"],
+                                  total_steps)
+
             ckpt_path = os.path.join(
                 args.checkpoint_dir, f"checkpoint_{total_steps}.pt")
             save_checkpoint(trainer, total_steps, ckpt_path)
@@ -165,6 +231,10 @@ def main(argv=None):
     # ── Final checkpoint ──────────────────────────────────────────
     final_path = os.path.join(args.checkpoint_dir, "final.pt")
     save_checkpoint(trainer, total_steps, final_path)
+
+    if writer is not None:
+        writer.close()
+
     elapsed = round(time.time() - t0, 1)
     print(json.dumps({
         "step": total_steps, "type": "done",
