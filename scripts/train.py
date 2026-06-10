@@ -22,6 +22,7 @@ Evaluation results are JSON lines with an ``"eval"`` key.
 import argparse
 import json
 import os
+import random
 import sys
 import time
 
@@ -31,6 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import torch
 
 from ai.deep.model import BattleNet
+from ai.deep.opponent_pool import OpponentPool
 from ai.deep.pipeline import (
     get_curriculum_phase,
     load_battle_config,
@@ -77,6 +79,10 @@ def parse_args(argv=None):
                    help="Gradient accumulation steps (default: 1, no accumulation)")
     p.add_argument("--tensorboard", action="store_true",
                    help="Enable TensorBoard logging to runs/")
+
+    # T3 opponent pool
+    p.add_argument("--opponent-pool", type=int, default=0,
+                   help="Opponent pool capacity (0 = disabled, default: 0)")
 
     # Curriculum
     p.add_argument("--phase1-steps", type=int, default=10_000,
@@ -159,6 +165,15 @@ def main(argv=None):
         total_steps = load_checkpoint(trainer, args.resume)
         log_step(total_steps, {"msg": f"resumed from {args.resume}"})
 
+    # ── Opponent pool (T3) ────────────────────────────────────────
+    pool = None
+    if args.opponent_pool > 0:
+        pool_dir = os.path.join(args.checkpoint_dir, "opponent_pool")
+        pool = OpponentPool(capacity=args.opponent_pool, save_dir=pool_dir)
+        if args.resume:
+            pool.load_from_disk()
+        log_step(total_steps, {"msg": f"opponent pool enabled (capacity={args.opponent_pool}, loaded={len(pool)})"})
+
     last_eval = total_steps
     t0 = time.time()
 
@@ -167,10 +182,21 @@ def main(argv=None):
         phase, dense_weight = get_curriculum_phase(
             total_steps, args.phase1_steps, args.phase2_steps)
 
+        # Decide opponent for this rollout (T3)
+        opponent_model = None
+        if pool is not None and len(pool) > 0 and random.random() < 0.5:
+            state_dict = pool.sample()
+            if state_dict is not None:
+                opponent_model = BattleNet()
+                opponent_model.load_state_dict(state_dict)
+                opponent_model.to(args.device)
+                opponent_model.eval()
+
         info = trainer.train_step(
             num_steps=args.rollout_steps,
             reward_phase=phase,
             dense_weight=dense_weight,
+            opponent_model=opponent_model,
         )
         total_steps += info.pop("steps")
 
@@ -227,6 +253,10 @@ def main(argv=None):
                 args.checkpoint_dir, f"checkpoint_{total_steps}.pt")
             save_checkpoint(trainer, total_steps, ckpt_path)
             last_eval = total_steps
+
+            # Add to opponent pool (T3)
+            if pool is not None:
+                pool.add(model.state_dict(), total_steps)
 
     # ── Final checkpoint ──────────────────────────────────────────
     final_path = os.path.join(args.checkpoint_dir, "final.pt")
