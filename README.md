@@ -8,9 +8,9 @@
 
 ## 项目进度
 
-里程碑 M1–M7e（规则层）+ A1–A4（经典 AI 决策层）+ R1–R7（深度学习训练管线）+ T1–T4（训练实战）**全部完成**。
+里程碑 M1–M7e（规则层）+ A1–A4（经典 AI 决策层）+ R1–R7（深度学习训练管线）+ T1–T5（训练实战）**全部完成**。
 
-- **605 个测试**全通过，CI 守护
+- **622 个测试**全通过，CI 守护
 - **63 种兵种**，**38 种法术**，规则保真度 ~99%
 - 经典 AI 决策覆盖率 ~97%（126 条审计逐条对齐）
 - 3600 局实战验证
@@ -26,12 +26,12 @@
 | **规则层** | M1–M7e | 战斗引擎完整实现：63 兵种、38 法术、攻城、士气/运气、特殊能力 |
 | **经典 AI** | A1–A4 | 忠实复刻 fheroes2 C++ 源码决策链，~97% 覆盖率 |
 | **深度学习** | R1–R7 | CNN+PPO 自我博弈训练管线，从观测编码到训练脚本 |
-| **训练实战** | T1–T4 | Baseline 评估 → 模型改进 → 对手池 → 200k 步训练战役 |
+| **训练实战** | T1–T5 | Baseline 评估 → 模型改进 → 对手池 → 训练战役 → 多配置训练 |
 
 ### 训练实战 T 系列路线
 
 ```
-T1(Baseline评估) → T2(GroupNorm/LR衰减/梯度累积) → T3(对手池) → T4(训练战役)
+T1(Baseline评估) → T2(GroupNorm/LR衰减/梯度累积) → T3(对手池) → T4(训练战役) → T5(多配置训练)
 ```
 
 | 里程碑 | 说明 | 测试 |
@@ -40,6 +40,7 @@ T1(Baseline评估) → T2(GroupNorm/LR衰减/梯度累积) → T3(对手池) →
 | T2 | GroupNorm + LR decay + Grad accum + TensorBoard | 13 |
 | T3 | 自博弈对手池（防策略坍塌）+ 磁盘持久化 | 16 |
 | T4 | 200k 步完整训练，best.pt 达 88% 胜率 | — |
+| T5 | 多配置混合训练，每 rollout 随机选配置，avg best.pt | 17 |
 
 ### 深度学习 R 系列路线
 
@@ -78,6 +79,13 @@ uv run python scripts/train.py --total-steps 100000 --eval-interval 5000
 uv run python scripts/train.py --total-steps 200000 --device cuda \
   --lr-decay --grad-accum 4 --tensorboard --opponent-pool 5 \
   --checkpoint-dir checkpoints/my-training
+
+# 多配置混合训练（T5）
+uv run python scripts/train.py --total-steps 200000 --device cuda \
+  --config configs/example.json configs/even_clash.json \
+           configs/mage_duel.json configs/dragon_battle.json \
+  --lr-decay --grad-accum 4 --tensorboard --opponent-pool 5 \
+  --checkpoint-dir checkpoints/t5-multi-config
 
 # 从 checkpoint 恢复（自动恢复对手池）
 uv run python scripts/train.py --resume checkpoints/my-training/final.pt \
@@ -247,7 +255,7 @@ fheroes-battle-ai-demo/
 │
 ├── scripts/
 │   ├── arena.py             批量 AI-vs-AI 自对弈（镜像/置信区间/撤退率）
-│   ├── train.py             PPO 自我博弈训练脚本（R7/T2/T3/T4）
+│   ├── train.py             PPO 自我博弈训练脚本（R7/T2/T3/T4/T5）
 │   ├── eval_benchmark.py    训练后基准评估（T1: 4配置 × Wilson CI）
 │   ├── ai_validation.py     AI 决策审计工具
 │   └── fingerprint.py       代码指纹生成
@@ -305,7 +313,7 @@ fheroes-battle-ai-demo/
 │       ├── setup.py         布阵界面
 │       └── battle.py        战斗界面 + 动画引擎
 │
-├── tests/                   自动化测试（605 个，无需显示器）
+├── tests/                   自动化测试（622 个，无需显示器）
 └── log/                     战斗日志（自动生成，gitignore）
 ```
 
@@ -333,8 +341,8 @@ fheroes-battle-ai-demo/
 
 核心复刻 + 深度学习管线 + 训练实战已完成。以下为留待选做（未排期）：
 
-- [ ] **多配置混合训练**：每局随机选一个配置，提升泛化能力
-- [ ] **更长训练 + 调参**：500k+ 步、cosine LR、更长课程阶段
+- [ ] **更长训练 + 调参**：500k+ 步、cosine LR、更长课程阶段（T6）
+- [ ] **模型架构升级**：attention / 更深更宽网络（T7）
 - [ ] **宽体单位 + 双格攻击**：单位占两格 → 改占位/寻路/邻接
 - [ ] **arena 权重调优**：经典 AI threat / 姿态阈值参数搜索
 - [ ] **与原版决策对照**：把 fheroes2 C++ AI 当 oracle 跑同一快照比一致率
