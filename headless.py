@@ -94,7 +94,7 @@ def _take_unit_turn(battle, ai, unit, log=None):
         return
 
     # Morale: bad -> skip the turn; good -> an extra action after acting.
-    morale = battle.roll_morale(unit.team)
+    morale = battle.roll_morale(unit.team, unit)
     if morale < 0:
         return
     for _ in range(2 if morale > 0 else 1):

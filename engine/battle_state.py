@@ -38,6 +38,14 @@ class BattleState:
         # Engine-only: the AI never evaluates these (fheroes2 ai_battle.cpp:1289).
         self.morale = morale if morale is not None else {0: 0, 1: 0}
         self.luck = luck if luck is not None else {0: 0, 1: 0}
+        # M7d: hero Leadership/Luck skills add to army morale/luck.
+        for team in (0, 1):
+            hero = self.heroes.get(team)
+            if hero:
+                self.morale[team] = max(-3, min(3,
+                    self.morale[team] + hero.get_skill_value("leadership")))
+                self.luck[team] = max(-3, min(3,
+                    self.luck[team] + hero.get_skill_value("luck")))
         # Set to a team index when that side's hero flees.
         self._retreated = None
         # Siege structures (None for open-field battles).
@@ -87,12 +95,25 @@ class BattleState:
         fheroes2 IsShootingPenalty: penalty applies when attacker and defender
         are on opposite sides of the castle wall line.  Simplified: no
         per-line-of-sight gap check (would need pixel-level LOS).
+
+        M7d: Archery skill at any level completely eliminates the penalty.
         """
+        # Archery skill: any level eliminates penalty (battle_arena.cpp:1415).
+        hero = self.heroes.get(atk.team)
+        if hero and hero.get_skill_level("archery") > 0:
+            return False
         if not self.castle or not self.castle.any_wall_standing():
             return False
         a_outside = self.castle.is_outside_walls(*atk.pos)
         d_outside = self.castle.is_outside_walls(*dfn.pos)
         return a_outside != d_outside
+
+    def _archery_bonus(self, team: int) -> int:
+        """Return Archery skill damage bonus percentage (0/10/25/50)."""
+        hero = self.heroes.get(team)
+        if hero is None:
+            return 0
+        return hero.get_skill_value("archery")
 
     def unit_at(self, pos: Tuple[int, int]) -> Optional[Unit]:
         """The unit whose body (head or tail) covers ``pos``."""
@@ -173,6 +194,11 @@ class BattleState:
         moat = self._in_moat(dfn)
         base = atk.count * atk.damage_avg * atk.damage_factor
         dmg = max(1, int(base * self._damage_mult(atk, dfn, ranged, moat)))
+        # Archery skill: ranged damage +X% (battle_troop.cpp:526).
+        if ranged:
+            archery = self._archery_bonus(atk.team)
+            if archery:
+                dmg = max(1, int(dmg * (1 + archery / 100.0)))
         # Wall shooting penalty: 50% when firing across intact walls.
         if ranged and self._shooting_penalty(atk, dfn):
             dmg = dmg // 2
@@ -202,6 +228,11 @@ class BattleState:
                          for _ in range(atk.count))
         base = rolled * atk.damage_factor
         mult = self._damage_mult(atk, dfn, ranged, moat) * self._roll_luck(atk.team)
+        # Archery skill: ranged damage +X% (battle_troop.cpp:526).
+        if ranged:
+            archery = self._archery_bonus(atk.team)
+            if archery:
+                mult *= (1 + archery / 100.0)
         # Wall shooting penalty: 50% when firing across intact walls.
         if ranged and self._shooting_penalty(atk, dfn):
             mult *= 0.5
@@ -220,8 +251,13 @@ class BattleState:
             return 0.5
         return 1.0
 
-    def roll_morale(self, team: int) -> int:
-        """+1 good morale (extra action), -1 bad (skip), 0 none — by army morale."""
+    def roll_morale(self, team: int, unit: Optional[Unit] = None) -> int:
+        """+1 good morale (extra action), -1 bad (skip), 0 none — by army morale.
+
+        M7d: undead units are immune to morale effects (fheroes2 rule).
+        """
+        if unit and unit.has_tag("undead"):
+            return 0
         mr = self.morale.get(team, 0)
         if mr > 0 and random.random() < mr * 0.10:
             return 1
@@ -778,12 +814,16 @@ class BattleState:
 
         fheroes2: CatapultAction() in battle_arena.cpp — the catapult targets
         intact walls, then towers, then the bridge. 75% hit, 1 damage.
+
+        M7d: Ballistics skill modifies shots, hit chance, and damage.
         """
-        shots = self.castle.catapult_round()
+        # Get attacker hero's Ballistics skill level.
+        hero = self.heroes.get(self.attacker_team)
+        ballistics = hero.get_skill_level("ballistics") if hero else 0
+        shots = self.castle.catapult_round(ballistics=ballistics)
         for shot in shots:
             if shot["hit"] and shot["damage"] > 0:
-                # Wall damage already applied inside catapult_round().
-                # Tower/bridge destruction also applied there.
+                # Wall/tower/bridge damage already applied inside catapult_round().
                 pass  # result recorded for UI/logging if needed
 
     def _tower_round(self):
