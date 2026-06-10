@@ -212,14 +212,19 @@ class PPOTrainer:
         grid: np.ndarray,
         global_vec: np.ndarray,
         mask: np.ndarray,
+        model: Optional[BattleNet] = None,
     ) -> Tuple[int, float, float]:
-        """Select action via current policy. Returns (action, value, log_prob)."""
+        """Select action via given model (default: current policy).
+
+        Returns (action, value, log_prob).
+        """
+        m = model if model is not None else self.model
         t_grid = torch.tensor(grid, dtype=torch.float32).unsqueeze(0).to(self.device)
         t_global = torch.tensor(global_vec, dtype=torch.float32).unsqueeze(0).to(self.device)
         t_mask = torch.tensor(mask, dtype=torch.float32).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
-            logits, value = self.model(t_grid, t_global, t_mask)
+            logits, value = m(t_grid, t_global, t_mask)
 
         dist = Categorical(logits=logits)
         action = dist.sample()
@@ -234,11 +239,21 @@ class PPOTrainer:
         reward_phase: int = 1,
         dense_weight: float = 1.0,
         seed: Optional[int] = None,
+        opponent_model: Optional[BattleNet] = None,
     ) -> Dict[str, float]:
-        """Collect num_steps of self-play experience.
+        """Collect *num_steps* env steps of experience.
+
+        When *opponent_model* is ``None`` (default), runs pure self-play:
+        the current policy plays both sides (parameter sharing) and all
+        transitions are stored in the buffer.
+
+        When *opponent_model* is provided, the current policy always plays
+        as team 0 (learning agent).  Team 1 is controlled by the frozen
+        *opponent_model* and its transitions are **not** stored — only the
+        learning agent's steps enter the buffer.
 
         Returns summary dict with keys: steps, episodes, mean_reward,
-        mean_length, mean_value.
+        mean_length, opponent ("self_play" or "pool").
         """
         env = BattleEnv(self.env_config)
         self.buffer.clear()
@@ -253,10 +268,37 @@ class PPOTrainer:
         episode_lengths = []
         ep_reward = 0.0
         ep_length = 0
+        learning_team = 0
+        use_opponent = opponent_model is not None
 
         for _ in range(num_steps):
             grid, global_vec, mask = obs["grid"], obs["global"], obs["mask"]
-            action, value, log_prob = self._select_action(grid, global_vec, mask)
+            current_team = info.get("current_team", 0)
+
+            if use_opponent and current_team != learning_team:
+                # Opponent's turn — act but don't store
+                action, _, _ = self._select_action(
+                    grid, global_vec, mask, model=opponent_model)
+                next_obs, reward, terminated, truncated, info = env.step(action)
+                # Only count episode-level stats from opponent steps
+                # when the episode ends on the opponent's turn.
+                if terminated or truncated:
+                    episodes += 1
+                    episode_rewards.append(ep_reward)
+                    episode_lengths.append(ep_length)
+                    ep_reward = 0.0
+                    ep_length = 0
+                    obs, info = env.reset(options={
+                        "reward_phase": reward_phase,
+                        "dense_weight": dense_weight,
+                    })
+                else:
+                    obs = next_obs
+                continue
+
+            # Learning agent's turn (or pure self-play)
+            action, value, log_prob = self._select_action(
+                grid, global_vec, mask)
 
             next_obs, reward, terminated, truncated, info = env.step(action)
 
@@ -299,6 +341,7 @@ class PPOTrainer:
             "episodes": episodes,
             "mean_reward": float(np.mean(episode_rewards)) if episode_rewards else 0.0,
             "mean_length": float(np.mean(episode_lengths)) if episode_lengths else 0.0,
+            "pool_play": 1.0 if use_opponent else 0.0,
         }
 
     # ── PPO update ───────────────────────────────────────────────
@@ -422,12 +465,14 @@ class PPOTrainer:
         reward_phase: int = 1,
         dense_weight: float = 1.0,
         seed: Optional[int] = None,
+        opponent_model=None,
     ) -> Dict[str, float]:
         """One training iteration: collect + update.
 
         Returns combined summary from collection and update phases.
         """
         collect_info = self.collect_rollout(
-            num_steps, reward_phase, dense_weight, seed)
+            num_steps, reward_phase, dense_weight, seed,
+            opponent_model=opponent_model)
         update_info = self.update()
         return {**collect_info, **update_info}
