@@ -643,3 +643,22 @@ UNIT_TYPES = {
         "symbol": "WE",
     },
 }
+
+# ── Unit tags for spell targeting (M7b) ─────────────────────────
+# Used by Death Ripple (non-undead), Holy Word (undead only),
+# Dragon Slayer (dragons), etc.
+
+UNIT_TAGS = {
+    # Undead
+    "Skeleton": ["undead"], "Zombie": ["undead"], "Mutant Zombie": ["undead"],
+    "Mummy": ["undead"], "Royal Mummy": ["undead"],
+    "Vampire": ["undead"], "Vampire Lord": ["undead"],
+    "Lich": ["undead"], "Power Lich": ["undead"],
+    "Bone Dragon": ["undead", "dragon"], "Ghost": ["undead"],
+    # Dragon
+    "Green Dragon": ["dragon"], "Red Dragon": ["dragon"],
+    "Black Dragon": ["dragon"],
+    # Elemental
+    "Earth Elemental": ["elemental"], "Air Elemental": ["elemental"],
+    "Fire Elemental": ["elemental"], "Water Elemental": ["elemental"],
+}

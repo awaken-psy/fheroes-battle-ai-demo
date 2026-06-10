@@ -7,7 +7,8 @@ from .unit import Unit
 from .actions import (Action, MoveAction, AttackAction, SkipAction,
                       CastAction, RetreatAction)
 from .hex_grid import HexGrid
-from .spells import DAMAGE, spell_damage, make_effect, make_spell_caster_effect
+from .spells import (DAMAGE, AOE, BUFF, DEBUFF, CONTROL, DISPEL, CURE, UTILITY,
+                      spell_damage, make_effect, make_spell_caster_effect)
 from .castle import Castle, MOAT_CELLS, GATE_POS
 
 
@@ -150,11 +151,14 @@ class BattleState:
         ``moat_def_penalty``: if True, the defender is in a moat cell and
         suffers -3 defense (fheroes2: GetBattleMoatReduceDefense() = 3).
         """
-        dfn_def = max(0, dfn.defense - 3) if moat_def_penalty else dfn.defense
-        if atk.attack > dfn_def:
-            mult = min(1 + 0.1 * (atk.attack - dfn_def), 3.0)
+        dfn_def = dfn.effective_defense
+        if moat_def_penalty:
+            dfn_def = max(0, dfn_def - 3)
+        atk_val = atk.effective_attack
+        if atk_val > dfn_def:
+            mult = min(1 + 0.1 * (atk_val - dfn_def), 3.0)
         else:
-            mult = max(1 - 0.05 * (dfn_def - atk.attack), 0.3)
+            mult = max(1 - 0.05 * (dfn_def - atk_val), 0.3)
         if atk.is_archer and not ranged and not atk.has_ability("no_melee_penalty"):
             mult *= 0.5  # archer melee penalty (unless immune)
         return mult
@@ -172,6 +176,9 @@ class BattleState:
         # Wall shooting penalty: 50% when firing across intact walls.
         if ranged and self._shooting_penalty(atk, dfn):
             dmg = dmg // 2
+        # Shield effect: reduce incoming ranged damage.
+        if ranged:
+            dmg = max(1, int(dmg * dfn.incoming_ranged_factor))
         # Double attack abilities: the AI reasons about total expected output.
         if ranged and atk.has_ability("double_shooting"):
             dmg *= 2
@@ -198,7 +205,11 @@ class BattleState:
         # Wall shooting penalty: 50% when firing across intact walls.
         if ranged and self._shooting_penalty(atk, dfn):
             mult *= 0.5
-        return max(1, int(base * mult))
+        dmg = max(1, int(base * mult))
+        # Shield effect: reduce incoming ranged damage.
+        if ranged:
+            dmg = max(1, int(dmg * dfn.incoming_ranged_factor))
+        return dmg
 
     def _roll_luck(self, team: int) -> float:
         """Return 2.0 (good luck), 0.5 (bad luck) or 1.0, by army luck value."""
@@ -448,7 +459,11 @@ class BattleState:
         return r
 
     def _cast(self, action: CastAction) -> dict:
-        """Resolve a hero spellcast: damage or apply a timed effect."""
+        """Resolve a hero spellcast: damage, buff, debuff, control, etc.
+
+        Dispatches by ``spell.kind`` to kind-specific helpers.  Mass spells
+        iterate over all valid targets; AOE spells resolve area patterns.
+        """
         r = {'desc': '', 'dmg': 0, 'killed': 0,
              'ret_dmg': 0, 'ret_killed': 0,
              'target_alive': True, 'attacker_alive': True, 'cast': True}
@@ -458,32 +473,241 @@ class BattleState:
             return r
         hero.cast(spell)
 
-        # magic_resistance: percentage chance to resist the spell entirely.
-        if tgt.has_ability("magic_resistance"):
-            params = tgt.ability_params.get("magic_resistance", {})
-            chance = params.get("chance", 0)
-            if chance > 0 and random.randint(1, 100) <= chance:
+        # ── single-target immunity pre-check ───────────────
+        # (mass / AOE spells check per-target inside their helpers)
+        if not spell.is_mass and spell.kind not in (AOE, UTILITY):
+            if tgt.is_immune_to_spells:
+                r['desc'] = (f"{hero.name} casts {spell.name} "
+                             f"-> BLOCKED (Anti-Magic)")
+                return r
+            if (spell.kind in (DAMAGE, DEBUFF, CONTROL)
+                    and self._try_spell_resist(tgt, hero, spell)):
                 r['desc'] = (f"{hero.name} casts {spell.name} on {tgt.name} "
-                             f"-> RESISTED ({chance}%)")
+                             f"-> RESISTED")
                 return r
 
+        # ── dispatch by kind ───────────────────────────────
         if spell.kind == DAMAGE:
-            dmg = spell_damage(spell, hero.power)
-            actual, killed = tgt.take_damage(dmg)
-            r['dmg'] = actual
-            r['killed'] = killed
-            r['target_alive'] = tgt.is_alive
-            desc = f"{hero.name} casts {spell.name} on {tgt.name}: {actual} dmg"
-            if killed > 0:
-                desc += f" ({killed} killed)"
-            if not tgt.is_alive:
-                self.deaths_this_round += 1
-                desc += " [DEAD]"
-            r['desc'] = desc
-        else:
-            tgt.add_effect(make_effect(spell, hero.power))
-            r['desc'] = f"{hero.name} casts {spell.name} on {tgt.name}"
+            self._cast_damage(r, hero, spell, tgt)
+        elif spell.kind == AOE:
+            self._cast_aoe(r, hero, spell, action)
+        elif spell.kind in (BUFF, DEBUFF, CONTROL):
+            if spell.is_mass:
+                self._cast_mass_effect(r, action.team, hero, spell)
+            else:
+                tgt.add_effect(make_effect(spell, hero.power))
+                r['desc'] = f"{hero.name} casts {spell.name} on {tgt.name}"
+        elif spell.kind == DISPEL:
+            self._cast_dispel(r, hero, spell, tgt)
+        elif spell.kind == CURE:
+            if spell.is_mass:
+                self._cast_mass_cure(r, action.team, hero, spell)
+            else:
+                self._apply_cure_unit(r, hero, spell, tgt)
+        elif spell.kind == UTILITY:
+            self._cast_utility(r, hero, spell, action, tgt)
+
         return r
+
+    # ── spell helpers ──────────────────────────────────────────
+
+    def _try_spell_resist(self, unit: Unit, hero, spell) -> bool:
+        """True if *unit* resists the spell via magic_resistance ability."""
+        if unit.has_ability("magic_resistance"):
+            params = unit.ability_params.get("magic_resistance", {})
+            chance = params.get("chance", 0)
+            if chance > 0 and random.randint(1, 100) <= chance:
+                return True
+        return False
+
+    def _cast_damage(self, r: dict, hero, spell, tgt: Unit) -> None:
+        """Resolve a single-target DAMAGE spell."""
+        dmg = spell_damage(spell, hero.power)
+        actual, killed = tgt.take_damage(dmg)
+        r['dmg'] = actual
+        r['killed'] = killed
+        r['target_alive'] = tgt.is_alive
+        desc = f"{hero.name} casts {spell.name} on {tgt.name}: {actual} dmg"
+        if killed > 0:
+            desc += f" ({killed} killed)"
+        if not tgt.is_alive:
+            self.deaths_this_round += 1
+            desc += " [DEAD]"
+        r['desc'] = desc
+
+    def _apply_spell_damage(self, r: dict, hero, spell, unit: Unit,
+                            dmg: int) -> tuple:
+        """Apply spell damage to *unit*, checking immunity.
+
+        Returns (actual, killed).  Updates ``r`` accumulatively.
+        """
+        if unit.is_immune_to_spells:
+            return 0, 0
+        if self._try_spell_resist(unit, hero, spell):
+            return 0, 0
+        actual, killed = unit.take_damage(dmg)
+        r['dmg'] += actual
+        r['killed'] += killed
+        if not unit.is_alive:
+            self.deaths_this_round += 1
+        return actual, killed
+
+    def _aoe_cells(self, center: tuple, pattern: str) -> set:
+        """Cells hit by an area spell centred on *center*."""
+        if pattern == "ring1":
+            cells = {center}
+            cells.update(self.grid.neighbors(*center))
+            return cells
+        if pattern == "ring2":
+            cells = {center}
+            ring1 = set(self.grid.neighbors(*center))
+            cells.update(ring1)
+            for c in ring1:
+                cells.update(self.grid.neighbors(*c))
+            return cells
+        if pattern == "ring_outer":
+            return set(self.grid.neighbors(*center))
+        return set()
+
+    def _cast_aoe(self, r: dict, hero, spell, action: CastAction) -> None:
+        """Resolve an AOE spell (ring, chain, or army-wide)."""
+        pattern = spell.aoe_pattern
+        base_dmg = spell_damage(spell, hero.power)
+
+        if pattern in ("ring1", "ring2", "ring_outer"):
+            center = action.cell if action.cell else action.target.pos
+            cells = self._aoe_cells(center, pattern)
+            desc = f"{hero.name} casts {spell.name}"
+            for cell in cells:
+                unit = self.unit_at(cell)
+                if unit and unit.is_alive:
+                    actual, killed = self._apply_spell_damage(
+                        r, hero, spell, unit, base_dmg)
+                    if actual > 0:
+                        desc += f" | {unit.name}:{actual}"
+                        if killed > 0:
+                            desc += f"({killed}k)"
+            r['desc'] = desc
+
+        elif pattern == "chain":
+            # Chain Lightning: initial target + up to 3 nearest bounces.
+            desc = f"{hero.name} casts Chain Lightning"
+            hit: list = []
+            current = action.target
+            dmg = base_dmg
+            for _ in range(4):
+                if current is None or not current.is_alive:
+                    break
+                if current in hit:
+                    break
+                hit.append(current)
+                actual, killed = self._apply_spell_damage(
+                    r, hero, spell, current, dmg)
+                if actual > 0:
+                    desc += f" | {current.name}:{actual}"
+                # Find nearest alive unit for next bounce.
+                candidates = [u for u in self.alive() if u not in hit]
+                if candidates:
+                    current = min(
+                        candidates,
+                        key=lambda u: (abs(u.col - current.col)
+                                       + abs(u.row - current.row)))
+                else:
+                    break
+                dmg = max(1, dmg // 2)
+            r['desc'] = desc
+
+        elif pattern in ("all_tagged", "all_units"):
+            # Army-wide: damage every unit matching tag criteria.
+            desc = f"{hero.name} casts {spell.name}"
+            for unit in self.alive():
+                if spell.target_tags:
+                    if not all(unit.has_tag(t) for t in spell.target_tags):
+                        continue
+                if spell.exclude_tags:
+                    if any(unit.has_tag(t) for t in spell.exclude_tags):
+                        continue
+                actual, killed = self._apply_spell_damage(
+                    r, hero, spell, unit, base_dmg)
+                if actual > 0:
+                    desc += f" | {unit.name}:{actual}"
+                    if killed > 0:
+                        desc += f"({killed}k)"
+            r['desc'] = desc
+
+    def _cast_mass_effect(self, r: dict, team: int, hero, spell) -> None:
+        """Resolve a mass BUFF / DEBUFF / CONTROL spell."""
+        targets = (self.alive(team) if spell.side_friendly
+                   else self.alive(1 - team))
+        desc = f"{hero.name} casts {spell.name}"
+        for unit in targets:
+            if spell.exclude_tags:
+                if any(unit.has_tag(t) for t in spell.exclude_tags):
+                    continue
+            if unit.is_immune_to_spells:
+                continue
+            if (not spell.side_friendly
+                    and self._try_spell_resist(unit, hero, spell)):
+                continue
+            if unit.has_effect(spell.name):
+                continue
+            unit.add_effect(make_effect(spell, hero.power))
+            desc += f" | {unit.name}"
+        r['desc'] = desc
+
+    def _cast_dispel(self, r: dict, hero, spell, tgt: Unit) -> None:
+        """Resolve Dispel Magic / Mass Dispel."""
+        if spell.is_mass:
+            for unit in self.alive():
+                if not unit.is_immune_to_spells:
+                    unit.effects.clear()
+            r['desc'] = f"{hero.name} casts Mass Dispel"
+        else:
+            tgt.effects.clear()
+            r['desc'] = f"{hero.name} casts {spell.name} on {tgt.name}"
+
+    def _apply_cure_unit(self, r: dict, hero, spell, unit: Unit) -> None:
+        """Cure one unit: remove debuffs + heal HP."""
+        unit.effects = [e for e in unit.effects if e.is_positive]
+        heal_amount = spell.heal_base * hero.power
+        healed = unit.heal(heal_amount)
+        r['dmg'] = -healed  # negative signals healing
+        r['desc'] = (f"{hero.name} casts {spell.name} on {unit.name}"
+                     f": +{healed} HP")
+
+    def _cast_mass_cure(self, r: dict, team: int, hero, spell) -> None:
+        """Mass Cure: remove debuffs + heal all friendly units."""
+        desc = f"{hero.name} casts {spell.name}"
+        for unit in self.alive(team):
+            if unit.is_immune_to_spells:
+                continue
+            unit.effects = [e for e in unit.effects if e.is_positive]
+            heal_amount = spell.heal_base * hero.power
+            healed = unit.heal(heal_amount)
+            if healed > 0:
+                desc += f" | {unit.name}+{healed}"
+        r['desc'] = desc
+
+    def _cast_utility(self, r: dict, hero, spell, action: CastAction,
+                      tgt: Unit) -> None:
+        """Resolve utility spells (Teleport, Earthquake)."""
+        if spell.name == "Teleport":
+            if action.destination:
+                tgt.pos = action.destination
+                r['desc'] = (f"{hero.name} casts Teleport: {tgt.name} "
+                             f"-> {action.destination}")
+            else:
+                r['desc'] = f"{hero.name} casts Teleport (no destination)"
+        elif spell.name == "Earthquake":
+            if self.castle:
+                # Simplified: damage = power // 2 wall segments.
+                for _ in range(max(1, hero.power // 2)):
+                    self.castle.catapult_round()  # reuse catapult logic
+                r['desc'] = f"{hero.name} casts Earthquake"
+            else:
+                r['desc'] = f"{hero.name} casts Earthquake (open field)"
+        else:
+            r['desc'] = f"{hero.name} casts {spell.name}"
 
     # ── victory ─────────────────────────────────────────────
 
