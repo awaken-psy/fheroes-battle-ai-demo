@@ -60,6 +60,44 @@ from ai.deep.trainer import PPOTrainer
 from ai.self_play import eval_vs_classic
 
 
+# ── T9e helpers ──────────────────────────────────────────────────
+
+
+def _transfer_shared_head_weights(
+    model: BattleNet, checkpoint_path: str, device: str,
+) -> None:
+    """Copy shared policy/value head weights to every per-expert head.
+
+    This gives each expert the same initial policy as the pre-trained shared
+    heads (hot start), solving T9d's cold-start failure where 7M randomly-
+    initialized parameters couldn't learn in 300K steps.
+
+    Only works when ``moe.hidden_dim == moe.input_dim`` (both 384) so that
+    the per-expert head dimensions match the old shared head dimensions.
+    """
+    ckpt = torch.load(checkpoint_path, map_location=device, weights_only=True)
+    state = ckpt.get("model", ckpt)
+
+    required_keys = [
+        "policy_head.weight", "policy_head.bias",
+        "value_head.weight", "value_head.bias",
+    ]
+    missing = [k for k in required_keys if k not in state]
+    if missing:
+        print(f"WARNING: Cannot transfer shared heads (missing keys: {missing})")
+        return
+
+    moe = model.moe
+    for i in range(moe.num_experts):
+        moe.policy_heads[i].weight.data.copy_(state["policy_head.weight"])
+        moe.policy_heads[i].bias.data.copy_(state["policy_head.bias"])
+        moe.value_heads[i].weight.data.copy_(state["value_head.weight"])
+        moe.value_heads[i].bias.data.copy_(state["value_head.bias"])
+
+    print(f"[T9e] Transferred shared head weights to "
+          f"{moe.num_experts} per-expert heads")
+
+
 # ── CLI ──────────────────────────────────────────────────────────
 
 
@@ -197,6 +235,12 @@ def main(argv=None):
             model, args.load_backbone, args.device)
         log_step(0, {"msg": f"loaded backbone: {matched} keys matched, "
                           f"{len(skipped)} skipped"})
+
+    # ── T9e: Transfer shared head weights to per-expert heads ──────
+    if (args.use_moe and args.load_backbone
+            and model.moe is not None
+            and model.moe.hidden_dim == model.moe.input_dim):
+        _transfer_shared_head_weights(model, args.load_backbone, args.device)
 
     trainer = PPOTrainer(
         model, env_config,

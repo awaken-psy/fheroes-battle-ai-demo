@@ -1,6 +1,6 @@
 # 里程碑 — 战斗 AI 复刻
 
-> **T 系列训练实战 — T1✅ T2✅ T3✅ T4✅ T5✅ T6✅ T7✅，T8 架构升级训练失败(4.4%)，T9a✅ T9b✅(有改善但不够)，T9c✅(MoE遗忘缓解，mage_duel突破40%)，T9d（MoE架构打磨，当前）。**
+> **T 系列训练实战 — T1✅ T2✅ T3✅ T4✅ T5✅ T6✅ T7✅，T8 架构升级训练失败(4.4%)，T9a✅ T9b✅(有改善但不够)，T9c✅(MoE遗忘缓解，mage_duel突破40%)，T9d❌(per-expert heads冷启动失败)，T9e（MoE热启动训练，当前）。**
 >
 > - 规则层 M1–M7e：~99% 保真度，63 兵种，38 法术，298 测试
 > - AI 决策层 A1–A4：~97% 决策行为覆盖（126 条审计），356 测试
@@ -16,8 +16,9 @@
 > - **T9a 基线验证** ✅：架构有效（even_clash 100%），遗忘严重（40K步内全忘）
 > - **T9b 经验回放** ✅：Replay buffer 减缓遗忘（后半段 +65%），但不够（even_clash 仍 100%→2.5%）
 > - **T9c MoE架构重构** ✅：even_clash遗忘从100%→0%改善到95%稳定，mage_duel 0%→40%突破，avg 32.5%
-> - **T9d MoE架构打磨**（当前）：per-expert heads + Top-K路由 + router辅助损失
-> - **T9e MoE扩展配置训练**：4→16配置扩展 + expert数量调参
+> - **T9d MoE架构打磨** ❌：per-expert heads冷启动失败（avg 24.4% < T9c 32.5%），代码正确但训练策略有缺陷
+> - **T9e MoE热启动训练**（当前）：hidden_dim=384 + 恒等初始化 + 共享head权重转移
+> - **T10 MoE扩展配置训练**：4→16配置扩展 + expert数量调参
 > - **总计 827 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
@@ -552,78 +553,149 @@ example/dragon 在 Stage 3 有回退。router 分化程度不够（top-2 差距�
 
 ---
 
-#### T9d — MoE 架构打磨（当前）
+#### T9d — MoE 架构打磨 ❌ 训练失败
 
 > **前置条件**：T9c MoE 架构验证有效（遗忘缓解 + mage_duel 突破）。
 > **核心问题**：T9c 暴露了三个架构缺陷——共享 heads 梯度干扰、soft routing 稀释 expert 能力、router 分化不足。
 
 **目标**：打磨 MoE 架构细节，解决 T9c 的三个结构性问题，提升平均胜率
 
-**问题分析**（来自 T9c 训练日志 + 代码审查）：
+**代码改动**（分支 `feat/t9d-moe-polish`，commit `89da4d5`，827 测试通过）：
+- `ai/deep/model.py` — SoftMoELayer 重写：per-expert heads + Top-K 路由 + balance loss
+- `ai/deep/trainer.py` — balance_loss 集成到 PPO update
+- `scripts/train.py` — `--routing-topk` + `--balance-loss-weight` CLI
+- `tests/test_moe.py` — 重写为 43 个用例
 
-| 问题 | 证据 | 影响 |
-|------|------|------|
-| 共享 policy/value heads | session notes 明确记录为瓶颈 | expert 训练互相污染，even_clash 100%→0% |
-| Soft routing 稀释 | eval 陷阱：expert 100% 实力 eval 只显示 95% | 3 个 noise expert 各贡献 0.25 稀释输出 |
-| Router 分化不足 | top-2 权重差距仅 0.02 | expert 无法真正专精，选择形同虚设 |
+**架构变更**：
 
-**改进任务清单**：
+| 参数 | T9c (旧) | T9d (新) | 变化 |
+|------|---------|---------|------|
+| Expert heads | 共享 (384→13566) | **per-expert (128→13566) ×4** | 消除梯度干扰 |
+| 路由方式 | Soft (全部 expert) | **Top-K (默认 K=2)** | 梯度隔离 |
+| 负载均衡 | 无 | **Switch Transformer loss** | 鼓励分化 |
+| 参数量 | 13.35M | **15.1M** (+1.97M) | |
 
-- [ ] **9d.1 Per-expert policy/value heads**（P0）
-  - 每个 expert 配备独立 `fc_policy` 和 `fc_value`
-  - MoE forward 改为：各 expert + head 独立输出 → router 加权合并 logits/values
-  - 额外参数：4 × (13566 + 1) ≈ 54K，相对 13.1M 可忽略
-  - 新增测试：per-expert head 独立性、forward 输出形状
+**训练实验**：
 
-- [ ] **9d.2 Top-K 稀疏路由**（P0）
-  - 改 `softmax → topk → renorm` 路由，默认 K=2
-  - 训练时只更新被选中的 expert（计算效率提升）
-  - 推理时可用 K=1（纯 expert 专精）或 K=2（稳健）
-  - 新增测试：top-k 选择逻辑、梯度隔离
-  - CLI 参数：`--routing-topk {1,2,4}`
+实验 1 — Stage 2 per-expert 轮询（300K 步，backbone 冻结，router 冻结）：
 
-- [ ] **9d.3 Router 辅助损失**（P1）
-  - 负载均衡损失（Switch Transformer 风格）：`L_balance = N × Σ(f_i × P_i)`
-  - 可选 expert 分化损失：鼓励不同 expert 对不同配置产生不同输出
-  - `total_loss = ppo_loss + α × balance_loss`，α 从小值开始调
-  - 新增测试：balance loss 计算正确性
+| 配置 | 峰值 | 最终 | 问题 |
+|------|------|------|------|
+| even_clash | 77.5% | 0% | router 冻结 → Expert 2 独占 78% |
+| example | 22.5% | 0% | per-expert heads 被错误路由淹没 |
+| dragon_battle | 32.5% | 25% | 唯一受益于 78% 权重的 expert |
+| mage_duel | 32.5% | 0% | 训练信号被稀释 |
+| **平均** | — | **6.25%** | **远差于 T9c** |
 
-- [ ] **9d.4 训练管线适配**（P1）
-  - `trainer.py`：适配 per-expert heads 的 forward/backward
-  - `trainer.py`：适配 top-k 路由的梯度隔离（未选中 expert 不更新）
-  - `trainer.py`：集成 auxiliary loss 到 PPO update
-  - `scripts/train.py`：新增 `--routing-topk`、`--balance-loss-weight` CLI 参数
+实验 2 — 联合训练（300K 步，全部可训练）：
 
-- [ ] **9d.5 验证训练**（P2）
-  - 4 配置 300K 步 Stage 2 + 100K 步 Stage 3
-  - 评估：per-expert 独立能力 + router 分化度 + 整体胜率
-  - 对比 T9c baseline：平均胜率、遗忘率、router 权重分布
+| 配置 | 峰值 | 最终 | 问题 |
+|------|------|------|------|
+| even_clash | 100% | 95% | 恢复但其他配置崩 |
+| example | 10% | 0% | 冷启动学不会 |
+| dragon_battle | 35% | 2.5% | 冷启动学不会 |
+| mage_duel | 45% | 0% | 冷启动学不会 |
+| **平均** | — | **24.4%** | **不如 T9c 32.5%** |
 
-- [ ] **9d.6 训练报告**（P2）
-  - 写入 `docs/t9d-training-report.md`
-  - 包含：架构变更说明、T9c vs T9d 对比表、各改进项消融分析
+Router weights 变化：`[0.0, 0.53, 0.26, 0.21]` → `[0.33, 0.13, 0.39, 0.16]` ✅（至少在学习）
 
-**退出标准**：
-- [ ] Per-expert heads 实现完整，各 expert 输出互不干扰
-- [ ] Top-K 路由实现，K 可配置
-- [ ] Router auxiliary loss 实现且可调权重
-- [ ] 4 配置训练 avg ≥ 45%（T9c 为 32.5%）
-- [ ] 遗忘率 < 10%（T9c 为 15%）
-- [ ] Router top-2 权重差距 > 0.15（T9c 为 0.02）
-- [ ] 训练报告写入 `docs/t9d-training-report.md`
-- [ ] 全量测试通过（850+）
+**失败根因**：
+1. **冷启动**：per-expert heads 随机初始化，4×1.75M=7M 参数从零学起，300K 步不够
+2. **维度不匹配**：共享 head (384→13566) 无法直接复制到 per-expert head (128→13566)
+3. **Stage 2 设计矛盾**：冻结 router 意味着路由永远随机，per-expert heads 的输出被错误路由组合
+
+**退出标准**（代码部分达成，训练未达标）：
+- [x] Per-expert heads 实现完整，各 expert 输出互不干扰
+- [x] Top-K 路由实现，K 可配置
+- [x] Router auxiliary loss 实现且可调权重
+- [ ] ~~4 配置训练 avg ≥ 45%~~（实际 24.4%，不如 T9c）
+- [ ] ~~遗忘率 < 10%~~
+- [ ] ~~Router top-2 权重差距 > 0.15~~
+- [x] 全量测试通过（827）
+
+**结论**：per-expert heads 的理论分析（消除梯度干扰）正确，但实现遇到了冷启动问题。
+hidden_dim=128 与 bottleneck_dim=384 的维度不匹配导致无法从预训练共享 head 热启动。
+T9e 将通过 hidden_dim=384 + 恒等初始化 + 权重转移解决此问题。
+
+**数据**：`checkpoints/t9d-stage2/`, `checkpoints/t9d-joint/`, `logs/t9d-stage2.log`, `logs/t9d-joint.log`
 
 ---
 
-#### T9e — MoE 扩展配置训练
+#### T9e — MoE 热启动训练（当前）
 
-> **前置条件**：T9d 架构打磨完成，per-expert heads + Top-K 路由验证有效。
+> **前置条件**：T9d 架构代码正确（per-expert heads + Top-K + balance loss），827 测试通过。
+> **核心问题**：T9d 因 per-expert heads 随机初始化（冷启动）导致训练失败。
+> **解法**：hidden_dim=384 匹配瓶颈维度 + 恒等初始化 + 共享 head 权重转移。
+
+**目标**：通过热启动 per-expert heads，让 T9d 架构真正发挥作用
+
+**问题分析**（来自 T9d 两轮训练）：
+
+| 问题 | T9d 证据 | T9e 解法 |
+|------|---------|---------|
+| 冷启动 | 4×1.75M 参数随机初始化，300K 步学不会 | 从 T9b 共享 head 复制权重热启动 |
+| 维度不匹配 | 共享 head (384→13566) ≠ per-expert (128→13566) | hidden_dim 从 128 改为 384 |
+| Stage 2 矛盾 | 冻结 router → 路由永远随机 | 联合训练 experts + heads + router |
+
+**改动任务**：
+
+- [ ] **9e.1 Expert hidden_dim 升级到 384**
+  - `model.py`：expert 变为 `Linear(384→384) + ReLU`
+  - per-expert head 变为 `Linear(384→13566)` — 与共享 head 同维度
+  - 参数量：15.1M → ~29.4M（VRAM 充足，权重仅 ~120MB）
+
+- [ ] **9e.2 Expert 恒等初始化**
+  - `model.py`：expert 的 Linear(384→384) 用单位矩阵初始化
+  - 效果：初始时 `expert(x) = x`（因输入已经过 ReLU 非负）
+  - per-expert head 看到的输入与共享 head 完全一致
+
+- [ ] **9e.3 共享 head 权重转移**
+  - `train.py`：加载 backbone 后，从旧 checkpoint 的 `policy_head` / `value_head`
+    复制权重到每个 per-expert head（维度匹配：384→13566 / 384→1）
+  - 效果：4 个 expert heads 都从"已知好策略"开始，训练中逐渐分化
+
+- [ ] **9e.4 联合训练（backbone 冻结）**
+  - 冻结 backbone，联合训练 experts + heads + router
+  - 不用 Stage 2/3 分阶段（T9d 证明分阶段不适用于 per-expert heads）
+  - Balance loss 鼓励 expert 分化
+
+- [ ] **9e.5 验证训练 + 测试**
+  - 4 配置 300K 步联合训练
+  - 全量测试通过
+
+**训练命令**：
+```bash
+uv run python scripts/train.py --use-moe --num-experts 4 --routing-topk 2 \
+  --moe-hidden-dim 384 \
+  --load-backbone checkpoints/t9b-replay/best.pt \
+  --train-stage 2 \
+  --config configs/even_clash.json configs/example.json \
+          configs/dragon_battle.json configs/mage_duel.json \
+  --total-steps 300000 --device cuda --lr-schedule cosine \
+  --tensorboard --eval-interval 10240 --eval-games 40 \
+  --balance-loss-weight 0.01 \
+  --checkpoint-dir checkpoints/t9e-hotstart
+```
+
+**退出标准**：
+- [ ] Expert hidden_dim=384 + 恒等初始化实现
+- [ ] 共享 head 权重成功转移到 per-expert heads
+- [ ] 4 配置训练 avg ≥ 45%（T9c 为 32.5%，T9d 为 24.4%）
+- [ ] even_clash ≥ 90%（不退化）
+- [ ] Router 权重分化，top-2 差距 > 0.10
+- [ ] 全量测试通过（827+）
+
+---
+
+### T10 — MoE 扩展配置训练
+
+> **前置条件**：T9e 热启动训练验证有效，per-expert heads 能正常工作。
 > 目标是将 MoE 从 4 配置扩展到 8-16 配置，并优化 expert 路由质量。
 
-**目标**：在 T9d 基础上扩展到全部 16 配置，验证 MoE 的可扩展性
+**目标**：在 T9e 基础上扩展到全部 16 配置，验证 MoE 的可扩展性
 
 **核心思路**：
-- T9d 打磨好架构后，本阶段扩大配置覆盖面
+- T9e 打磨好训练策略后，本阶段扩大配置覆盖面
 - 可能需要增加 expert 数量（4→6 或 4→8）以覆盖更多配置类型
 - 引入经验回放 + MoE 联合训练，双重防遗忘
 
@@ -631,28 +703,22 @@ example/dragon 在 Stage 3 有回退。router 分化程度不够（top-2 差距�
 
 | 阶段 | 配置数 | Expert 数 | 训练方式 | 步数 |
 |------|--------|----------|---------|------|
-| 扩展 1 | 4→8 | 4 (不变) | 加载 T9d checkpoint，继续三阶段 | 150K-200K |
-| 扩展 2 | 8→16 | 6-8 (增加) | 重新三阶段训练，旧 expert 可选冻结 | 200K-300K |
+| 扩展 1 | 4→8 | 4 (不变) | 加载 T9e checkpoint，继续训练 | 150K-200K |
+| 扩展 2 | 8→16 | 6-8 (增加) | 重新训练，旧 expert 可选冻结 | 200K-300K |
 | 联合优化 | 16 | 最终数量 | 全配置 + replay buffer 联合训练 | 100K-200K |
-
-**修改文件**：
-- `ai/deep/model.py` — `num_experts` 可配置化
-- `scripts/train.py` — `--load-checkpoint` + `--train-stage` 联合支持
-- `ai/deep/trainer.py` — replay buffer 与 MoE 集成（replay 数据也过 MoE 路由）
 
 **退出标准**：
 - [ ] `num_experts` 可通过 CLI 参数配置（默认 4）
-- [ ] 从 T9d checkpoint 加载并继续训练
+- [ ] 从 T9e checkpoint 加载并继续训练
 - [ ] 8 配置扩展训练完成，平均胜率 ≥ 45%
 - [ ] 16 配置扩展训练完成，平均胜率 ≥ 40%
 - [ ] 灾难性遗忘率 < 15%（已学配置胜率下降不超过 15%）
-- [ ] Replay + MoE 联合训练验证有效
-- [ ] 训练报告写入 `docs/t9e-training-report.md`
+- [ ] 训练报告写入 `docs/t10-training-report.md`
 - [ ] 全量测试通过（860+）
 
 ---
 
-### T10+ — 可选扩展（未排期）
+### T11+ — 可选扩展（未排期）
 
 - [ ] 并行训练替代轮训（per-expert heads 解决后优先级降低）
 - [ ] Expert 数量消融实验（2/4/8 对比）
@@ -663,3 +729,4 @@ example/dragon 在 Stage 3 有回退。router 分化程度不够（top-2 差距�
 - [ ] 更长训练（1M 步）
 - [ ] 与原版 fheroes2 C++ AI 决策对照（oracle 一致率）
 - [ ] 挑战人类玩家对战
+

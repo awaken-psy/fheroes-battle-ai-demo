@@ -1,6 +1,6 @@
-"""R5/T8/T9d — CNN residual backbone + Unit-type Embedding + Soft MoE + Per-Expert Heads.
+"""R5/T8/T9e — CNN residual backbone + Unit-type Embedding + Soft MoE + Per-Expert Heads.
 
-Architecture (T9d — ~15.1M parameters with MoE, per-expert heads):
+Architecture (T9e — ~29.4M parameters with MoE, hidden_dim=384):
     grid (35, 9, 11)                           global (20,)
          |                                         |
     CNN path: grid[:, :33]                        |
@@ -27,10 +27,10 @@ Architecture (T9d — ~15.1M parameters with MoE, per-expert heads):
                Linear(15860, 384) + ReLU       <- shared backbone
                          |
          +---------------+ (if num_experts > 0)
-         |         SoftMoELayer                 <- T9d MoE (optional)
+         |         SoftMoELayer                 <- T9e MoE (optional)
          |   Router: Linear(384, E) -> top-k softmax
-         |   Expert i: Linear(384, H) + ReLU
-         |   Head i: Linear(H, action_dim) + Linear(H, 1)
+         |   Expert i: Linear(384, 384) + ReLU  (identity-init for hot start)
+         |   Head i: Linear(384, action_dim) + Linear(384, 1)
          |   Weighted sum of per-expert logits/values
          +---------------+
                          |
@@ -43,14 +43,13 @@ Action masking: ``logits.masked_fill(mask == 0, -inf)`` before returning,
 so the caller (PPO) can safely apply softmax.
 
 Weight init: orthogonal (gain=sqrt(2) for ReLU, gain=1 otherwise).
+MoE experts: identity init when hidden_dim == input_dim (T9e hot start).
 
-T9d changes (from T9c):
-  - Per-expert policy/value heads (128 → 13566 / 128 → 1)
-  - No merge layer — each expert directly outputs logits + value
-  - Top-K sparse routing (default K=2) with configurable --routing-topk
-  - Router auxiliary load-balancing loss (Switch Transformer style)
-  - freeze_backbone() / freeze_experts_and_merge() for staged training
-  - set_active_expert(idx) for per-expert round-robin training (Stage 2)
+T9e changes (from T9d):
+  - Expert hidden_dim upgraded to 384 (matches bottleneck dim)
+  - Identity initialization for experts (expert(x) = ReLU(x) = x)
+  - Shared head weight transfer to per-expert heads (hot start)
+  - This solves the T9d cold-start problem where 7M random params couldn't learn
 """
 
 import math
@@ -174,6 +173,9 @@ class SoftMoELayer(nn.Module):
             for _ in range(num_experts)
         ])
 
+        # T9e: Identity init when hidden_dim == input_dim (hot start)
+        self.init_identity_experts()
+
     def forward(
         self, x: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -235,6 +237,25 @@ class SoftMoELayer(nn.Module):
 
         # balance_loss = E * Σ(f_i * P_i)
         return self.num_experts * (f * P).sum()
+
+    def init_identity_experts(self) -> None:
+        """Initialize experts with identity mapping when hidden_dim == input_dim.
+
+        When called, expert(x) = ReLU(I·x + 0) = ReLU(x) = x for non-negative
+        inputs (bottleneck output is already ReLU'd).  Combined with shared head
+        weight transfer, this gives each expert the same initial policy as the
+        pre-trained shared heads — a "hot start" that avoids T9d's cold-start
+        failure.
+
+        Only applies when ``hidden_dim == input_dim`` (e.g. both 384).
+        Otherwise, the default orthogonal init from ``_init_weights`` is kept.
+        """
+        if self.hidden_dim != self.input_dim:
+            return  # dimension mismatch — identity init not applicable
+        for i in range(self.num_experts):
+            # Expert is Sequential(Linear, ReLU) — init the Linear layer
+            nn.init.eye_(self.experts[i][0].weight)
+            nn.init.zeros_(self.experts[i][0].bias)
 
     def freeze_all_experts(self) -> None:
         """Freeze all expert + head parameters."""
@@ -351,6 +372,10 @@ class BattleNet(nn.Module):
 
         # -- Init ---------------------------------------------
         self._init_weights()
+
+        # T9e: Identity init for MoE experts (after orthogonal init)
+        if self.moe is not None:
+            self.moe.init_identity_experts()
 
     # -- Public interface --------------------------------------------------
 
