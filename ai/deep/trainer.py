@@ -25,6 +25,7 @@ from ai.action_space import ACTION_DIM
 from ai.deep.model import BattleNet
 from ai.env import BattleEnv
 from ai.self_play import random_legal_action
+from ai.deep.replay_buffer import ReplayBuffer
 
 
 # ── Trajectory Buffer ───────────────────────────────────────────
@@ -188,6 +189,7 @@ class PPOTrainer:
         max_grad_norm: float = 0.5,
         grad_accum_steps: int = 1,
         device: str = "cpu",
+        replay_buffer: Optional[ReplayBuffer] = None,
     ):
         self.model = model.to(device)
         self.device = device
@@ -201,6 +203,7 @@ class PPOTrainer:
         self.value_coeff = value_coeff
         self.max_grad_norm = max_grad_norm
         self.grad_accum_steps = max(1, grad_accum_steps)
+        self.replay_buffer = replay_buffer
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr, eps=1e-5)
         self.buffer = TrajectoryBuffer()
@@ -371,16 +374,74 @@ class PPOTrainer:
             self.gamma, self.gae_lambda,
         )
 
-        # Normalize advantages
+        # ── Replay integration (T9b) ───────────────────────────
+        # Mix in one old rollout from the replay buffer to prevent
+        # catastrophic forgetting.  Old observations get a fresh forward
+        # pass for accurate GAE values, but retain stored log_probs as
+        # the behavioural-policy log-prob for PPO's importance-sampling ratio.
+        if self.replay_buffer is not None and len(self.replay_buffer) > 0:
+            replay_data = self.replay_buffer.sample()
+            R = replay_data["actions"].shape[0]
+
+            # Forward pass on old observations → fresh value estimates
+            with torch.no_grad():
+                _, fresh_values = self.model(
+                    replay_data["grid"].to(self.device),
+                    replay_data["global"].to(self.device),
+                    replay_data["mask"].to(self.device),
+                )
+
+            # GAE for replay data using fresh values
+            r_advantages, r_returns = compute_gae(
+                replay_data["rewards"],
+                fresh_values.squeeze(-1).cpu(),
+                replay_data["dones"],
+                0.0,  # bootstrap value (replay rollout ended)
+                self.gamma, self.gae_lambda,
+            )
+
+            # Concatenate new + replay data
+            rewards = torch.cat([rewards, replay_data["rewards"]])
+            values = torch.cat([values, fresh_values.squeeze(-1).cpu()])
+            dones = torch.cat([dones, replay_data["dones"]])
+            advantages = torch.cat([advantages, r_advantages])
+            returns = torch.cat([returns, r_returns])
+
+            # Store concatenated obs/action data (moved to device below)
+            replay_grid = replay_data["grid"]
+            replay_global = replay_data["global"]
+            replay_mask = replay_data["mask"]
+            replay_actions = replay_data["actions"]
+            replay_log_probs = replay_data["log_probs"]
+        else:
+            R = 0
+            replay_grid = replay_global = replay_mask = None
+            replay_actions = replay_log_probs = None
+
+        # Normalize advantages (on mixed data)
         if advantages.numel() > 1:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         # Move everything to device
-        grids = data["grid"].to(self.device)
-        globals_ = data["global"].to(self.device)
-        masks = data["mask"].to(self.device)
-        actions = data["actions"].to(self.device)
-        old_log_probs = data["log_probs"].to(self.device)
+        grids = data["grid"]
+        globals_ = data["global"]
+        masks = data["mask"]
+        actions = data["actions"]
+        old_log_probs = data["log_probs"]
+
+        # Append replay data if available
+        if R > 0:
+            grids = torch.cat([grids, replay_grid])
+            globals_ = torch.cat([globals_, replay_global])
+            masks = torch.cat([masks, replay_mask])
+            actions = torch.cat([actions, replay_actions])
+            old_log_probs = torch.cat([old_log_probs, replay_log_probs])
+
+        grids = grids.to(self.device)
+        globals_ = globals_.to(self.device)
+        masks = masks.to(self.device)
+        actions = actions.to(self.device)
+        old_log_probs = old_log_probs.to(self.device)
         advantages = advantages.to(self.device)
         returns = returns.to(self.device)
 
@@ -482,5 +543,10 @@ class PPOTrainer:
         collect_info = self.collect_rollout(
             num_steps, reward_phase, dense_weight, seed,
             opponent_model=opponent_model, env_config=env_config)
+
+        # Save current rollout to replay buffer (T9b)
+        if self.replay_buffer is not None:
+            self.replay_buffer.add(self.buffer.get_tensors())
+
         update_info = self.update()
         return {**collect_info, **update_info}
