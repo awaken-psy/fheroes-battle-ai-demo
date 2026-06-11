@@ -1,4 +1,4 @@
-"""R7 — Training pipeline utilities.
+"""R7/T9c — Training pipeline utilities.
 
 Config loading, curriculum scheduling, and checkpoint management shared
 between the training script and its tests.
@@ -6,7 +6,7 @@ between the training script and its tests.
 
 import json
 import os
-from typing import Optional, Tuple
+from typing import Optional, Set, Tuple
 
 import torch
 
@@ -111,3 +111,38 @@ def load_checkpoint(
     trainer.model.load_state_dict(ckpt["model"])
     trainer.optimizer.load_state_dict(ckpt["optimizer"])
     return ckpt["step"]
+
+
+def load_backbone_weights(
+    model: torch.nn.Module,
+    checkpoint_path: str,
+    device: str = "cpu",
+) -> Tuple[int, Set[str]]:
+    """Load backbone weights from a non-MoE checkpoint into a MoE model.
+
+    Only keys whose name **and** shape match are copied.  New MoE layers
+    keep their random initialisation.  The optimizer is **not** loaded
+    (MoE layers have no prior momentum).
+
+    Returns (num_matched_keys, set_of_skipped_keys).
+
+    Typical usage::
+
+        model = BattleNet(num_experts=4)
+        matched, skipped = load_backbone_weights(
+            model, "checkpoints/t9b-replay/best.pt", device="cuda")
+    """
+    ckpt = torch.load(checkpoint_path, map_location=device,
+                       weights_only=False)
+    pretrained = ckpt["model"]
+    model_dict = model.state_dict()
+
+    matched = {
+        k: v for k, v in pretrained.items()
+        if k in model_dict and v.shape == model_dict[k].shape
+    }
+    model_dict.update(matched)
+    model.load_state_dict(model_dict)
+
+    skipped = set(pretrained.keys()) - set(matched.keys())
+    return len(matched), skipped

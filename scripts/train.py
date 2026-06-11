@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""R7/T2 — Training pipeline for fheroes2 battle DeepAI.
+"""R7/T2/T9c — Training pipeline for fheroes2 battle DeepAI.
 
 Usage::
 
@@ -14,6 +14,20 @@ Usage::
 
     # With all T2/T6 improvements
     python scripts/train.py --device cuda --lr-schedule cosine --grad-accum 4 --tensorboard
+
+    # T9c MoE Stage 2: per-expert round-robin training
+    python scripts/train.py --use-moe --num-experts 4 --train-stage 2 \
+        --load-backbone checkpoints/t9b-replay/best.pt \
+        --config configs/even_clash.json configs/example.json \
+                configs/dragon_battle.json configs/mage_duel.json \
+        --total-steps 150000 --device cuda
+
+    # T9c MoE Stage 3: router-only training
+    python scripts/train.py --use-moe --num-experts 4 --train-stage 3 \
+        --resume checkpoints/t9c-stage2/best.pt \
+        --config configs/even_clash.json configs/example.json \
+                configs/dragon_battle.json configs/mage_duel.json \
+        --total-steps 50000 --device cuda
 
 All training progress is printed as JSON lines (one per rollout).
 Evaluation results are JSON lines with an ``"eval"`` key.
@@ -33,8 +47,10 @@ import torch
 
 from ai.deep.model import BattleNet
 from ai.deep.opponent_pool import OpponentPool
+from ai.deep.replay_buffer import ReplayBuffer
 from ai.deep.pipeline import (
     get_curriculum_phase,
+    load_backbone_weights,
     load_battle_config,
     load_checkpoint,
     save_checkpoint,
@@ -86,6 +102,25 @@ def parse_args(argv=None):
     # T3 opponent pool
     p.add_argument("--opponent-pool", type=int, default=0,
                    help="Opponent pool capacity (0 = disabled, default: 0)")
+
+    # T9b replay buffer
+    p.add_argument("--replay-buffer", type=int, default=0,
+                   help="Replay buffer capacity in rollouts (0 = disabled, default: 0)")
+
+    # T9c MoE
+    p.add_argument("--use-moe", action="store_true",
+                   help="Enable Soft MoE layer (T9c)")
+    p.add_argument("--num-experts", type=int, default=4,
+                   help="Number of MoE experts (default: 4)")
+    p.add_argument("--moe-hidden-dim", type=int, default=128,
+                   help="Hidden dim for each MoE expert (default: 128)")
+    p.add_argument("--train-stage", type=int, default=0,
+                   choices=[0, 2, 3],
+                   help="0=normal training, 2=per-expert (Stage 2), "
+                        "3=router-only (Stage 3)")
+    p.add_argument("--load-backbone", type=str, default=None,
+                   help="Load backbone weights from a non-MoE checkpoint "
+                        "(for Stage 2 bootstrap)")
 
     # Curriculum
     p.add_argument("--phase1-steps", type=int, default=10_000,
@@ -141,7 +176,23 @@ def main(argv=None):
     ]
     env_config = configs[0]  # default for trainer init
 
-    model = BattleNet()
+    # ── Replay buffer (T9b) ─────────────────────────────────────
+    replay_buffer = None
+    if args.replay_buffer > 0:
+        replay_buffer = ReplayBuffer(capacity=args.replay_buffer)
+
+    model = BattleNet(
+        num_experts=args.num_experts if args.use_moe else 0,
+        moe_hidden_dim=args.moe_hidden_dim,
+    )
+
+    # ── T9c: Load backbone from non-MoE checkpoint ────────────────
+    if args.load_backbone:
+        matched, skipped = load_backbone_weights(
+            model, args.load_backbone, args.device)
+        log_step(0, {"msg": f"loaded backbone: {matched} keys matched, "
+                          f"{len(skipped)} skipped"})
+
     trainer = PPOTrainer(
         model, env_config,
         lr=args.lr, gamma=args.gamma, gae_lambda=args.gae_lambda,
@@ -149,7 +200,19 @@ def main(argv=None):
         minibatch_size=args.minibatch_size, entropy_coeff=args.entropy_coeff,
         value_coeff=args.value_coeff, max_grad_norm=args.max_grad_norm,
         grad_accum_steps=args.grad_accum, device=args.device,
+        replay_buffer=replay_buffer,
     )
+
+    # ── T9c: Stage-specific freezing ──────────────────────────────
+    if args.train_stage == 2:
+        model.freeze_backbone()
+        log_step(0, {"msg": f"Stage 2: backbone frozen, "
+                          f"{model.num_experts} experts round-robin"})
+    elif args.train_stage == 3:
+        model.freeze_backbone()
+        model.freeze_experts_and_merge()
+        log_step(0, {"msg": "Stage 3: backbone + experts + merge frozen, "
+                          "router-only training"})
 
     multi_config = len(configs) > 1
     if multi_config:
@@ -195,6 +258,11 @@ def main(argv=None):
             pool.load_from_disk()
         log_step(total_steps, {"msg": f"opponent pool enabled (capacity={args.opponent_pool}, loaded={len(pool)})"})
 
+    if replay_buffer is not None:
+        log_step(total_steps, {"msg": f"replay buffer enabled (capacity={args.replay_buffer})"})
+
+
+
     last_eval = total_steps
     best_win_rate = 0.0
     t0 = time.time()
@@ -220,8 +288,14 @@ def main(argv=None):
             rollout_config = configs[idx]
             rollout_config_name = config_names[idx]
         else:
+            idx = 0
             rollout_config = None
             rollout_config_name = config_names[0]
+
+        # T9c Stage 2: activate matching expert for this config
+        if args.train_stage == 2 and model.moe is not None:
+            expert_idx = idx % model.num_experts
+            model.set_active_expert(expert_idx)
 
         info = trainer.train_step(
             num_steps=args.rollout_steps,
@@ -296,6 +370,19 @@ def main(argv=None):
                 "configs": {k: round(v, 4) for k, v in per_config_wr.items()},
                 "avg_rounds": eval_info["avg_rounds"],
             }
+
+            # T9c: log router weight distribution
+            if model.moe is not None:
+                with torch.no_grad():
+                    dummy_x = torch.randn(32, 384, device=args.device)
+                    _, rw = model.moe(dummy_x)
+                    mean_w = rw.mean(dim=0).tolist()
+                eval_log["router_weights"] = [round(w, 4) for w in mean_w]
+                if writer is not None:
+                    for ei, w in enumerate(mean_w):
+                        writer.add_scalar(
+                            f"router/expert_{ei}_weight", w, total_steps)
+
             log_eval(total_steps, eval_log)
 
             if writer is not None:
