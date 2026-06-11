@@ -277,7 +277,10 @@ def main(argv=None):
         if pool is not None and len(pool) > 0 and random.random() < 0.5:
             state_dict = pool.sample()
             if state_dict is not None:
-                opponent_model = BattleNet()
+                opponent_model = BattleNet(
+                    num_experts=args.num_experts if args.use_moe else 0,
+                    moe_hidden_dim=args.moe_hidden_dim,
+                )
                 opponent_model.load_state_dict(state_dict)
                 opponent_model.to(args.device)
                 opponent_model.eval()
