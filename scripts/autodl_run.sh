@@ -4,18 +4,18 @@
 #
 #  使用方法：
 #    1. 在 AutoDL 租一张 RTX 4090（PyTorch 2.x 镜像）
-#    2. SSH 进实例后执行：
-#       bash <(curl -sL <你的脚本URL>)
-#       或者直接上传此文件后：
+#    2. 把 fheroes-battle-ai-demo.tar.gz 上传到 /root/autodl-tmp/
+#    3. SSH 进实例后执行：
+#       cd /root/autodl-tmp
+#       tar xzf fheroes-battle-ai-demo.tar.gz
+#       cd fheroes-battle-ai-demo
 #       bash scripts/autodl_run.sh
-#    3. 去喝杯咖啡 ☕
 #
 #  参数（可选，通过环境变量覆盖）：
 #    TOTAL_STEPS    总训练步数       默认 500000
 #    NUM_CONFIGS    配置数量 4/16    默认 16
 #    EVAL_INTERVAL  评估间隔         默认 10000
 #    EVAL_GAMES     评估局数         默认 40
-#    BRANCH         Git 分支         默认 feat/t8-model-upgrade
 # ═══════════════════════════════════════════════════════════════
 set -euo pipefail
 
@@ -24,10 +24,10 @@ TOTAL_STEPS="${TOTAL_STEPS:-500000}"
 NUM_CONFIGS="${NUM_CONFIGS:-16}"
 EVAL_INTERVAL="${EVAL_INTERVAL:-10000}"
 EVAL_GAMES="${EVAL_GAMES:-40}"
-BRANCH="${BRANCH:-feat/t8-model-upgrade}"
 
-# AutoDL 持久化目录（数据不会因关机丢失）
-WORK_DIR="/root/autodl-tmp/fheroes-battle-ai-demo"
+# 持久化目录（tar.gz 解压在这里）
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+WORK_DIR="$(dirname "$SCRIPT_DIR")"
 CKPT_DIR="${WORK_DIR}/checkpoints"
 LOG_DIR="${WORK_DIR}/logs"
 
@@ -42,7 +42,7 @@ warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
 stage() { echo -e "\n${CYAN}═══ $* ═══${NC}\n"; }
 
 # ── Step 1: 环境检查 ─────────────────────────────────────────
-stage "Step 1/5: 环境检查"
+stage "Step 1/4: 环境检查"
 
 # GPU
 if command -v nvidia-smi &>/dev/null; then
@@ -68,29 +68,10 @@ else
     DEVICE="cpu"
 fi
 
-# ── Step 2: 获取代码 ─────────────────────────────────────────
-stage "Step 2/5: 获取代码"
+# ── Step 2: 安装依赖 ─────────────────────────────────────────
+stage "Step 2/4: 安装依赖"
 
-mkdir -p /root/autodl-tmp
-
-if [ -d "${WORK_DIR}/.git" ]; then
-    info "代码已存在，拉取最新..."
-    cd "${WORK_DIR}"
-    git fetch origin
-    git checkout "${BRANCH}"
-    git reset --hard "origin/${BRANCH}"
-else
-    info "从 GitHub clone..."
-    cd /root/autodl-tmp
-    git clone https://github.com/awaken-psy/fheroes-battle-ai-demo.git
-    cd fheroes-battle-ai-demo
-    git checkout "${BRANCH}"
-fi
-
-info "当前 commit: $(git log --oneline -1)"
-
-# ── Step 3: 安装依赖 ─────────────────────────────────────────
-stage "Step 3/5: 安装依赖"
+cd "${WORK_DIR}"
 
 info "安装项目依赖..."
 ${PYTHON} -m pip install -e . --quiet
@@ -105,23 +86,20 @@ if torch.cuda.is_available():
     print(f'  GPU: {torch.cuda.get_device_name(0)} ✓')
 "
 
-# ── Step 4: 准备训练配置 ─────────────────────────────────────
-stage "Step 4/5: 准备训练配置"
+# ── Step 3: 准备训练配置 ─────────────────────────────────────
+stage "Step 3/4: 准备训练配置"
 
 mkdir -p "${CKPT_DIR}" "${LOG_DIR}"
 
 # 选择训练配置
 if [ "${NUM_CONFIGS}" = "4" ]; then
-    # T6 风格：4 配置快速验证
     CONFIGS="configs/even_clash.json configs/solo_duel.json configs/dragon_battle.json configs/melee_brawl.json"
-    info "模式: 4 配置快速验证（T6 风格）"
+    info "模式: 4 配置快速验证"
 else
-    # T7/T8 风格：全部 16 配置
     CONFIGS=$(ls configs/*.json | grep -v validation_results | tr '\n' ' ')
-    info "模式: 16 配置全量训练（T8 风格）"
+    info "模式: 全量配置训练"
 fi
 
-# 训练命令
 TRAIN_CMD="${PYTHON} scripts/train.py \
     --device ${DEVICE} \
     --total-steps ${TOTAL_STEPS} \
@@ -133,15 +111,19 @@ TRAIN_CMD="${PYTHON} scripts/train.py \
     --eval-games ${EVAL_GAMES} \
     --checkpoint-dir ${CKPT_DIR}"
 
-info "训练命令:"
-echo "  ${TRAIN_CMD}"
+info "训练参数:"
+echo "  总步数: ${TOTAL_STEPS}"
+echo "  配置数: ${NUM_CONFIGS}"
+echo "  评估间隔: ${EVAL_INTERVAL}"
+echo "  评估局数: ${EVAL_GAMES}"
+echo "  设备: ${DEVICE}"
 
-# ── Step 5: 启动训练 ─────────────────────────────────────────
-stage "Step 5/5: 启动训练"
+# ── Step 4: 启动训练 ─────────────────────────────────────────
+stage "Step 4/4: 启动训练"
 
 info "预计时间: ~1-2 小时 (RTX 4090, 500K 步, 16 配置)"
-info "checkpoint 保存至: ${CKPT_DIR}"
-info "TensorBoard 日志: ${WORK_DIR}/runs/"
+info "模型保存至: ${CKPT_DIR}"
+info "日志保存至: ${LOG_DIR}"
 echo ""
 
 # 同时输出到终端和日志文件
@@ -157,9 +139,4 @@ echo "  最终模型:    ${CKPT_DIR}/final.pt"
 echo "  TensorBoard: ${WORK_DIR}/runs/"
 echo "  训练日志:    ${LOG_DIR}/"
 echo ""
-info "下载方式:"
-echo "  1. AutoDL 网页端 → 文件管理 → 找到 ${CKPT_DIR}/best.pt"
-echo "  2. 或 SCP:  scp -P <端口> root@<地址>:${CKPT_DIR}/best.pt ./best.pt"
-echo ""
-info "训练概要:"
-tail -5 "${LOG_DIR}"/train_*.log | grep '"type":"done"' || echo "(查看完整日志了解详情)"
+info "下载方式: AutoDL 网页端 → JupyterLab → 找到上述文件下载"
