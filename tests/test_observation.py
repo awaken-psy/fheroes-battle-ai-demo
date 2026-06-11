@@ -1,7 +1,8 @@
-"""Tests for R2 observation encoder — ai/observation.py.
+"""Tests for R2/T8 observation encoder — ai/observation.py.
 
 Covers shape, player-relative encoding, unit placement, attribute normalisation,
-wide units, status effects, siege structures, global vector, and edge cases.
+wide units, status effects, siege structures, global vector, unit-type encoding,
+and edge cases.
 """
 
 import os
@@ -14,7 +15,9 @@ import pytest
 
 from ai.observation import (
     encode_observation, GLOBAL_DIM, GRID_COLS, GRID_ROWS, NUM_GRID_CHANNELS,
+    _CH_MY_TYPE, _CH_ENEMY_TYPE, _MAX_TYPE_INDEX,
 )
+from config.units import UNIT_TYPE_INDEX, NUM_UNIT_TYPES
 from engine.battle_state import BattleState
 from engine.castle import Castle, MOAT_CELLS, WALL_POSITIONS
 from engine.hero import Hero
@@ -46,6 +49,11 @@ def test_output_shapes():
     assert grid.dtype == np.float32
     assert gvec.shape == (GLOBAL_DIM,)
     assert gvec.dtype == np.float32
+
+
+def test_num_grid_channels():
+    """T8: 35 channels (33 original + 2 type-index)."""
+    assert NUM_GRID_CHANNELS == 35
 
 
 # ── Player-relative encoding ──────────────────────────────────
@@ -448,7 +456,7 @@ def test_global_current_unit_index():
 
 
 def test_all_grid_values_in_valid_range():
-    """All grid values must be in [0, 1] (unit/effect channels) or [0, 1] (siege)."""
+    """All grid values must be in [0, 1] (unit/effect/type channels) or [0, 1] (siege)."""
     u0 = Unit.from_type("Champion", 0, 2, 4, count=20)
     u1 = Unit.from_type("Pikeman", 1, 8, 4, count=15)
     hero0 = Hero(power=10, max_spell_points=50, attack=12, defense=8)
@@ -483,6 +491,98 @@ def test_acted_flag():
     u._acted = True
     g2, _ = _enc(b, u)
     assert g2[9, 4, 5] == 1.0
+
+
+# ── T8: Unit-type encoding ────────────────────────────────────
+
+
+def test_unit_type_encoding_on_head():
+    """Different unit types should produce different type-index values."""
+    u0 = Unit.from_type("Swordsman", 0, 2, 4)
+    u1 = Unit.from_type("Black Dragon", 1, 8, 4)
+    b = _battle([u0, u1])
+
+    g, _ = _enc(b, u0)
+
+    # My type channel at (2,4)
+    swordsman_norm = UNIT_TYPE_INDEX["Swordsman"] / _MAX_TYPE_INDEX
+    assert g[_CH_MY_TYPE, 4, 2] == pytest.approx(swordsman_norm)
+
+    # Enemy type channel at (8,4)
+    dragon_norm = UNIT_TYPE_INDEX["Black Dragon"] / _MAX_TYPE_INDEX
+    assert g[_CH_ENEMY_TYPE, 4, 8] == pytest.approx(dragon_norm)
+
+    # Different types → different values
+    assert g[_CH_MY_TYPE, 4, 2] != g[_CH_ENEMY_TYPE, 4, 8]
+
+
+def test_empty_cell_type_zero():
+    """Cells with no unit should have type index 0.0 (= padding)."""
+    u0 = Unit.from_type("Swordsman", 0, 2, 4)
+    u1 = Unit.from_type("Swordsman", 1, 8, 4)
+    b = _battle([u0, u1])
+
+    g, _ = _enc(b, u0)
+
+    # (5,5) is empty
+    assert g[_CH_MY_TYPE, 5, 5] == 0.0
+    assert g[_CH_ENEMY_TYPE, 5, 5] == 0.0
+
+
+def test_wide_unit_type_on_both_cells():
+    """Wide unit: type index should appear on both head and tail cells."""
+    u0 = Unit.from_type("Swordsman", 0, 2, 4)
+    u1 = Unit.from_type("Cavalry", 1, 5, 4)  # wide, team 1
+    b = _battle([u0, u1])
+
+    # From team 0's perspective: Cavalry is enemy
+    g, _ = _enc(b, u0)
+
+    cavalry_norm = UNIT_TYPE_INDEX["Cavalry"] / _MAX_TYPE_INDEX
+
+    # Head at (5,4)
+    assert g[_CH_ENEMY_TYPE, 4, 5] == pytest.approx(cavalry_norm)
+    # Tail at (6,4) — team 1 tail_dir = +1
+    assert g[_CH_ENEMY_TYPE, 4, 6] == pytest.approx(cavalry_norm)
+
+
+def test_player_relative_type_channels():
+    """Type channels flip with player-relative perspective."""
+    u0 = Unit.from_type("Swordsman", 0, 2, 4)
+    u1 = Unit.from_type("Black Dragon", 1, 8, 4)
+    b = _battle([u0, u1])
+
+    # From team 0's view
+    g0, _ = _enc(b, u0)
+    # Swordsman → my type, Dragon → enemy type
+    assert g0[_CH_MY_TYPE, 4, 2] > 0.0
+    assert g0[_CH_ENEMY_TYPE, 4, 8] > 0.0
+    assert g0[_CH_MY_TYPE, 4, 8] == 0.0   # Dragon is NOT my type
+    assert g0[_CH_ENEMY_TYPE, 4, 2] == 0.0  # Swordsman is NOT enemy type
+
+    # From team 1's view → flipped
+    g1, _ = _enc(b, u1)
+    assert g1[_CH_MY_TYPE, 4, 8] > 0.0     # Dragon is now my type
+    assert g1[_CH_ENEMY_TYPE, 4, 2] > 0.0   # Swordsman is now enemy type
+
+
+def test_same_unit_type_same_value():
+    """Two units of the same type should have the same normalised value."""
+    u0 = Unit.from_type("Swordsman", 0, 2, 4)
+    u1 = Unit.from_type("Swordsman", 1, 8, 4)
+    u2 = Unit.from_type("Pikeman", 0, 3, 4)
+    b = _battle([u0, u1, u2])
+
+    g, _ = _enc(b, u0)
+
+    # Both Swordsmen should have same type value (different sides)
+    my_type = g[_CH_MY_TYPE, 4, 2]
+    enemy_type = g[_CH_ENEMY_TYPE, 4, 8]
+    assert my_type == pytest.approx(enemy_type)
+
+    # But Pikeman should differ
+    pikeman_type = g[_CH_MY_TYPE, 4, 3]
+    assert pikeman_type != pytest.approx(my_type)
 
 
 # ── Comprehensive scenario ────────────────────────────────────
@@ -535,3 +635,18 @@ def test_complex_battle_observation():
     assert gvec[7] == 0.0       # no enemy hero
     assert gvec[14] == 1.0      # siege
     assert gvec[17] == pytest.approx(1 / 3)  # morale +1
+
+    # Type channels (T8)
+    champion_norm = UNIT_TYPE_INDEX["Champion"] / _MAX_TYPE_INDEX
+    mage_norm = UNIT_TYPE_INDEX["Mage"] / _MAX_TYPE_INDEX
+    pikeman_norm = UNIT_TYPE_INDEX["Pikeman"] / _MAX_TYPE_INDEX
+
+    # Champion head + tail
+    assert g[_CH_MY_TYPE, 4, 2] == pytest.approx(champion_norm)
+    assert g[_CH_MY_TYPE, 4, 1] == pytest.approx(champion_norm)  # tail too
+    # Mage
+    assert g[_CH_MY_TYPE, 2, 1] == pytest.approx(mage_norm)
+    # Pikeman (enemy)
+    assert g[_CH_ENEMY_TYPE, 4, 9] == pytest.approx(pikeman_norm)
+    # Empty cell
+    assert g[_CH_MY_TYPE, 0, 0] == 0.0

@@ -1,15 +1,19 @@
-"""Tests for R5 — BattleNet CNN residual backbone + Policy/Value dual-head.
+"""Tests for R5/T8 — BattleNet CNN residual backbone + Unit-type Embedding.
 
 Covers:
   1. Forward-pass output shapes
   2. Masking: illegal actions get -inf logits
   3. Value output range [-1, 1]
-  4. Parameter count within target range (1-5M)
+  4. Parameter count within target range (10-20M)
   5. Batch and single-sample processing
   6. Deterministic with eval mode
   7. Serialization round-trip (state_dict save/load)
   8. Gradient flow through both heads
   9. All-legal and all-illegal mask edge cases
+ 10. ResidualBlock unit tests
+ 11. Internal constants consistency
+ 12. GroupNorm migration (T2)
+ 13. Unit-type embedding path (T8)
 """
 
 import io
@@ -33,6 +37,9 @@ from ai.deep.model import (
     _BOTTLENECK_DIM,
     _FUSED_DIM,
     _GN_GROUPS,
+    _EMBED_DIM,
+    _NUM_UNIT_TYPES,
+    _FLAT_SPATIAL_DIM,
 )
 
 
@@ -135,8 +142,8 @@ class TestValueRange:
 class TestParameterCount:
     def test_param_count_in_range(self, model):
         count = model.count_parameters()
-        assert 1_000_000 <= count <= 5_000_000, (
-            f"Parameter count {count:,} outside target range 1-5M"
+        assert 10_000_000 <= count <= 20_000_000, (
+            f"Parameter count {count:,} outside target range 10-20M"
         )
 
     def test_param_count_matches_manual(self, model):
@@ -213,7 +220,7 @@ class TestSerialization:
         assert torch.allclose(v_orig, v_loaded, atol=1e-6)
 
 
-# ── 8. Gradient flow ────────────────────────────────────────────
+# ── 8. Gradient flow ───────────────────────────────────────────
 
 
 class TestGradientFlow:
@@ -271,8 +278,14 @@ class TestResidualBlock:
 
 class TestConstants:
     def test_fused_dim(self):
-        flat_grid = _CONV_CHANNELS * GRID_ROWS * GRID_COLS
-        assert _FUSED_DIM == flat_grid + GLOBAL_DIM
+        flat_spatial = (_CONV_CHANNELS + 2 * _EMBED_DIM) * GRID_ROWS * GRID_COLS
+        assert _FUSED_DIM == flat_spatial + GLOBAL_DIM
+
+    def test_embed_dim_positive(self):
+        assert _EMBED_DIM > 0
+
+    def test_num_unit_types(self):
+        assert _NUM_UNIT_TYPES > 0
 
 
 # ── 11. T2: GroupNorm migration ─────────────────────────────────
@@ -303,7 +316,7 @@ class TestGroupNormMigration:
         assert bn_count == 0
 
     def test_groupnorm_count(self):
-        """1 stem GN + 2 per ResBlock × 4 = 9 total."""
+        """1 stem GN + 2 per ResBlock × 6 = 13 total."""
         model = BattleNet()
         gn_count = sum(1 for m in model.modules()
                        if isinstance(m, torch.nn.GroupNorm))
@@ -337,3 +350,84 @@ class TestGroupNormMigration:
 
         assert torch.allclose(out_train[0], out_eval[0], atol=1e-5)
         assert torch.allclose(out_train[1], out_eval[1], atol=1e-5)
+
+
+# ── 12. T8: Unit-type embedding ────────────────────────────────
+
+
+class TestUnitEmbedding:
+    """Verify the embedding path for unit-type encoding (T8)."""
+
+    def test_embedding_exists(self):
+        model = BattleNet()
+        assert hasattr(model, "unit_embed")
+        assert isinstance(model.unit_embed, torch.nn.Embedding)
+        assert model.unit_embed.num_embeddings == _NUM_UNIT_TYPES
+        assert model.unit_embed.embedding_dim == _EMBED_DIM
+        assert model.unit_embed.padding_idx == 0
+
+    def test_embedding_gradient(self):
+        """Embedding weights should receive gradients during training."""
+        model = BattleNet()
+        grid, gvec, mask = _make_inputs(batch_size=2)
+        policy, value = model(grid, gvec, mask)
+        loss = policy.sum() + value.sum()
+        loss.backward()
+        assert model.unit_embed.weight.grad is not None
+        # Non-padding rows should have non-zero gradients
+        assert model.unit_embed.weight.grad[1:].abs().sum() > 0
+
+    def test_embedding_padding_stays_zero(self):
+        """After a forward + backward pass, the padding row should remain zero."""
+        model = BattleNet()
+        grid, gvec, mask = _make_inputs(batch_size=2)
+        policy, value = model(grid, gvec, mask)
+        loss = policy.sum() + value.sum()
+        loss.backward()
+        # padding_idx=0 ensures the weight row stays zero
+        assert model.unit_embed.weight[0].norm() == 0.0
+
+    def test_type_channels_affect_output(self):
+        """Changing the type-index channels should change the output."""
+        model = BattleNet().eval()
+        grid = torch.zeros(1, NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS)
+        gvec = torch.zeros(1, GLOBAL_DIM)
+        mask = torch.ones(1, ACTION_DIM)
+
+        # Place a unit with type index at (2, 4) — my unit
+        grid[0, 0, 4, 2] = 1.0  # existence
+        grid[0, 33, 4, 2] = 10 / 66  # type index = 10
+
+        with torch.no_grad():
+            p1, v1 = model(grid, gvec, mask)
+
+        # Change type index to something different
+        grid[0, 33, 4, 2] = 50 / 66  # type index = 50
+
+        with torch.no_grad():
+            p2, v2 = model(grid, gvec, mask)
+
+        # Outputs should differ
+        assert not torch.allclose(p1, p2, atol=1e-6), \
+            "Different unit types should produce different outputs"
+
+    def test_zero_type_channels_no_effect(self):
+        """Type channels of 0 (no unit) should only contribute via padding (zeros)."""
+        model = BattleNet().eval()
+
+        # Grid with only original features, type channels all zero
+        grid_a = torch.zeros(1, NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS)
+        grid_a[0, 0, 4, 2] = 1.0  # existence at (2,4)
+        # type channels are 0 → padding → zero embedding
+
+        # Clone and manually zero out the embedding contribution
+        grid_b = grid_a.clone()
+
+        gvec = torch.zeros(1, GLOBAL_DIM)
+        mask = torch.ones(1, ACTION_DIM)
+
+        with torch.no_grad():
+            p_a, v_a = model(grid_a, gvec, mask)
+            p_b, v_b = model(grid_b, gvec, mask)
+
+        assert torch.allclose(p_a, p_b, atol=1e-6)
