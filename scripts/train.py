@@ -381,7 +381,7 @@ def main(argv=None):
 
             # T9c: log router weight distribution using real game states
             if model.moe is not None:
-                from ai.battle_env import BattleEnv
+                from ai.env import BattleEnv
                 with torch.no_grad():
                     all_features = []
                     for cfg in configs:
