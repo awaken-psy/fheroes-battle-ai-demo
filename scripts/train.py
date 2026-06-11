@@ -107,13 +107,17 @@ def parse_args(argv=None):
     p.add_argument("--replay-buffer", type=int, default=0,
                    help="Replay buffer capacity in rollouts (0 = disabled, default: 0)")
 
-    # T9c MoE
+    # T9c/T9d MoE
     p.add_argument("--use-moe", action="store_true",
                    help="Enable Soft MoE layer (T9c)")
     p.add_argument("--num-experts", type=int, default=4,
                    help="Number of MoE experts (default: 4)")
     p.add_argument("--moe-hidden-dim", type=int, default=128,
                    help="Hidden dim for each MoE expert (default: 128)")
+    p.add_argument("--routing-topk", type=int, default=2,
+                   help="Number of experts to activate per input (default: 2)")
+    p.add_argument("--balance-loss-weight", type=float, default=0.01,
+                   help="Weight for router load-balancing loss (default: 0.01, 0=disabled)")
     p.add_argument("--train-stage", type=int, default=0,
                    choices=[0, 2, 3],
                    help="0=normal training, 2=per-expert (Stage 2), "
@@ -184,6 +188,7 @@ def main(argv=None):
     model = BattleNet(
         num_experts=args.num_experts if args.use_moe else 0,
         moe_hidden_dim=args.moe_hidden_dim,
+        routing_topk=args.routing_topk,
     )
 
     # ── T9c: Load backbone from non-MoE checkpoint ────────────────
@@ -201,6 +206,7 @@ def main(argv=None):
         value_coeff=args.value_coeff, max_grad_norm=args.max_grad_norm,
         grad_accum_steps=args.grad_accum, device=args.device,
         replay_buffer=replay_buffer,
+        balance_loss_weight=args.balance_loss_weight,
     )
 
     # ── T9c: Stage-specific freezing ──────────────────────────────
@@ -210,8 +216,8 @@ def main(argv=None):
                           f"{model.num_experts} experts round-robin"})
     elif args.train_stage == 3:
         model.freeze_backbone()
-        model.freeze_experts_and_merge()
-        log_step(0, {"msg": "Stage 3: backbone + experts + merge frozen, "
+        model.freeze_experts_and_heads()
+        log_step(0, {"msg": "Stage 3: backbone + experts + heads frozen, "
                           "router-only training"})
 
     multi_config = len(configs) > 1
@@ -285,6 +291,7 @@ def main(argv=None):
                 opponent_model = BattleNet(
                     num_experts=args.num_experts if args.use_moe else 0,
                     moe_hidden_dim=args.moe_hidden_dim,
+                    routing_topk=args.routing_topk,
                 )
                 opponent_model.load_state_dict(state_dict)
                 opponent_model.to(args.device)
@@ -404,7 +411,7 @@ def main(argv=None):
                             if done:
                                 obs, _ = env.reset()
                     features = torch.cat(all_features, dim=0)
-                    _, rw = model.moe(features)
+                    _, _, rw = model.moe(features)
                     mean_w = rw.mean(dim=0).tolist()
                 eval_log["router_weights"] = [round(w, 4) for w in mean_w]
                 if writer is not None:

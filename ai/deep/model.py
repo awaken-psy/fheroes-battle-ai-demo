@@ -1,6 +1,6 @@
-"""R5/T8/T9c — CNN residual backbone + Unit-type Embedding + Soft MoE + Policy/Value dual-head.
+"""R5/T8/T9d — CNN residual backbone + Unit-type Embedding + Soft MoE + Per-Expert Heads.
 
-Architecture (T9c — ~13.3M parameters with MoE):
+Architecture (T9d — ~15.1M parameters with MoE, per-expert heads):
     grid (35, 9, 11)                           global (20,)
          |                                         |
     CNN path: grid[:, :33]                        |
@@ -27,25 +27,28 @@ Architecture (T9c — ~13.3M parameters with MoE):
                Linear(15860, 384) + ReLU       <- shared backbone
                          |
          +---------------+ (if num_experts > 0)
-         |         SoftMoELayer                 <- T9c MoE (optional)
-         |   Router: Linear(384, E) -> softmax
+         |         SoftMoELayer                 <- T9d MoE (optional)
+         |   Router: Linear(384, E) -> top-k softmax
          |   Expert i: Linear(384, H) + ReLU
-         |   Weighted sum -> Merge(H, 384)
+         |   Head i: Linear(H, action_dim) + Linear(H, 1)
+         |   Weighted sum of per-expert logits/values
          +---------------+
                          |
-              +----------+----------+
-        Linear(384, 13566)       Linear(384, 1) + tanh
-        (policy logits)           (value)
+              logits (B, 13566)    value (B, 1) + tanh
+
+    (if num_experts == 0, falls back to shared heads)
+              Linear(384, 13566)   Linear(384, 1) + tanh
 
 Action masking: ``logits.masked_fill(mask == 0, -inf)`` before returning,
 so the caller (PPO) can safely apply softmax.
 
 Weight init: orthogonal (gain=sqrt(2) for ReLU, gain=1 otherwise).
 
-T9c changes (from T8):
-  - Optional SoftMoELayer between bottleneck and heads
-  - num_experts=0 (default) -> no MoE, fully backward compatible
-  - num_experts=4 -> ~248K additional parameters (~1MB VRAM)
+T9d changes (from T9c):
+  - Per-expert policy/value heads (128 → 13566 / 128 → 1)
+  - No merge layer — each expert directly outputs logits + value
+  - Top-K sparse routing (default K=2) with configurable --routing-topk
+  - Router auxiliary load-balancing loss (Switch Transformer style)
   - freeze_backbone() / freeze_experts_and_merge() for staged training
   - set_active_expert(idx) for per-expert round-robin training (Stage 2)
 """
@@ -83,6 +86,7 @@ _FUSED_DIM = _FLAT_SPATIAL_DIM + GLOBAL_DIM  # 15840 + 20 = 15860
 # MoE defaults
 _DEFAULT_NUM_EXPERTS = 0
 _DEFAULT_MOE_HIDDEN_DIM = 128
+_DEFAULT_ROUTING_TOPK = 2
 
 
 # -- Building blocks -------------------------------------------------------
@@ -107,33 +111,49 @@ class ResidualBlock(nn.Module):
         return F.relu(out + identity)
 
 
-# -- Soft MoE Layer (T9c) -------------------------------------------------
+# -- Soft MoE Layer (T9d) -------------------------------------------------
 
 
 class SoftMoELayer(nn.Module):
-    """Soft Mixture-of-Experts layer for multi-config specialization.
+    """Soft Mixture-of-Experts layer with per-expert heads and top-K routing.
 
-    Each expert is a small feed-forward network.  A router computes softmax
-    weights over all experts for every input.  The output is a weighted
-    combination of expert outputs, merged back to the input dimension.
+    Each expert is a small feed-forward network with its own policy and value
+    heads.  A router computes top-K softmax weights.  The final output is a
+    weighted combination of per-expert logits and values.
 
     Parameters
     ----------
     input_dim : int
-        Dimension of the input (and output) features.
+        Dimension of the input features (bottleneck output).
     hidden_dim : int
         Intermediate dimension for each expert.
     num_experts : int
         Number of expert sub-networks.
+    action_dim : int
+        Size of the policy output (13566).
+    top_k : int
+        Number of experts to activate per input (default 2).
     """
 
-    def __init__(self, input_dim: int, hidden_dim: int, num_experts: int):
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dim: int,
+        num_experts: int,
+        action_dim: int,
+        top_k: int = _DEFAULT_ROUTING_TOPK,
+    ):
         super().__init__()
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.num_experts = num_experts
+        self.action_dim = action_dim
+        self.top_k = min(top_k, num_experts)
 
+        # Router
         self.router = nn.Linear(input_dim, num_experts)
+
+        # Per-expert networks
         self.experts = nn.ModuleList([
             nn.Sequential(
                 nn.Linear(input_dim, hidden_dim),
@@ -141,69 +161,123 @@ class SoftMoELayer(nn.Module):
             )
             for _ in range(num_experts)
         ])
-        self.merge = nn.Linear(hidden_dim, input_dim)
+
+        # Per-expert policy heads
+        self.policy_heads = nn.ModuleList([
+            nn.Linear(hidden_dim, action_dim)
+            for _ in range(num_experts)
+        ])
+
+        # Per-expert value heads
+        self.value_heads = nn.ModuleList([
+            nn.Linear(hidden_dim, 1)
+            for _ in range(num_experts)
+        ])
 
     def forward(
-        self, x: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Forward pass through all experts with soft routing.
+        self, x: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Forward pass with per-expert heads and top-K routing.
 
         Args:
-            x: ``(B, input_dim)`` feature tensor.
+            x: ``(B, input_dim)`` feature tensor (bottleneck output).
 
         Returns:
-            output: ``(B, input_dim)`` — weighted combination of expert outputs.
-            weights: ``(B, num_experts)`` — router softmax weights (for logging).
+            logits: ``(B, action_dim)`` — weighted combination of expert logits.
+            value: ``(B, 1)`` — weighted combination of expert values (tanh'd).
+            weights: ``(B, num_experts)`` — router weights (sparse if top_K < E).
         """
-        # Router: softmax over experts
-        weights = F.softmax(self.router(x), dim=-1)  # (B, E)
+        B = x.shape[0]
+        router_logits = self.router(x)  # (B, E)
 
-        # Expert outputs: stack along a new dim
-        expert_outs = torch.stack(
-            [expert(x) for expert in self.experts], dim=1
-        )  # (B, E, H)
+        # Top-K sparse routing
+        if self.top_k < self.num_experts:
+            topk_logits, topk_idx = router_logits.topk(self.top_k, dim=-1)
+            topk_weights = F.softmax(topk_logits, dim=-1)  # (B, K)
+            weights = torch.zeros_like(router_logits)
+            weights.scatter_(1, topk_idx, topk_weights)  # non-topK = 0
+        else:
+            weights = F.softmax(router_logits, dim=-1)  # (B, E)
 
-        # Weighted combination
-        combined = (weights.unsqueeze(-1) * expert_outs).sum(dim=1)  # (B, H)
+        # Compute all expert features + per-expert heads
+        all_logits = torch.zeros(B, self.action_dim, device=x.device)
+        all_values = torch.zeros(B, 1, device=x.device)
 
-        # Merge back to input_dim (no activation — let heads decide)
-        output = self.merge(combined)  # (B, input_dim)
-        return output, weights
+        for i in range(self.num_experts):
+            feat = self.experts[i](x)                    # (B, H)
+            logits_i = self.policy_heads[i](feat)        # (B, action_dim)
+            value_i = torch.tanh(self.value_heads[i](feat))  # (B, 1)
+            w = weights[:, i:i + 1]                      # (B, 1)
+            all_logits = all_logits + w * logits_i
+            all_values = all_values + w * value_i
+
+        return all_logits, all_values, weights
+
+    def balance_loss(self, router_logits: torch.Tensor) -> torch.Tensor:
+        """Switch Transformer style load-balancing auxiliary loss.
+
+        Encourages uniform expert utilization and prevents router collapse.
+
+        Args:
+            router_logits: ``(B, E)`` raw router outputs (before softmax).
+
+        Returns:
+            Scalar loss (lower = more balanced).
+        """
+        # f_i: fraction of batch where expert i is in top-K
+        topk_idx = router_logits.topk(self.top_k, dim=-1).indices
+        selected = torch.zeros_like(router_logits)
+        selected.scatter_(1, topk_idx, 1.0)
+        f = selected.mean(dim=0)  # (E,)
+
+        # P_i: mean router probability for expert i
+        P = F.softmax(router_logits, dim=-1).mean(dim=0)  # (E,)
+
+        # balance_loss = E * Σ(f_i * P_i)
+        return self.num_experts * (f * P).sum()
 
     def freeze_all_experts(self) -> None:
-        """Freeze all expert parameters (merge included)."""
-        for param in self.parameters():
-            param.requires_grad = False
+        """Freeze all expert + head parameters."""
+        for i in range(self.num_experts):
+            for param in self.experts[i].parameters():
+                param.requires_grad = False
+            for param in self.policy_heads[i].parameters():
+                param.requires_grad = False
+            for param in self.value_heads[i].parameters():
+                param.requires_grad = False
 
     def unfreeze_all(self) -> None:
-        """Unfreeze all parameters (experts, merge, router)."""
+        """Unfreeze all parameters (experts, heads, router)."""
         for param in self.parameters():
             param.requires_grad = True
 
     def set_active_expert(self, idx: int) -> None:
-        """Freeze all experts except the one at *idx*.
+        """Freeze all experts/heads except the one at *idx*.
 
-        Also freezes router and merge to prevent shared parameters from being
-        polluted by multiple experts' round-robin updates (T9c fix).
+        Also freezes router to prevent it from changing during per-expert
+        round-robin updates.
 
         Args:
             idx: Expert index to keep trainable (0 <= idx < num_experts).
         """
-        # Freeze all experts except idx
-        for i, expert in enumerate(self.experts):
-            for param in expert.parameters():
-                param.requires_grad = (i == idx)
-        # Freeze router and merge — they must not change during per-expert training
+        for i in range(self.num_experts):
+            is_active = (i == idx)
+            for param in self.experts[i].parameters():
+                param.requires_grad = is_active
+            for param in self.policy_heads[i].parameters():
+                param.requires_grad = is_active
+            for param in self.value_heads[i].parameters():
+                param.requires_grad = is_active
+        # Freeze router during per-expert training
         for param in self.router.parameters():
             param.requires_grad = False
-        for param in self.merge.parameters():
-            param.requires_grad = False
 
-    def freeze_experts_and_merge(self) -> None:
-        """Freeze expert and merge parameters (for Stage 3 router-only training)."""
-        for name, param in self.named_parameters():
-            if not name.startswith("router"):
-                param.requires_grad = False
+    def freeze_experts_and_heads(self) -> None:
+        """Freeze expert + head parameters, keep router trainable (Stage 3)."""
+        self.freeze_all_experts()
+        # Router stays trainable
+        for param in self.router.parameters():
+            param.requires_grad = True
 
 
 # -- Main network ----------------------------------------------------------
@@ -211,6 +285,10 @@ class SoftMoELayer(nn.Module):
 
 class BattleNet(nn.Module):
     """CNN residual backbone with unit-type embedding, optional MoE, and dual heads.
+
+    When MoE is enabled (num_experts > 0), each expert has its own policy and
+    value heads inside SoftMoELayer.  When MoE is disabled (num_experts=0),
+    shared policy/value heads are used — fully backward compatible with T8.
 
     Parameters
     ----------
@@ -223,6 +301,8 @@ class BattleNet(nn.Module):
         preserving full backward compatibility with T8 checkpoints.
     moe_hidden_dim : int
         Hidden dimension for each MoE expert (default 128).
+    routing_topk : int
+        Number of experts to activate per input (default 2).
     """
 
     def __init__(
@@ -231,6 +311,7 @@ class BattleNet(nn.Module):
         action_dim: int = ACTION_DIM,
         num_experts: int = _DEFAULT_NUM_EXPERTS,
         moe_hidden_dim: int = _DEFAULT_MOE_HIDDEN_DIM,
+        routing_topk: int = _DEFAULT_ROUTING_TOPK,
     ):
         super().__init__()
         self._action_dim = action_dim
@@ -253,15 +334,20 @@ class BattleNet(nn.Module):
         # -- Shared backbone linear ---------------------------
         self.fc_bottleneck = nn.Linear(_FUSED_DIM, _BOTTLENECK_DIM)
 
-        # -- Soft MoE layer (T9c) -----------------------------
+        # -- Soft MoE layer (T9d) -----------------------------
         self.moe: Optional[SoftMoELayer] = None
         if num_experts > 0:
             self.moe = SoftMoELayer(
-                _BOTTLENECK_DIM, moe_hidden_dim, num_experts)
-
-        # -- Heads --------------------------------------------
-        self.policy_head = nn.Linear(_BOTTLENECK_DIM, action_dim)
-        self.value_head = nn.Linear(_BOTTLENECK_DIM, 1)
+                _BOTTLENECK_DIM, moe_hidden_dim, num_experts,
+                action_dim, top_k=routing_topk,
+            )
+            # No shared heads — MoE has per-expert heads
+            self.policy_head = None
+            self.value_head = None
+        else:
+            # Shared heads for non-MoE mode (backward compatible)
+            self.policy_head = nn.Linear(_BOTTLENECK_DIM, action_dim)
+            self.value_head = nn.Linear(_BOTTLENECK_DIM, 1)
 
         # -- Init ---------------------------------------------
         self._init_weights()
@@ -311,13 +397,14 @@ class BattleNet(nn.Module):
         # 5. Shared backbone
         x = F.relu(self.fc_bottleneck(x))                     # (B, 384)
 
-        # 6. Soft MoE (optional, T9c)
+        # 6. Heads (MoE or shared)
         if self.moe is not None:
-            x, _ = self.moe(x)                                # (B, 384)
-
-        # 7. Heads
-        policy_logits = self.policy_head(x)                   # (B, 13566)
-        value = torch.tanh(self.value_head(x))                # (B, 1)
+            # MoE: per-expert heads inside SoftMoELayer
+            policy_logits, value, _ = self.moe(x)
+        else:
+            # Shared heads (backward compatible)
+            policy_logits = self.policy_head(x)               # (B, 13566)
+            value = torch.tanh(self.value_head(x))            # (B, 1)
 
         # Mask illegal actions
         policy_logits = policy_logits.masked_fill(
@@ -355,10 +442,10 @@ class BattleNet(nn.Module):
             )):
                 param.requires_grad = False
 
-    def freeze_experts_and_merge(self) -> None:
-        """Freeze MoE experts + merge, keep router trainable (Stage 3)."""
+    def freeze_experts_and_heads(self) -> None:
+        """Freeze MoE experts + heads, keep router trainable (Stage 3)."""
         if self.moe is not None:
-            self.moe.freeze_experts_and_merge()
+            self.moe.freeze_experts_and_heads()
 
     def set_active_expert(self, idx: int) -> None:
         """Only train expert *idx*, freeze all other experts (Stage 2).

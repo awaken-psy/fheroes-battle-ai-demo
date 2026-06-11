@@ -1,6 +1,6 @@
 # 里程碑 — 战斗 AI 复刻
 
-> **T 系列训练实战 — T1✅ T2✅ T3✅ T4✅ T5✅ T6✅ T7✅，T8 架构升级训练失败(4.4%)，T9a✅ T9b✅(有改善但不够)，T9c✅(MoE遗忘缓解，mage_duel突破40%)。**
+> **T 系列训练实战 — T1✅ T2✅ T3✅ T4✅ T5✅ T6✅ T7✅，T8 架构升级训练失败(4.4%)，T9a✅ T9b✅(有改善但不够)，T9c✅(MoE遗忘缓解，mage_duel突破40%)，T9d（MoE架构打磨，当前）。**
 >
 > - 规则层 M1–M7e：~99% 保真度，63 兵种，38 法术，298 测试
 > - AI 决策层 A1–A4：~97% 决策行为覆盖（126 条审计），356 测试
@@ -16,7 +16,8 @@
 > - **T9a 基线验证** ✅：架构有效（even_clash 100%），遗忘严重（40K步内全忘）
 > - **T9b 经验回放** ✅：Replay buffer 减缓遗忘（后半段 +65%），但不够（even_clash 仍 100%→2.5%）
 > - **T9c MoE架构重构** ✅：even_clash遗忘从100%→0%改善到95%稳定，mage_duel 0%→40%突破，avg 32.5%
-> - **T9d MoE扩展配置训练**：4→16配置扩展 + expert数量调参，待T9c完成后启动
+> - **T9d MoE架构打磨**（当前）：per-expert heads + Top-K路由 + router辅助损失
+> - **T9e MoE扩展配置训练**：4→16配置扩展 + expert数量调参
 > - **总计 827 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
@@ -84,7 +85,9 @@ CleanRL 风格实现，三阶段课程奖励调度。
 ```
 T1(Baseline训练) ──→ T2(模型/训练改进) ──→ T3(对手池) ──→ T4(训练战役)
                                                           │
-T5(多配置训练) ──→ T6(稳定性优化) ──→ T7(配置多样化) ──→ T8(架构升级) ──→ T9(课程学习+经验回放)
+T5(多配置训练) ──→ T6(稳定性优化) ──→ T7(配置多样化) ──→ T8(架构升级) ──→ T9a/b/c(遗忘对抗)
+                                                                                                      │
+                                                                   T9d(MoE架构打磨) ──→ T9e(MoE扩展配置)
 ```
 
 ---
@@ -549,15 +552,78 @@ example/dragon 在 Stage 3 有回退。router 分化程度不够（top-2 差距�
 
 ---
 
-#### T9d — MoE 扩展配置训练
+#### T9d — MoE 架构打磨（当前）
 
-> **前置条件**：T9c 三阶段训练完成，MoE 架构验证有效。
+> **前置条件**：T9c MoE 架构验证有效（遗忘缓解 + mage_duel 突破）。
+> **核心问题**：T9c 暴露了三个架构缺陷——共享 heads 梯度干扰、soft routing 稀释 expert 能力、router 分化不足。
+
+**目标**：打磨 MoE 架构细节，解决 T9c 的三个结构性问题，提升平均胜率
+
+**问题分析**（来自 T9c 训练日志 + 代码审查）：
+
+| 问题 | 证据 | 影响 |
+|------|------|------|
+| 共享 policy/value heads | session notes 明确记录为瓶颈 | expert 训练互相污染，even_clash 100%→0% |
+| Soft routing 稀释 | eval 陷阱：expert 100% 实力 eval 只显示 95% | 3 个 noise expert 各贡献 0.25 稀释输出 |
+| Router 分化不足 | top-2 权重差距仅 0.02 | expert 无法真正专精，选择形同虚设 |
+
+**改进任务清单**：
+
+- [ ] **9d.1 Per-expert policy/value heads**（P0）
+  - 每个 expert 配备独立 `fc_policy` 和 `fc_value`
+  - MoE forward 改为：各 expert + head 独立输出 → router 加权合并 logits/values
+  - 额外参数：4 × (13566 + 1) ≈ 54K，相对 13.1M 可忽略
+  - 新增测试：per-expert head 独立性、forward 输出形状
+
+- [ ] **9d.2 Top-K 稀疏路由**（P0）
+  - 改 `softmax → topk → renorm` 路由，默认 K=2
+  - 训练时只更新被选中的 expert（计算效率提升）
+  - 推理时可用 K=1（纯 expert 专精）或 K=2（稳健）
+  - 新增测试：top-k 选择逻辑、梯度隔离
+  - CLI 参数：`--routing-topk {1,2,4}`
+
+- [ ] **9d.3 Router 辅助损失**（P1）
+  - 负载均衡损失（Switch Transformer 风格）：`L_balance = N × Σ(f_i × P_i)`
+  - 可选 expert 分化损失：鼓励不同 expert 对不同配置产生不同输出
+  - `total_loss = ppo_loss + α × balance_loss`，α 从小值开始调
+  - 新增测试：balance loss 计算正确性
+
+- [ ] **9d.4 训练管线适配**（P1）
+  - `trainer.py`：适配 per-expert heads 的 forward/backward
+  - `trainer.py`：适配 top-k 路由的梯度隔离（未选中 expert 不更新）
+  - `trainer.py`：集成 auxiliary loss 到 PPO update
+  - `scripts/train.py`：新增 `--routing-topk`、`--balance-loss-weight` CLI 参数
+
+- [ ] **9d.5 验证训练**（P2）
+  - 4 配置 300K 步 Stage 2 + 100K 步 Stage 3
+  - 评估：per-expert 独立能力 + router 分化度 + 整体胜率
+  - 对比 T9c baseline：平均胜率、遗忘率、router 权重分布
+
+- [ ] **9d.6 训练报告**（P2）
+  - 写入 `docs/t9d-training-report.md`
+  - 包含：架构变更说明、T9c vs T9d 对比表、各改进项消融分析
+
+**退出标准**：
+- [ ] Per-expert heads 实现完整，各 expert 输出互不干扰
+- [ ] Top-K 路由实现，K 可配置
+- [ ] Router auxiliary loss 实现且可调权重
+- [ ] 4 配置训练 avg ≥ 45%（T9c 为 32.5%）
+- [ ] 遗忘率 < 10%（T9c 为 15%）
+- [ ] Router top-2 权重差距 > 0.15（T9c 为 0.02）
+- [ ] 训练报告写入 `docs/t9d-training-report.md`
+- [ ] 全量测试通过（850+）
+
+---
+
+#### T9e — MoE 扩展配置训练
+
+> **前置条件**：T9d 架构打磨完成，per-expert heads + Top-K 路由验证有效。
 > 目标是将 MoE 从 4 配置扩展到 8-16 配置，并优化 expert 路由质量。
 
-**目标**：在 T9c 基础上扩展到全部 16 配置，验证 MoE 的可扩展性
+**目标**：在 T9d 基础上扩展到全部 16 配置，验证 MoE 的可扩展性
 
 **核心思路**：
-- T9c 证明 MoE 有效后，本阶段扩大配置覆盖面
+- T9d 打磨好架构后，本阶段扩大配置覆盖面
 - 可能需要增加 expert 数量（4→6 或 4→8）以覆盖更多配置类型
 - 引入经验回放 + MoE 联合训练，双重防遗忘
 
@@ -565,7 +631,7 @@ example/dragon 在 Stage 3 有回退。router 分化程度不够（top-2 差距�
 
 | 阶段 | 配置数 | Expert 数 | 训练方式 | 步数 |
 |------|--------|----------|---------|------|
-| 扩展 1 | 4→8 | 4 (不变) | 加载 T9c checkpoint，继续三阶段 | 150K-200K |
+| 扩展 1 | 4→8 | 4 (不变) | 加载 T9d checkpoint，继续三阶段 | 150K-200K |
 | 扩展 2 | 8→16 | 6-8 (增加) | 重新三阶段训练，旧 expert 可选冻结 | 200K-300K |
 | 联合优化 | 16 | 最终数量 | 全配置 + replay buffer 联合训练 | 100K-200K |
 
@@ -576,20 +642,21 @@ example/dragon 在 Stage 3 有回退。router 分化程度不够（top-2 差距�
 
 **退出标准**：
 - [ ] `num_experts` 可通过 CLI 参数配置（默认 4）
-- [ ] 从 T9c checkpoint 加载并继续训练
+- [ ] 从 T9d checkpoint 加载并继续训练
 - [ ] 8 配置扩展训练完成，平均胜率 ≥ 45%
 - [ ] 16 配置扩展训练完成，平均胜率 ≥ 40%
 - [ ] 灾难性遗忘率 < 15%（已学配置胜率下降不超过 15%）
 - [ ] Replay + MoE 联合训练验证有效
-- [ ] 训练报告写入 `docs/t9d-training-report.md`
-- [ ] 全量测试通过（810+）
+- [ ] 训练报告写入 `docs/t9e-training-report.md`
+- [ ] 全量测试通过（860+）
 
 ---
 
 ### T10+ — 可选扩展（未排期）
 
+- [ ] 并行训练替代轮训（per-expert heads 解决后优先级降低）
+- [ ] Expert 数量消融实验（2/4/8 对比）
 - [ ] Expert 分组策略优化（自动 vs 手动分组）
-- [ ] Expert 数量调参（2/4/8 对比）
 - [ ] MOORE 正交化约束（如果 expert mode collapse）
 - [ ] CP-MoE 持续学习机制（如果仍有遗忘）
 - [ ] 自博弈对手策略多样化（不同风格对手）
