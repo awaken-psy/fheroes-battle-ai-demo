@@ -166,12 +166,13 @@ def _encode_units(grid: np.ndarray, battle: BattleState, my_team: int):
         grid[type_ch, r, c] = type_norm
 
         # Tail cell — existence + wide-tail marker + type index
+        # Bounds check: wide unit tail may extend beyond grid edge
         if unit.is_wide and unit.tail_cell:
             tc, tr = unit.tail_cell
-            grid[base + _CH_EXISTENCE, tr, tc] = 1.0
-            grid[base + _CH_WIDE_TAIL, tr, tc] = 1.0
-            grid[type_ch, tr, tc] = type_norm
-
+            if 0 <= tc < GRID_COLS and 0 <= tr < GRID_ROWS:
+                grid[base + _CH_EXISTENCE, tr, tc] = 1.0
+                grid[base + _CH_WIDE_TAIL, tr, tc] = 1.0
+                grid[type_ch, tr, tc] = type_norm
 
 def _encode_effects(grid: np.ndarray, battle: BattleState):
     """Fill channels 20–29 with status-effect markers.
