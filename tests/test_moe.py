@@ -143,16 +143,16 @@ class TestActiveExpert:
                 else:
                     assert not param.requires_grad, f"Expert {i} should be frozen"
 
-    def test_router_stays_trainable(self):
+    def test_router_frozen(self):
         moe = _make_moe_layer(num_experts=4)
         moe.set_active_expert(0)
-        assert moe.router.weight.requires_grad
-        assert moe.router.bias.requires_grad
+        assert not moe.router.weight.requires_grad
+        assert not moe.router.bias.requires_grad
 
-    def test_merge_stays_trainable(self):
+    def test_merge_frozen(self):
         moe = _make_moe_layer(num_experts=4)
         moe.set_active_expert(0)
-        assert moe.merge.weight.requires_grad
+        assert not moe.merge.weight.requires_grad
 
     def test_inactive_expert_no_gradient(self):
         moe = _make_moe_layer(num_experts=4)
@@ -200,6 +200,12 @@ class TestBattleNetMoE:
         policy, value = model(grid, gvec, mask)
         assert policy.shape == (4, ACTION_DIM)
         assert value.shape == (4, 1)
+
+    def test_extract_bottleneck(self):
+        model = BattleNet(num_experts=4)
+        grid, gvec, _ = _make_inputs(batch_size=4)
+        feat = model.extract_bottleneck(grid, gvec)
+        assert feat.shape == (4, _BOTTLENECK_DIM)
 
     def test_value_range(self):
         model = BattleNet(num_experts=4)
@@ -387,6 +393,7 @@ class TestFreezeUnfreeze:
         assert not model.moe.experts[0][0].weight.requires_grad
         assert not model.moe.experts[1][0].weight.requires_grad
         assert not model.moe.experts[3][0].weight.requires_grad
-        # Router and heads trainable
-        assert model.moe.router.weight.requires_grad
+        # Router and merge frozen (Stage 2 fix), heads trainable
+        assert not model.moe.router.weight.requires_grad
+        assert not model.moe.merge.weight.requires_grad
         assert model.policy_head.weight.requires_grad

@@ -183,17 +183,21 @@ class SoftMoELayer(nn.Module):
     def set_active_expert(self, idx: int) -> None:
         """Freeze all experts except the one at *idx*.
 
-        Router and merge remain trainable so gradients flow through them.
-        The inactive experts still participate in the forward pass (weighted
-        by the router), but their parameters receive no gradient updates.
+        Also freezes router and merge to prevent shared parameters from being
+        polluted by multiple experts' round-robin updates (T9c fix).
 
         Args:
             idx: Expert index to keep trainable (0 <= idx < num_experts).
         """
-        # Freeze all experts
+        # Freeze all experts except idx
         for i, expert in enumerate(self.experts):
             for param in expert.parameters():
                 param.requires_grad = (i == idx)
+        # Freeze router and merge — they must not change during per-expert training
+        for param in self.router.parameters():
+            param.requires_grad = False
+        for param in self.merge.parameters():
+            param.requires_grad = False
 
     def freeze_experts_and_merge(self) -> None:
         """Freeze expert and merge parameters (for Stage 3 router-only training)."""
@@ -321,6 +325,25 @@ class BattleNet(nn.Module):
         )
 
         return policy_logits, value
+
+    def extract_bottleneck(self, grid: torch.Tensor,
+                           global_vec: torch.Tensor) -> torch.Tensor:
+        """Forward through backbone only, return bottleneck features (B, 384).
+
+        Useful for router weight analysis with real game states.
+        """
+        # 1. CNN backbone
+        x = F.relu(self.stem_gn(self.stem_conv(grid[:, :_NUM_ORIG_CHANNELS])))
+        x = self.res_blocks(x)
+        # 2. Unit-type embedding
+        my_type_idx = (grid[:, 33] * _MAX_TYPE_INDEX).round().long().clamp(0, _MAX_TYPE_INDEX)
+        enemy_type_idx = (grid[:, 34] * _MAX_TYPE_INDEX).round().long().clamp(0, _MAX_TYPE_INDEX)
+        my_emb = self.unit_embed(my_type_idx).permute(0, 3, 1, 2)
+        enemy_emb = self.unit_embed(enemy_type_idx).permute(0, 3, 1, 2)
+        # 3. Concat + flatten + bottleneck
+        x = torch.cat([x, my_emb, enemy_emb], dim=1)
+        x = torch.cat([x.flatten(start_dim=1), global_vec], dim=1)
+        return F.relu(self.fc_bottleneck(x))
 
     # -- Freeze / unfreeze helpers (T9c staged training) ------------------
 

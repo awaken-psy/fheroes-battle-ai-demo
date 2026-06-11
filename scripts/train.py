@@ -269,8 +269,13 @@ def main(argv=None):
 
     # ── Train ─────────────────────────────────────────────────────
     while total_steps < args.total_steps:
-        phase, dense_weight = get_curriculum_phase(
-            total_steps, args.phase1_steps, args.phase2_steps)
+        # Stage 2: skip curriculum, use fixed dense reward to avoid
+        # value-head-frozen PPO collapse on reward distribution shift.
+        if args.train_stage == 2:
+            phase, dense_weight = 1, 1.0
+        else:
+            phase, dense_weight = get_curriculum_phase(
+                total_steps, args.phase1_steps, args.phase2_steps)
 
         # Decide opponent for this rollout (T3)
         opponent_model = None
@@ -374,11 +379,32 @@ def main(argv=None):
                 "avg_rounds": eval_info["avg_rounds"],
             }
 
-            # T9c: log router weight distribution
+            # T9c: log router weight distribution using real game states
             if model.moe is not None:
+                from ai.battle_env import BattleEnv
                 with torch.no_grad():
-                    dummy_x = torch.randn(32, 384, device=args.device)
-                    _, rw = model.moe(dummy_x)
+                    all_features = []
+                    for cfg in configs:
+                        env = BattleEnv(cfg)
+                        obs, _ = env.reset(seed=123)
+                        for _ in range(16):
+                            grid_t = torch.tensor(
+                                obs.grid, dtype=torch.float32
+                            ).unsqueeze(0).to(args.device)
+                            gvec_t = torch.tensor(
+                                obs.global_vec, dtype=torch.float32
+                            ).unsqueeze(0).to(args.device)
+                            feat = model.extract_bottleneck(grid_t, gvec_t)
+                            all_features.append(feat)
+                            legal = [a for a in range(13566)
+                                     if obs.legal_mask[a]]
+                            if legal:
+                                obs, _, done, _, _ = env.step(
+                                    random.choice(legal))
+                            if done:
+                                obs, _ = env.reset()
+                    features = torch.cat(all_features, dim=0)
+                    _, rw = model.moe(features)
                     mean_w = rw.mean(dim=0).tolist()
                 eval_log["router_weights"] = [round(w, 4) for w in mean_w]
                 if writer is not None:
