@@ -389,15 +389,15 @@ def main(argv=None):
                         obs, _ = env.reset(seed=123)
                         for _ in range(16):
                             grid_t = torch.tensor(
-                                obs.grid, dtype=torch.float32
+                                obs["grid"], dtype=torch.float32
                             ).unsqueeze(0).to(args.device)
                             gvec_t = torch.tensor(
-                                obs.global_vec, dtype=torch.float32
+                                obs["global"], dtype=torch.float32
                             ).unsqueeze(0).to(args.device)
                             feat = model.extract_bottleneck(grid_t, gvec_t)
                             all_features.append(feat)
                             legal = [a for a in range(13566)
-                                     if obs.legal_mask[a]]
+                                     if obs["mask"][a]]
                             if legal:
                                 obs, _, done, _, _ = env.step(
                                     random.choice(legal))
