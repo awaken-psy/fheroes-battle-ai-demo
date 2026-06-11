@@ -10,6 +10,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ai.env import BattleEnv, register_envs
+from ai.observation import NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS
 from ai.action_space import ACTION_DIM, WAIT_IDX, RETREAT_IDX
 from ai.self_play import (run_episode, random_legal_action,
                            eval_vs_random)
@@ -76,14 +77,14 @@ class TestEnvConstruction:
     def test_creation(self):
         env = BattleEnv(BALANCED_CONFIG)
         assert env.action_space.n == ACTION_DIM
-        assert env.observation_space["grid"].shape == (33, 9, 11)
+        assert env.observation_space["grid"].shape == (NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS)
         assert env.observation_space["global"].shape == (20,)
         assert env.observation_space["mask"].shape == (ACTION_DIM,)
 
     def test_observation_shapes(self):
         env = BattleEnv(BALANCED_CONFIG)
         obs, info = env.reset(seed=0)
-        assert obs["grid"].shape == (33, 9, 11)
+        assert obs["grid"].shape == (NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS)
         assert obs["grid"].dtype == np.float32
         assert obs["global"].shape == (20,)
         assert obs["global"].dtype == np.float32
@@ -164,7 +165,7 @@ class TestEpisodeLifecycle:
         env = BattleEnv(BALANCED_CONFIG)
         for seed in range(5):
             obs, info = env.reset(seed=seed)
-            assert obs["grid"].shape == (33, 9, 11)
+            assert obs["grid"].shape == (NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS)
             assert info["round_num"] == 1
 
     def test_reset_options(self):

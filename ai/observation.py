@@ -1,6 +1,6 @@
 """Observation encoder: BattleState → neural network input tensors.
 
-Encodes the battle state as player-relative feature maps (33×9×11 grid tensor)
+Encodes the battle state as player-relative feature maps (35×9×11 grid tensor)
 and a global scalar vector (20-dim) for input to a CNN-based policy network.
 
 Player-relative encoding
@@ -9,12 +9,14 @@ Always encoded from the current acting unit's perspective.  When team 0 acts,
 "my" = team 0; when team 1 acts, "my" = team 1.  This enables parameter sharing
 across both sides (AlphaStar-style), doubling data efficiency.
 
-Grid channel layout (33 channels × 9 rows × 11 cols)
+Grid channel layout (35 channels × 9 rows × 11 cols)
 -----------------------------------------------------
  0–9:  My units   (existence, hp, count, atk, def, spd, archer, flyer, wide_tail, acted)
 10–19: Enemy units (same layout, offset by 10)
 20–29: Status effects (property-based detection — see ``_encode_effects``)
 30–32: Siege structures (wall HP, moat, towers)
+33:    My unit type index (normalised 0–1, 0 = no unit)
+34:    Enemy unit type index (normalised 0–1, 0 = no unit)
 
 Global vector (20 dims): round, attacker team, unit counts, HP totals,
 hero stats, siege state, morale/luck, current-unit index.
@@ -23,6 +25,7 @@ hero stats, siege state, morale/luck, current-unit index.
 import numpy as np
 from typing import Tuple
 
+from config.units import UNIT_TYPE_INDEX, NUM_UNIT_TYPES
 from engine.battle_state import BattleState
 from engine.unit import Unit
 from engine.castle import MOAT_CELLS
@@ -31,7 +34,7 @@ from engine.castle import MOAT_CELLS
 
 GRID_ROWS = 9
 GRID_COLS = 11
-NUM_GRID_CHANNELS = 33
+NUM_GRID_CHANNELS = 35
 GLOBAL_DIM = 20
 
 # ── Internal normalisation constants ───────────────────────────
@@ -43,6 +46,7 @@ _MAX_SPELL_POINTS = 100  # hero spell-points ceiling
 _MAX_POWER = 15          # hero power ceiling
 _MAX_HERO_STAT = 15      # hero primary-attribute ceiling
 _MAX_DR_STACKS = 5       # Disrupting Ray practical ceiling
+_MAX_TYPE_INDEX = NUM_UNIT_TYPES - 1  # max real unit index (66)
 
 
 # ── Channel index helpers ──────────────────────────────────────
@@ -76,6 +80,10 @@ _CH_WALL = 30
 _CH_MOAT = 31
 _CH_TOWER = 32
 
+# Unit type channels (absolute — T8)
+_CH_MY_TYPE = 33
+_CH_ENEMY_TYPE = 34
+
 
 # ── Public API ─────────────────────────────────────────────────
 
@@ -91,7 +99,7 @@ def encode_observation(
         current_unit: The unit about to act (determines player-relative view).
 
     Returns:
-        grid_tensor:   ``float32`` array of shape ``(33, 9, 11)``
+        grid_tensor:   ``float32`` array of shape ``(35, 9, 11)``
         global_vector: ``float32`` array of shape ``(20,)``
     """
     my_team = current_unit.team
@@ -120,11 +128,12 @@ def _set_on_cells(grid: np.ndarray, ch: int, unit: Unit, value: float = 1.0):
 
 
 def _encode_units(grid: np.ndarray, battle: BattleState, my_team: int):
-    """Fill channels 0–9 (my) and 10–19 (enemy) with unit attributes."""
+    """Fill channels 0–9 (my), 10–19 (enemy), and 33–34 (type index)."""
     initial_counts = getattr(battle, "_initial_counts", {})
 
     for unit in battle.alive():
         base = 0 if unit.team == my_team else 10
+        type_ch = _CH_MY_TYPE if unit.team == my_team else _CH_ENEMY_TYPE
 
         # Normalised attributes
         hp_ratio = (
@@ -135,6 +144,10 @@ def _encode_units(grid: np.ndarray, battle: BattleState, my_team: int):
         atk = unit.effective_attack / _MAX_STAT
         dfn = unit.effective_defense / _MAX_STAT
         spd = unit.speed / _MAX_SPEED
+
+        # Unit type index (T8): 0 = no unit, 1–66 = real units
+        type_idx = UNIT_TYPE_INDEX.get(unit.name, 0)
+        type_norm = type_idx / _MAX_TYPE_INDEX
 
         # Head cell — full attribute suite
         c, r = unit.pos
@@ -149,12 +162,17 @@ def _encode_units(grid: np.ndarray, battle: BattleState, my_team: int):
         # _CH_WIDE_TAIL: only on the tail cell, not the head
         grid[base + _CH_ACTED, r, c] = float(unit._acted)
 
-        # Tail cell — existence + wide-tail marker only
+        # Type index on head cell
+        grid[type_ch, r, c] = type_norm
+
+        # Tail cell — existence + wide-tail marker + type index
+        # Bounds check: wide unit tail may extend beyond grid edge
         if unit.is_wide and unit.tail_cell:
             tc, tr = unit.tail_cell
-            grid[base + _CH_EXISTENCE, tr, tc] = 1.0
-            grid[base + _CH_WIDE_TAIL, tr, tc] = 1.0
-
+            if 0 <= tc < GRID_COLS and 0 <= tr < GRID_ROWS:
+                grid[base + _CH_EXISTENCE, tr, tc] = 1.0
+                grid[base + _CH_WIDE_TAIL, tr, tc] = 1.0
+                grid[type_ch, tr, tc] = type_norm
 
 def _encode_effects(grid: np.ndarray, battle: BattleState):
     """Fill channels 20–29 with status-effect markers.

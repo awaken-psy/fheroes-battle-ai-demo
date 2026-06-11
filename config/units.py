@@ -664,3 +664,11 @@ UNIT_TAGS = {
     "Earth Elemental": ["elemental"], "Air Elemental": ["elemental"],
     "Fire Elemental": ["elemental"], "Water Elemental": ["elemental"],
 }
+
+# ── Unit type index for observation encoding (T8) ──────────────
+# Canonical alphabetical ordering.  Index 0 is reserved for "no unit"
+# (used as padding_idx in the embedding layer).  Real units map to 1–63.
+
+UNIT_TYPE_LIST = sorted(UNIT_TYPES.keys())  # 63 entries, alphabetical
+UNIT_TYPE_INDEX = {name: i + 1 for i, name in enumerate(UNIT_TYPE_LIST)}  # 1–63
+NUM_UNIT_TYPES = len(UNIT_TYPE_LIST) + 1  # 64 (index 0 = padding)
