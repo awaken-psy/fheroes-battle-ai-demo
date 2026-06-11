@@ -73,8 +73,11 @@ stage "Step 2/4: 安装依赖"
 
 cd "${WORK_DIR}"
 
-info "安装项目依赖..."
-${PYTHON} -m pip install -e . --quiet
+# 添加项目目录到 PYTHONPATH（替代 pip install -e .）
+export PYTHONPATH="${WORK_DIR}:${PYTHONPATH:-}"
+
+info "安装运行时依赖（torch 已预装）..."
+${PYTHON} -m pip install gymnasium numpy tensorboard --quiet
 
 info "验证安装..."
 ${PYTHON} -c "
