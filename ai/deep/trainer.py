@@ -495,7 +495,13 @@ class PPOTrainer:
                     with torch.no_grad():
                         bottleneck = self.model.extract_bottleneck(
                             mb_grid, mb_global)
-                    router_logits = self.model.moe.router(bottleneck)
+                        # Expert-aware routing: compute expert features first
+                        expert_feats = []
+                        for ei in range(self.model.moe.num_experts):
+                            expert_feats.append(
+                                self.model.moe.experts[ei](bottleneck))
+                        router_input = torch.cat(expert_feats, dim=-1)
+                    router_logits = self.model.moe.router(router_input)
                     bl_loss = self.model.moe.balance_loss(router_logits)
 
                 # Total loss (scaled by accumulation factor)

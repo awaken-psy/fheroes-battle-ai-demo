@@ -36,6 +36,27 @@ def _random_legal_action(mask: list) -> int:
     return random.choice(legal) if legal else 0
 
 
+def extract_expert_features(
+    model: torch.nn.Module,
+    bottleneck: torch.Tensor,
+) -> torch.Tensor:
+    """Extract expert hidden features for router classification.
+
+    Returns the concatenation of [expert_0_hidden, ..., expert_E_hidden].
+    Each expert_i(bottleneck) produces a (B, hidden_dim) vector that reflects
+    how that expert processes the input.  Since Phase 1 trained experts on
+    different configs, these expert-specific outputs carry config-discriminative
+    signal that the raw bottleneck lacks.
+
+    Output dimension: num_experts * hidden_dim (matches router input).
+    """
+    parts = []
+    for i in range(model.num_experts):
+        expert_feat = model.moe.experts[i](bottleneck)  # (B, hidden_dim)
+        parts.append(expert_feat)
+    return torch.cat(parts, dim=-1)  # (B, E * hidden_dim)
+
+
 def collect_features(
     model: torch.nn.Module,
     config: dict,
@@ -45,10 +66,11 @@ def collect_features(
     device: str = "cpu",
     seed: int = 0,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Collect bottleneck features for one config.
+    """Collect expert-enhanced features for one config.
 
-    Uses random-legal actions for speed (no model inference needed for
-    action selection).  The model is only used for ``extract_bottleneck()``.
+    Uses random-legal actions for speed.  The model extracts bottleneck
+    features, then passes them through all experts to capture per-expert
+    processing differences — the key signal for router classification.
 
     Parameters
     ----------
@@ -65,7 +87,7 @@ def collect_features(
 
     Returns
     -------
-    features : Tensor (N, 384)
+    features : Tensor (N, E * hidden_dim) — matches router input dim
     labels : Tensor (N,)
     """
     model.eval()
@@ -75,6 +97,7 @@ def collect_features(
     env = BattleEnv(config)
     obs, _ = env.reset(seed=seed)
     collected = 0
+    steps_in_episode = 0
 
     with torch.no_grad():
         while collected < num_samples:
@@ -85,19 +108,22 @@ def collect_features(
                 obs["global"], dtype=torch.float32
             ).unsqueeze(0).to(device)
 
-            feat = model.extract_bottleneck(grid_t, gvec_t)  # (1, 384)
+            bottleneck = model.extract_bottleneck(grid_t, gvec_t)  # (1, 384)
+            feat = extract_expert_features(model, bottleneck)      # (1, 384+E*H)
             features_list.append(feat.squeeze(0).cpu())
             collected += 1
 
             # Step with random legal action
             action = _random_legal_action(obs["mask"])
             obs, _, terminated, truncated, _ = env.step(action)
+            steps_in_episode += 1
             done = terminated or truncated
 
-            if done or env._step_count > max_steps_per_episode:
+            if done or steps_in_episode > max_steps_per_episode:
                 obs, _ = env.reset(seed=rng.randint(0, 2**31))
+                steps_in_episode = 0
 
-    features = torch.stack(features_list)  # (N, 384)
+    features = torch.stack(features_list)
     labels = torch.full((collected,), config_id, dtype=torch.long)
     return features, labels
 
@@ -121,10 +147,22 @@ def main():
                       routing_topk=2)
     ckpt = torch.load(args.checkpoint, map_location=args.device,
                       weights_only=False)
-    model.load_state_dict(ckpt["model"])
+    # Router weight shape changed (expert-aware routing: 384→1536 input dim).
+    # Filter out mismatched keys and load rest, then init router randomly.
+    pretrained = ckpt["model"]
+    model_dict = model.state_dict()
+    matched = {
+        k: v for k, v in pretrained.items()
+        if k in model_dict and v.shape == model_dict[k].shape
+    }
+    model_dict.update(matched)
+    model.load_state_dict(model_dict)
+    skipped = set(pretrained.keys()) - set(matched.keys())
     model.to(args.device)
     model.eval()
-    print(f"Loaded model from {args.checkpoint}", flush=True)
+    print(f"Loaded model from {args.checkpoint} "
+          f"({len(matched)} keys matched, {len(skipped)} skipped: {skipped})",
+          flush=True)
 
     # Collect features for each config
     all_features = []

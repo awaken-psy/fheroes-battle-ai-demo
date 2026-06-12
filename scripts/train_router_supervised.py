@@ -60,6 +60,22 @@ class RouterDataset(Dataset):
         return self.features[idx], self.labels[idx]
 
 
+def _to_router_input(model: BattleNet, features: torch.Tensor) -> torch.Tensor:
+    """Convert bottleneck features to router input (expert hidden concat).
+
+    If features already match router input dim, return as-is.
+    Otherwise, compute expert hidden features from bottleneck.
+    """
+    router_dim = model.moe.num_experts * model.moe.hidden_dim
+    if features.shape[-1] == router_dim:
+        return features  # already expert features
+    # Compute expert features from bottleneck
+    parts = []
+    for i in range(model.moe.num_experts):
+        parts.append(model.moe.experts[i](features))
+    return torch.cat(parts, dim=-1)
+
+
 def train_router(
     model: BattleNet,
     train_feats: torch.Tensor,
@@ -73,14 +89,20 @@ def train_router(
 ) -> dict[str, list]:
     """Train only the router layer via cross-entropy classification.
 
-    Freezes backbone, experts, and heads.  Only the 1540 router parameters
-    are updated.
+    Freezes backbone, experts, and heads.  Only the router parameters
+    are updated.  Accepts either bottleneck features (384-dim) or
+    pre-computed expert features (E*hidden_dim).
 
     Returns history dict with train/val loss and accuracy per epoch.
     """
     # Freeze everything except router
     model.freeze_backbone()
     model.moe.freeze_all_experts()
+
+    # Convert to router input if needed
+    with torch.no_grad():
+        train_router_in = _to_router_input(model, train_feats)
+        val_router_in = _to_router_input(model, val_feats)
 
     # Verify only router has gradients
     router_params = list(model.moe.router.parameters())
@@ -95,8 +117,8 @@ def train_router(
     optimizer = torch.optim.Adam(router_params, lr=lr)
     criterion = nn.CrossEntropyLoss()
 
-    train_ds = RouterDataset(train_feats.to(device), train_labels.to(device))
-    val_ds = RouterDataset(val_feats.to(device), val_labels.to(device))
+    train_ds = RouterDataset(train_router_in.to(device), train_labels.to(device))
+    val_ds = RouterDataset(val_router_in.to(device), val_labels.to(device))
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size * 2)
 
@@ -162,9 +184,15 @@ def evaluate_router(
     batch_size: int = 512,
     device: str = "cpu",
 ) -> dict:
-    """Evaluate router classification accuracy and confusion matrix."""
+    """Evaluate router classification accuracy and confusion matrix.
+
+    Accepts either bottleneck features (384-dim) or pre-computed
+    expert features (E*hidden_dim).
+    """
     model.moe.router.eval()
-    ds = TensorDataset(features.to(device), labels.to(device))
+    with torch.no_grad():
+        router_in = _to_router_input(model, features)
+    ds = TensorDataset(router_in.to(device), labels.to(device))
     loader = DataLoader(ds, batch_size=batch_size)
     num_classes = labels.max().item() + 1
 
@@ -239,7 +267,12 @@ def verify_router(
                 ).unsqueeze(0).to(device)
 
                 feat = model.extract_bottleneck(grid_t, gvec_t)
-                logits = model.moe.router(feat)
+                # Expert-aware routing: compute expert features first
+                expert_feats = []
+                for ei in range(model.moe.num_experts):
+                    expert_feats.append(model.moe.experts[ei](feat))
+                router_input = torch.cat(expert_feats, dim=-1)
+                logits = model.moe.router(router_input)
                 pred = logits.argmax(dim=1).item()
 
                 if pred == idx:
@@ -296,10 +329,22 @@ def main():
     model = BattleNet(num_experts=4, moe_hidden_dim=384, routing_topk=2)
     ckpt = torch.load(args.checkpoint, map_location=args.device,
                       weights_only=False)
-    model.load_state_dict(ckpt["model"])
+    # Router weight shape changed (expert-aware routing: 384→1536 input dim).
+    # Filter out mismatched keys and load rest, then init router randomly.
+    pretrained = ckpt["model"]
+    model_dict = model.state_dict()
+    matched = {
+        k: v for k, v in pretrained.items()
+        if k in model_dict and v.shape == model_dict[k].shape
+    }
+    model_dict.update(matched)
+    model.load_state_dict(model_dict)
+    skipped = set(pretrained.keys()) - set(matched.keys())
     model.to(args.device)
     model.eval()
-    print(f"Loaded model from {args.checkpoint}", flush=True)
+    print(f"Loaded model from {args.checkpoint} "
+          f"({len(matched)} keys matched, {len(skipped)} skipped: {skipped})",
+          flush=True)
 
     if args.verify_only:
         if not args.configs:

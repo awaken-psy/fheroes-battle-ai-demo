@@ -420,12 +420,12 @@ class TestParameterCount:
         # MoE removes shared heads, adds per-expert heads (hidden_dim=128):
         # Removed: policy_head(384→13566)=5,222,910 + value_head(384→1)=385 = 5,223,295
         # Added:
-        #   Router: (384*4+4) = 1,540
+        #   Router (expert-aware): (4*128*4+4) = 2,052
         #   4 experts: 49,280 * 4 = 197,120
         #   4 policy_heads: 1,750,014 * 4 = 7,000,056
         #   4 value_heads: 129 * 4 = 516
-        # Net = (1,540 + 197,120 + 7,000,056 + 516) - 5,223,295 = 1,975,937
-        expected = 1_975_937
+        # Net = (2,052 + 197,120 + 7,000,056 + 516) - 5,223,295 = 1,976,449
+        expected = 1_976_449
         assert added == expected, f"Expected {expected} added params, got {added}"
 
     def test_moe_hidden_dim_384_parameter_count(self):
@@ -439,12 +439,12 @@ class TestParameterCount:
         # MoE removes shared heads, adds per-expert heads (hidden_dim=384):
         # Removed: policy_head(384→13566)=5,222,910 + value_head(384→1)=385 = 5,223,295
         # Added:
-        #   Router: (384*4+4) = 1,540
+        #   Router (expert-aware): (4*384*4+4) = 6,148
         #   4 experts: (384*384+384) * 4 = 591,360
         #   4 policy_heads: (384*13566+13566) * 4 = 20,891,640
         #   4 value_heads: (384*1+1) * 4 = 1,540
-        # Net = (1,540 + 591,360 + 20,891,640 + 1,540) - 5,223,295 = 16,262,785
-        expected = 16_262_785
+        # Net = (6,148 + 591,360 + 20,891,640 + 1,540) - 5,223,295 = 16,267,393
+        expected = 16_267_393
         assert added == expected, f"Expected {expected} added params, got {added}"
 
     def test_moe_hidden_dim_affects_count(self):

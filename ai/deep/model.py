@@ -149,8 +149,11 @@ class SoftMoELayer(nn.Module):
         self.action_dim = action_dim
         self.top_k = min(top_k, num_experts)
 
-        # Router
-        self.router = nn.Linear(input_dim, num_experts)
+        # Router — takes concatenated expert hidden features as input
+        # (expert-aware routing: route based on how each expert responds)
+        self.router = nn.Linear(
+            num_experts * hidden_dim, num_experts
+        )
 
         # Per-expert networks
         self.experts = nn.ModuleList([
@@ -181,6 +184,11 @@ class SoftMoELayer(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Forward pass with per-expert heads and top-K routing.
 
+        Uses expert-aware routing: computes all expert hidden features first,
+        then routes based on the concatenated expert outputs.  This lets the
+        router see how each expert responds to the input — a much stronger
+        signal than routing on the raw bottleneck alone.
+
         Args:
             x: ``(B, input_dim)`` feature tensor (bottleneck output).
 
@@ -190,7 +198,16 @@ class SoftMoELayer(nn.Module):
             weights: ``(B, num_experts)`` — router weights (sparse if top_K < E).
         """
         B = x.shape[0]
-        router_logits = self.router(x)  # (B, E)
+
+        # 1. Compute all expert hidden features (before routing)
+        expert_feats = []
+        for i in range(self.num_experts):
+            feat = self.experts[i](x)        # (B, hidden_dim)
+            expert_feats.append(feat)
+
+        # 2. Route based on concatenated expert features
+        router_input = torch.cat(expert_feats, dim=-1)  # (B, E * hidden_dim)
+        router_logits = self.router(router_input)        # (B, E)
 
         # Top-K sparse routing
         if self.top_k < self.num_experts:
@@ -201,12 +218,12 @@ class SoftMoELayer(nn.Module):
         else:
             weights = F.softmax(router_logits, dim=-1)  # (B, E)
 
-        # Compute all expert features + per-expert heads
+        # 3. Compute per-expert heads and weighted combination
         all_logits = torch.zeros(B, self.action_dim, device=x.device)
         all_values = torch.zeros(B, 1, device=x.device)
 
         for i in range(self.num_experts):
-            feat = self.experts[i](x)                    # (B, H)
+            feat = expert_feats[i]
             logits_i = self.policy_heads[i](feat)        # (B, action_dim)
             value_i = torch.tanh(self.value_heads[i](feat))  # (B, 1)
             w = weights[:, i:i + 1]                      # (B, 1)
