@@ -114,18 +114,18 @@ class ResidualBlock(nn.Module):
 
 
 class _ResidualExpertBlock(nn.Module):
-    """2-layer residual MLP for expert specialization (T9g).
+    """2-layer MLP for expert specialization (T9g).
 
-    When input_dim == hidden_dim (the hot-start case):
-        output = input + Linear2(ReLU(Linear1(input)))
-        Linear1 identity-init, Linear2 zero-init → initial output = input.
+    Architecture:
+        output = Linear2(ReLU(Linear1(x)))
 
-    When input_dim != hidden_dim:
-        output = Linear2(ReLU(Linear1(input)))
-        Standard 2-layer MLP without residual (dims don't match for skip).
+    Hot-start (input_dim == hidden_dim):
+        Linear1 = identity, Linear2 = identity
+        → output = ReLU(x) = x  (bottleneck features are already non-negative)
+        Training freely modifies both layers → expert-specific outputs.
 
-    The output dimension is always ``hidden_dim``, matching what policy/value
-    heads expect.
+    No residual connection: the full output is determined by expert weights,
+    preventing the pass-through signal from drowning out specialization.
     """
 
     def __init__(self, input_dim: int, hidden_dim: int):
@@ -134,17 +134,10 @@ class _ResidualExpertBlock(nn.Module):
         self.hidden_dim = hidden_dim
         self.linear1 = nn.Linear(input_dim, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-        # Zero-init second layer: initial output = input (when dims match)
-        # or small random contribution (when dims don't match)
-        nn.init.zeros_(self.linear2.weight)
-        nn.init.zeros_(self.linear2.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = F.relu(self.linear1(x))
-        out = self.linear2(h)
-        if self.input_dim == self.hidden_dim:
-            return x + out  # residual: start from input, add learned adjustment
-        return out  # no residual when dims differ
+        return self.linear2(h)
 
 
 # -- Soft MoE Layer (T9d) -------------------------------------------------
@@ -292,25 +285,25 @@ class SoftMoELayer(nn.Module):
         return self.num_experts * (f * P).sum()
 
     def init_identity_experts(self) -> None:
-        """Initialize expert linear1 with identity mapping when dims match (T9g).
+        """Initialize both expert layers with identity mapping (T9g).
 
-        For the 2-layer residual expert block:
-        - linear1: identity init (preserves hot-start, same as T9e)
-        - linear2: zero-init (must re-zero after BattleNet._init_weights overwrites)
+        For the 2-layer MLP expert (no residual):
+        - linear1: identity init → ReLU(identity(x)) = ReLU(x) = x (non-negative)
+        - linear2: identity init → identity(ReLU(x)) = x
 
-        Combined: expert(x) = x + 0 = x at initialization, which preserves
-        the pre-trained policy from weight transfer (hot start).
+        Combined: expert(x) = x at initialization (hot start preserved).
+        During training, both layers are free to change → full expert-specific
+        output without being dominated by a pass-through residual.
 
         Only applies when ``hidden_dim == input_dim`` (e.g. both 384).
         """
         if self.hidden_dim != self.input_dim:
             return  # dimension mismatch — identity init not applicable
         for i in range(self.num_experts):
-            # Expert is _ResidualExpertBlock — init linear1 as identity
             nn.init.eye_(self.experts[i].linear1.weight)
             nn.init.zeros_(self.experts[i].linear1.bias)
-            # Re-zero linear2 (BattleNet._init_weights may have overwritten it)
-            nn.init.zeros_(self.experts[i].linear2.weight)
+            # Identity init linear2 (overrides _init_weights orthogonal init)
+            nn.init.eye_(self.experts[i].linear2.weight)
             nn.init.zeros_(self.experts[i].linear2.bias)
 
     def freeze_all_experts(self) -> None:
