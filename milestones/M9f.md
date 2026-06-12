@@ -1,8 +1,8 @@
 # T9f — 配置绑定训练
 
-> 解决 T9e Router 冻结问题：Phase 1 强制 expert 专精 → Phase 2 软路由 → Phase 3 微调。
+> 解决 T9e Router 冻结问题：Phase 1 强制 expert 专精 → Phase 2 监督式 router 预训练 → Phase 3 联合微调。
 
-目标：通过配置-expert 绑定打破初始化对称性，让 Router 真正学会路由
+目标：通过配置-expert 绑定打破初始化对称性，用监督学习训练 router
 
 ## 问题分析
 
@@ -16,8 +16,12 @@ T9e 的 Router 完全冻结（30 次 eval 权重不变 `[0.0, 0.0015, 0.2254, 0.
 → Router 不动 → Expert 不分化 → 恶性循环
 ```
 
-**解法**：Phase 1 让每个 expert 只看一种配置数据，强制分化。分化后 router
-的输入（各 expert 输出）就会因配置不同而不同，router 才能获得有效梯度。
+**Phase 2 PPO 软路由失败分析**（4 次尝试全部失败）：
+根因是 MoE 软路由 + PPO **范式不兼容**（多篇 2025-2026 论文确认）：
+PPO 数据分布不断变化 → 主损失梯度淹没 router 学习信号 → router 坍缩到单个 expert。
+
+**新方案**（BAR 论文, Branch-Adapt-Route 2026）：**解耦 router 训练**。
+用监督学习（交叉熵分类）预训练 router，再用极低 LR 做 PPO 联合微调。
 
 ## 任务清单
 - [x] 9f.1 Phase 1 配置绑定训练（200K 步, lr=1e-3）
@@ -26,19 +30,23 @@ T9e 的 Router 完全冻结（30 次 eval 权重不变 `[0.0, 0.0015, 0.2254, 0.
   - best.pt @step 143K：avg 45.6%，even_clash 95%
   - 50K 步不够（相似度 0.994），延长到 200K 后显著分化
   - 遗留：相似度仍 > 0.9 阈值，但 functional differentiation 足够
-- [~] 9f.2 Phase 2 软路由训练 — 4 次尝试均失败
-  - 测试：4 次训练实验，均无法让 router 学习正确的配置路由
-  - 尝试 1：stage 0 + balance_loss=0.1 → router 坍缩到 Expert 3 (95%)，模型质量崩溃
-  - 尝试 2：stage 0 + lr=5e-5 + balance_loss=0.3 → 同样坍缩，avg 0%
-  - 尝试 3：router 随机重置 + stage 0 → 冷启动，全输 0%，无法学习
-  - 尝试 4：新增 Stage 4（config 绑定 + router 可训练）→ router 在分化但输出被污染，0%
-  - 失败根因：PPO 主损失梯度远强于 balance loss，偏置 router 的错误路由污染 expert 输出
-  - 下次入手点：方案 A（硬路由 eval）或方案 B（监督式 router 预训练）
-- [ ] 9f.3 Phase 3 联合微调（待 Phase 2 方案确定）
+- [~] 9f.2 Phase 2 监督式 Router 预训练（BAR 式解耦训练）
+  - PPO 软路由 4 次失败，切换到监督学习方案
+  - [x] 9f.2a 数据收集脚本 `scripts/collect_router_data.py`
+  - [x] 9f.2b 监督训练脚本 `scripts/train_router_supervised.py`
+  - [x] 9f.2c train.py 添加 `--load-router` + router 稳定性监控
+  - [x] 9f.2d 测试 → 10 个新测试 + 856 total passed ✅
+  - [ ] 9f.2e 收集数据 + 训练 router + 验证准确率 ≥ 85%
+  - 下次入手点：在 GPU 上运行 collect → train_router_supervised → verify
+- [ ] 9f.3 Phase 3 联合微调（待 9f.2e router 准确率达标）
+  - 计划：lr=1e-5, 20K-50K 步, balance_loss_weight=0.01
+  - 监控：router_w_cos_sim > 0.8（不偏离预训练权重太远）
 - [ ] 9f.4 验证训练 + 测试
 
 ## 新增代码
-- `train.py`：新增 `--train-stage 4`（config 绑定 + router 可训练）
+- `scripts/collect_router_data.py`：收集 (bottleneck 特征, config_id) 数据对
+- `scripts/train_router_supervised.py`：用交叉熵分类训练 router（1540 参数）
+- `train.py`：新增 `--load-router` 参数 + `router_w_delta`/`router_w_cos_sim` 指标
 
 ## 配置-Expert 绑定
 - Expert 0 → even_clash.json

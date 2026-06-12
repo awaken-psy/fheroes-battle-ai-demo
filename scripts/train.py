@@ -164,6 +164,9 @@ def parse_args(argv=None):
     p.add_argument("--load-backbone", type=str, default=None,
                    help="Load backbone weights from a non-MoE checkpoint "
                         "(for Stage 2 bootstrap)")
+    p.add_argument("--load-router", type=str, default=None,
+                   help="Load router weights from a supervised-pretrained "
+                        "checkpoint (T9f Phase 2→3 bridge)")
 
     # Curriculum
     p.add_argument("--phase1-steps", type=int, default=10_000,
@@ -304,6 +307,24 @@ def main(argv=None):
     if args.resume:
         total_steps = load_checkpoint(trainer, args.resume)
         log_step(total_steps, {"msg": f"resumed from {args.resume}"})
+
+    # ── T9f: Load pretrained router weights (Phase 2→3 bridge) ────
+    if args.load_router and model.moe is not None:
+        router_ckpt = torch.load(
+            args.load_router, map_location=args.device, weights_only=False)
+        router_state = {
+            k: v for k, v in router_ckpt["model"].items()
+            if k.startswith("moe.router")
+        }
+        model_state = model.state_dict()
+        model_state.update(router_state)
+        model.load_state_dict(model_state)
+        log_step(total_steps, {"msg": f"loaded router from {args.load_router} "
+                                    f"({len(router_state)} keys)"})
+
+    # ── T9f: Save initial router weights for stability tracking ──
+    if model.moe is not None:
+        model._initial_router_weight = model.moe.router.weight.data.clone()
 
     # ── Opponent pool (T3) ────────────────────────────────────────
     pool = None
@@ -472,6 +493,18 @@ def main(argv=None):
                     for ei, w in enumerate(mean_w):
                         writer.add_scalar(
                             f"router/expert_{ei}_weight", w, total_steps)
+
+                # T9f: router stability tracking (vs initial pretrained weights)
+                if hasattr(model, "_initial_router_weight"):
+                    import torch.nn.functional as _F
+                    rw = model.moe.router.weight.data
+                    iw = model._initial_router_weight
+                    eval_log["router_w_delta"] = round(
+                        (rw - iw).norm().item(), 4)
+                    eval_log["router_w_cos_sim"] = round(
+                        _F.cosine_similarity(
+                            rw.unsqueeze(0), iw.unsqueeze(0)
+                        ).item(), 4)
 
             log_eval(total_steps, eval_log)
 

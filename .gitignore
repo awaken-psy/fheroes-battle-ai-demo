@@ -8,3 +8,4 @@ dist/
 checkpoints/
 results/
 runs/
+data/*.pt
