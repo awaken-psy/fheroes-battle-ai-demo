@@ -1,4 +1,7 @@
-# T9e — MoE 热启动训练
+# T9e — MoE 热启动训练 ✅ 训练完成
+
+> 代码正确（846 测试通过），训练 best avg 56.25% 超过 T9c，但 MoE 退化为单 expert。
+> 详见 T9f 的配置绑定方案。
 
 目标：通过 hidden_dim=384 + 恒等初始化 + 共享 head 权重转移，解决 T9d 冷启动问题
 
@@ -7,7 +10,7 @@
 - [x] 9e.2 Expert 恒等初始化
 - [x] 9e.3 共享 head 权重转移逻辑
 - [x] 9e.4 联合训练（backbone 冻结）
-- [ ] 9e.5 验证训练 + 测试
+- [x] 9e.5 验证训练 + 测试
 
 ## 测试记录
 - [x] 9e.1 Expert hidden_dim 升级到 384
@@ -18,102 +21,47 @@
   - 测试：单测 3 项 → 权重复制/维度不匹配跳过/转移后所有 expert 输出一致
 - [x] 9e.4 联合训练（代码就绪，无新代码改动）
   - 测试：全量 846 测试通过，0 失败
-  - 遗留：无
+- [x] 9e.5 验证训练 300K 步
+  - 测试：best avg 56.25% @ step 143K，final avg 38.75%
+  - 遗留：Router 完全冻结，MoE 退化为单 expert
 
-## 9e.1 Expert hidden_dim 升级到 384
+## 训练结果（300K 步，24.3 分钟，RTX 3070）
 
-**改动文件**: `ai/deep/model.py`
+**29 次 eval 汇总**：
 
-**当前**: expert = Linear(384→128) + ReLU, head = Linear(128→13566)
-**目标**: expert = Linear(384→384) + ReLU, head = Linear(384→13566)
+| Step | even_clash | example | dragon | mage | avg |
+|------|-----------|---------|--------|------|-----|
+| 50K | 100% | 12.5% | 40% | 0% | 38.1% |
+| 100K | 100% | 70% | 30% | 0% | 50.0% |
+| **143K (best)** | **100%** | **45%** | **27.5%** | **52.5%** | **56.25%** |
+| 153K | 100% | 62.5% | 22.5% | 37.5% | 55.6% |
+| 235K | 100% | 30% | 32.5% | 40% | 50.6% |
+| 297K (final) | 100% | 12.5% | 32.5% | 10% | 38.75% |
 
-**具体改动**:
-- `SoftMoELayer.__init__`: experts 改为 `nn.Linear(input_dim, input_dim)` 当 `hidden_dim == input_dim` 时
-  - 或直接用传入的 hidden_dim=384
-- `SoftMoELayer.__init__`: policy_heads 改为 `nn.Linear(384, action_dim)`
-- `SoftMoELayer.__init__`: value_heads 改为 `nn.Linear(384, 1)`
+**各配置最佳胜率**：even_clash=100%, example=75%(120K), dragon=42.5%(215K), mage=52.5%(143K)
 
-**参数量变化**:
-- 删除: 4 × expert(384→128) = 197K, 4 × policy_head(128→13566) = 6.96M, 4 × value_head(128→1) = 516
-- 新增: 4 × expert(384→384) = 591K, 4 × policy_head(384→13566) = 20.89M, 4 × value_head(384→1) = 1.54K
-- 净增: ~14.3M (15.1M → ~29.4M)
+**对比**：
 
-**CLI**: `--moe-hidden-dim 384`（从默认 128 改为 384）
+| 指标 | T9c | T9e best | T9e final |
+|------|-----|----------|-----------|
+| avg | 32.5% | **56.25%** | 38.75% |
+| even_clash | 85% | **100%** | 100% |
+| example | 17.5% | **75%** | 12.5% |
+| dragon | 15% | **42.5%** | 32.5% |
+| mage_duel | 40% | **52.5%** | 10% |
 
-## 9e.2 Expert 恒等初始化
+**三个核心问题**：
 
-**改动文件**: `ai/deep/model.py`
+1. **MoE 退化为单 expert**：Expert 3 获得 63-77% 路由权重，MoE vs Expert3-only logits diff 仅 0.025
+2. **Router 完全冻结**：30 次 eval router weights 完全相同 `[0.0, 0.0015, 0.2254, 0.7731]`
+   - 根因：所有 expert 初始相同 → 改变路由不影响输出 → 主损失对 router 梯度 = 0
+   - 只有 balance loss (权重 0.01) 提供梯度，太弱
+3. **后期严重遗忘**：143K 后 example 从 45%→12.5%，mage_duel 从 52.5%→10%
 
-**原理**: bottleneck 输出已经过 `F.relu(self.fc_bottleneck(x))`，所有特征非负。
-恒等矩阵初始化 expert 的 weight → expert(x) = ReLU(W·x + b) = ReLU(x + 0) = x。
-
-**具体改动**:
-- `SoftMoELayer.__init__` 中，当 `hidden_dim == input_dim` 时：
-  ```python
-  nn.init.eye_(self.experts[i][0].weight)  # 384×384 单位矩阵
-  nn.init.zeros_(self.experts[i][0].bias)
-  ```
-- 当 hidden_dim ≠ input_dim 时保持原有 orthogonal 初始化（向后兼容）
-
-**验证**: 初始化后 forward 应与 shared heads 输出近似一致
-
-## 9e.3 共享 head 权重转移逻辑
-
-**改动文件**: `scripts/train.py`（或在 `ai/deep/pipeline.py` 中新增函数）
-
-**逻辑**:
-1. 加载 backbone checkpoint（T9b best.pt）
-2. 从旧 checkpoint 读取 `policy_head.weight`, `policy_head.bias`, `value_head.weight`, `value_head.bias`
-3. 复制到 MoE 的每个 per-expert head：
-   ```python
-   old_ckpt = torch.load(path)
-   for i in range(model.num_experts):
-       model.moe.policy_heads[i].weight.data.copy_(old_ckpt['model']['policy_head.weight'])
-       model.moe.policy_heads[i].bias.data.copy_(old_ckpt['model']['policy_head.bias'])
-       model.moe.value_heads[i].weight.data.copy_(old_ckpt['model']['value_head.weight'])
-       model.moe.value_heads[i].bias.data.copy_(old_ckpt['model']['value_head.bias'])
-   ```
-4. 维度匹配检查：只有当 `hidden_dim == _BOTTLENECK_DIM` 时才执行转移
-
-**位置**: 在 `--load-backbone` 加载完成后执行，仅在 `--use-moe` 且 checkpoint 为非 MoE 时
-
-## 9e.4 联合训练
-
-**不需要代码改动**，只需组合正确的 CLI 参数：
-
-```bash
-uv run python scripts/train.py --use-moe --num-experts 4 --routing-topk 2 \
-  --moe-hidden-dim 384 \
-  --load-backbone checkpoints/t9b-replay/best.pt \
-  --train-stage 2 \
-  --config configs/even_clash.json configs/example.json \
-          configs/dragon_battle.json configs/mage_duel.json \
-  --total-steps 300000 --device cuda --lr-schedule cosine \
-  --tensorboard --eval-interval 10240 --eval-games 40 \
-  --balance-loss-weight 0.01 \
-  --checkpoint-dir checkpoints/t9e-hotstart
-```
-
-**注意**: `--train-stage 2` 冻结 backbone 但不冻结 router（不同于 T9d 的 set_active_expert）。
-需要验证当前 Stage 2 逻辑是否正确——它只调 `model.freeze_backbone()`，不调 `set_active_expert`。
-
-## 9e.5 验证训练 + 测试
-
-**测试**:
-- test_moe.py 参数量测试需要更新（hidden_dim=384 时参数量不同）
-- 新增测试：恒等初始化验证（forward 输出与 shared heads 近似）
-- 新增测试：权重转移验证（转移后 per-expert head 权重 == old shared head 权重）
-- 全量 827 测试通过
-
-**训练验证**:
-- 300K 步完成后，各配置胜率对比 T9c baseline
-- Router weights 是否分化
-- Balance loss 趋势
-
-## 退出标准
-- [ ] Expert hidden_dim=384 + 恒等初始化实现
-- [ ] 共享 head 权重成功转移到 per-expert heads
-- [ ] 4 配置训练 avg ≥ 45%（T9c 为 32.5%）
-- [ ] even_clash ≥ 90%（不退化）
-- [ ] Router 权重分化，top-2 差距 > 0.10
-- [ ] 全量测试通过（827+）
+**退出标准达成**：
+- [x] Expert hidden_dim=384 + 恒等初始化实现
+- [x] 共享 head 权重成功转移到 per-expert heads
+- [x] 4 配置训练 avg ≥ 45%（best 56.25% ✅，final 38.75%）
+- [x] even_clash ≥ 90%（100% ✅）
+- [ ] ~~Router 权重分化~~（完全冻结，未达成）
+- [x] 全量测试通过（846）

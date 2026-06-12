@@ -110,6 +110,43 @@ class ResidualBlock(nn.Module):
         return F.relu(out + identity)
 
 
+# -- Residual Expert Block (T9g) -------------------------------------------
+
+
+class _ResidualExpertBlock(nn.Module):
+    """2-layer residual MLP for expert specialization (T9g).
+
+    When input_dim == hidden_dim (the hot-start case):
+        output = input + Linear2(ReLU(Linear1(input)))
+        Linear1 identity-init, Linear2 zero-init → initial output = input.
+
+    When input_dim != hidden_dim:
+        output = Linear2(ReLU(Linear1(input)))
+        Standard 2-layer MLP without residual (dims don't match for skip).
+
+    The output dimension is always ``hidden_dim``, matching what policy/value
+    heads expect.
+    """
+
+    def __init__(self, input_dim: int, hidden_dim: int):
+        super().__init__()
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.linear1 = nn.Linear(input_dim, hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+        # Zero-init second layer: initial output = input (when dims match)
+        # or small random contribution (when dims don't match)
+        nn.init.zeros_(self.linear2.weight)
+        nn.init.zeros_(self.linear2.bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = F.relu(self.linear1(x))
+        out = self.linear2(h)
+        if self.input_dim == self.hidden_dim:
+            return x + out  # residual: start from input, add learned adjustment
+        return out  # no residual when dims differ
+
+
 # -- Soft MoE Layer (T9d) -------------------------------------------------
 
 
@@ -155,12 +192,11 @@ class SoftMoELayer(nn.Module):
             num_experts * hidden_dim, num_experts
         )
 
-        # Per-expert networks
+        # Per-expert networks — 2-layer residual MLP (T9g)
+        # output = x + Linear2(ReLU(Linear1(x)))
+        # Much stronger expressiveness than single Linear+ReLU.
         self.experts = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(input_dim, hidden_dim),
-                nn.ReLU(),
-            )
+            _ResidualExpertBlock(input_dim, hidden_dim)
             for _ in range(num_experts)
         ])
 
@@ -256,23 +292,26 @@ class SoftMoELayer(nn.Module):
         return self.num_experts * (f * P).sum()
 
     def init_identity_experts(self) -> None:
-        """Initialize experts with identity mapping when hidden_dim == input_dim.
+        """Initialize expert linear1 with identity mapping when dims match (T9g).
 
-        When called, expert(x) = ReLU(I·x + 0) = ReLU(x) = x for non-negative
-        inputs (bottleneck output is already ReLU'd).  Combined with shared head
-        weight transfer, this gives each expert the same initial policy as the
-        pre-trained shared heads — a "hot start" that avoids T9d's cold-start
-        failure.
+        For the 2-layer residual expert block:
+        - linear1: identity init (preserves hot-start, same as T9e)
+        - linear2: zero-init (must re-zero after BattleNet._init_weights overwrites)
+
+        Combined: expert(x) = x + 0 = x at initialization, which preserves
+        the pre-trained policy from weight transfer (hot start).
 
         Only applies when ``hidden_dim == input_dim`` (e.g. both 384).
-        Otherwise, the default orthogonal init from ``_init_weights`` is kept.
         """
         if self.hidden_dim != self.input_dim:
             return  # dimension mismatch — identity init not applicable
         for i in range(self.num_experts):
-            # Expert is Sequential(Linear, ReLU) — init the Linear layer
-            nn.init.eye_(self.experts[i][0].weight)
-            nn.init.zeros_(self.experts[i][0].bias)
+            # Expert is _ResidualExpertBlock — init linear1 as identity
+            nn.init.eye_(self.experts[i].linear1.weight)
+            nn.init.zeros_(self.experts[i].linear1.bias)
+            # Re-zero linear2 (BattleNet._init_weights may have overwritten it)
+            nn.init.zeros_(self.experts[i].linear2.weight)
+            nn.init.zeros_(self.experts[i].linear2.bias)
 
     def freeze_all_experts(self) -> None:
         """Freeze all expert + head parameters."""

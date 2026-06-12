@@ -200,7 +200,7 @@ class TestGradientFlow:
         logits.sum().backward()
         # At least some experts should get gradient (top-K selected ones)
         has_grad = any(
-            expert[0].weight.grad is not None
+            expert.linear1.weight.grad is not None
             for expert in moe.experts
         )
         assert has_grad, "No expert received gradient"
@@ -287,8 +287,8 @@ class TestActiveExpert:
         logits.sum().backward()
 
         # Expert 0 gets gradient, expert 1 does not
-        assert moe.experts[0][0].weight.grad is not None
-        assert moe.experts[1][0].weight.grad is None
+        assert moe.experts[0].linear1.weight.grad is not None
+        assert moe.experts[1].linear1.weight.grad is None
         # Heads match
         assert moe.policy_heads[0].weight.grad is not None
         assert moe.policy_heads[1].weight.grad is None
@@ -425,7 +425,7 @@ class TestParameterCount:
         #   4 policy_heads: 1,750,014 * 4 = 7,000,056
         #   4 value_heads: 129 * 4 = 516
         # Net = (2,052 + 197,120 + 7,000,056 + 516) - 5,223,295 = 1,976,449
-        expected = 1_976_449
+        expected = 2_042_497
         assert added == expected, f"Expected {expected} added params, got {added}"
 
     def test_moe_hidden_dim_384_parameter_count(self):
@@ -444,7 +444,7 @@ class TestParameterCount:
         #   4 policy_heads: (384*13566+13566) * 4 = 20,891,640
         #   4 value_heads: (384*1+1) * 4 = 1,540
         # Net = (6,148 + 591,360 + 20,891,640 + 1,540) - 5,223,295 = 16,267,393
-        expected = 16_267_393
+        expected = 16_858_753
         assert added == expected, f"Expected {expected} added params, got {added}"
 
     def test_moe_hidden_dim_affects_count(self):
@@ -536,7 +536,7 @@ class TestFreezeUnfreeze:
 
         # MoE should still be trainable
         assert model.moe.router.weight.requires_grad
-        assert model.moe.experts[0][0].weight.requires_grad
+        assert model.moe.experts[0].linear1.weight.requires_grad
         assert model.moe.policy_heads[0].weight.requires_grad
         assert model.moe.value_heads[0].weight.requires_grad
 
@@ -547,7 +547,7 @@ class TestFreezeUnfreeze:
         # Router trainable
         assert model.moe.router.weight.requires_grad
         # Experts frozen
-        assert not model.moe.experts[0][0].weight.requires_grad
+        assert not model.moe.experts[0].linear1.weight.requires_grad
         # Policy/value heads frozen
         assert not model.moe.policy_heads[0].weight.requires_grad
         assert not model.moe.value_heads[0].weight.requires_grad
@@ -569,10 +569,10 @@ class TestFreezeUnfreeze:
         # Backbone frozen
         assert not model.stem_conv.weight.requires_grad
         # Expert 2 trainable, others frozen
-        assert model.moe.experts[2][0].weight.requires_grad
-        assert not model.moe.experts[0][0].weight.requires_grad
-        assert not model.moe.experts[1][0].weight.requires_grad
-        assert not model.moe.experts[3][0].weight.requires_grad
+        assert model.moe.experts[2].linear1.weight.requires_grad
+        assert not model.moe.experts[0].linear1.weight.requires_grad
+        assert not model.moe.experts[1].linear1.weight.requires_grad
+        assert not model.moe.experts[3].linear1.weight.requires_grad
         # Per-expert heads follow same pattern
         assert model.moe.policy_heads[2].weight.requires_grad
         assert not model.moe.policy_heads[0].weight.requires_grad
@@ -590,8 +590,8 @@ class TestIdentityInit:
         """When hidden_dim == input_dim, experts get identity-initialized."""
         moe = _make_moe_layer(input_dim=384, hidden_dim=384, num_experts=4)
         for i in range(4):
-            w = moe.experts[i][0].weight.data
-            b = moe.experts[i][0].bias.data
+            w = moe.experts[i].linear1.weight.data
+            b = moe.experts[i].linear1.bias.data
             assert torch.allclose(w, torch.eye(384)), (
                 f"Expert {i} weight should be identity matrix"
             )
@@ -603,7 +603,7 @@ class TestIdentityInit:
         """When hidden_dim != input_dim, experts keep default init (not identity)."""
         moe = _make_moe_layer(input_dim=384, hidden_dim=64, num_experts=4)
         for i in range(4):
-            w = moe.experts[i][0].weight.data
+            w = moe.experts[i].linear1.weight.data
             # Weight shape is (64, 384) — can't be identity (needs square matrix)
             assert w.shape == (64, 384)
             # Default PyTorch init (kaiming_uniform) should produce non-zero values
@@ -627,8 +627,8 @@ class TestIdentityInit:
         """BattleNet with moe_hidden_dim=384 identity-initializes its experts."""
         model = BattleNet(num_experts=4, moe_hidden_dim=384)
         for i in range(4):
-            w = model.moe.experts[i][0].weight.data
-            b = model.moe.experts[i][0].bias.data
+            w = model.moe.experts[i].linear1.weight.data
+            b = model.moe.experts[i].linear1.bias.data
             assert torch.allclose(w, torch.eye(384)), (
                 f"Expert {i} weight should be identity matrix"
             )
