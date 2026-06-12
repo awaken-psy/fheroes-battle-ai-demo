@@ -503,7 +503,8 @@ def main(argv=None):
                         (rw - iw).norm().item(), 4)
                     eval_log["router_w_cos_sim"] = round(
                         _F.cosine_similarity(
-                            rw.unsqueeze(0), iw.unsqueeze(0)
+                            rw.flatten().unsqueeze(0),
+                            iw.flatten().unsqueeze(0),
                         ).item(), 4)
 
             log_eval(total_steps, eval_log)
