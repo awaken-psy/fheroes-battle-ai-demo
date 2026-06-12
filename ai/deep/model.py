@@ -284,6 +284,30 @@ class SoftMoELayer(nn.Module):
         # balance_loss = E * Σ(f_i * P_i)
         return self.num_experts * (f * P).sum()
 
+    def compute_diversity_loss(self, x: torch.Tensor) -> torch.Tensor:
+        """Penalize pairwise cosine similarity between expert outputs (T9g).
+
+        Runs ALL experts on the input ``x`` and computes the mean pairwise
+        cosine similarity across the batch.  A high value means experts
+        produce similar outputs — the loss gradient pushes them apart.
+
+        Args:
+            x: ``(B, input_dim)`` bottleneck features.
+
+        Returns:
+            Scalar loss in [0, 1].  0 = fully orthogonal experts.
+        """
+        outputs = [self.experts[i](x) for i in range(self.num_experts)]
+        total_sim = torch.tensor(0.0, device=x.device)
+        count = 0
+        for i in range(self.num_experts):
+            for j in range(i + 1, self.num_experts):
+                # Cosine similarity averaged over batch → scalar
+                sim = F.cosine_similarity(outputs[i], outputs[j], dim=1).mean()
+                total_sim = total_sim + sim
+                count += 1
+        return total_sim / count
+
     def init_identity_experts(self) -> None:
         """Initialize both expert layers with identity mapping (T9g).
 

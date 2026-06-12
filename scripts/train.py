@@ -156,6 +156,10 @@ def parse_args(argv=None):
                    help="Number of experts to activate per input (default: 2)")
     p.add_argument("--balance-loss-weight", type=float, default=0.01,
                    help="Weight for router load-balancing loss (default: 0.01, 0=disabled)")
+    p.add_argument("--diversity-loss-weight", type=float, default=0.0,
+                   help="Weight for expert output diversity loss (T9g). "
+                        "Penalizes pairwise cosine similarity between experts "
+                        "(default: 0.0=disabled, try 0.1-1.0)")
     p.add_argument("--train-stage", type=int, default=0,
                    choices=[0, 2, 3, 4],
                    help="0=normal training, 2=per-expert (Stage 2), "
@@ -255,6 +259,7 @@ def main(argv=None):
         grad_accum_steps=args.grad_accum, device=args.device,
         replay_buffer=replay_buffer,
         balance_loss_weight=args.balance_loss_weight,
+        diversity_loss_weight=args.diversity_loss_weight,
     )
 
     # ── T9c: Stage-specific freezing ──────────────────────────────
@@ -420,6 +425,8 @@ def main(argv=None):
                               total_steps)
             writer.add_scalar("train/approx_kl", info["approx_kl"],
                               total_steps)
+            writer.add_scalar("train/diversity_loss",
+                              info.get("diversity_loss", 0.0), total_steps)
             writer.add_scalar("train/mean_reward", info["mean_reward"],
                               total_steps)
             writer.add_scalar("train/mean_length", info["mean_length"],
