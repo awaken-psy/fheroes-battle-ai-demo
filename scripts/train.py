@@ -157,9 +157,10 @@ def parse_args(argv=None):
     p.add_argument("--balance-loss-weight", type=float, default=0.01,
                    help="Weight for router load-balancing loss (default: 0.01, 0=disabled)")
     p.add_argument("--train-stage", type=int, default=0,
-                   choices=[0, 2, 3],
+                   choices=[0, 2, 3, 4],
                    help="0=normal training, 2=per-expert (Stage 2), "
-                        "3=router-only (Stage 3)")
+                        "3=router-only (Stage 3), "
+                        "4=per-expert + trainable router (T9f Phase 2)")
     p.add_argument("--load-backbone", type=str, default=None,
                    help="Load backbone weights from a non-MoE checkpoint "
                         "(for Stage 2 bootstrap)")
@@ -263,6 +264,11 @@ def main(argv=None):
         model.freeze_experts_and_heads()
         log_step(0, {"msg": "Stage 3: backbone + experts + heads frozen, "
                           "router-only training"})
+    elif args.train_stage == 4:
+        model.freeze_backbone()
+        log_step(0, {"msg": f"Stage 4 (T9f): backbone frozen, "
+                          f"{model.num_experts} experts round-robin, "
+                          f"router TRAINABLE"})
 
     multi_config = len(configs) > 1
     if multi_config:
@@ -319,9 +325,9 @@ def main(argv=None):
 
     # ── Train ─────────────────────────────────────────────────────
     while total_steps < args.total_steps:
-        # Stage 2: skip curriculum, use fixed dense reward to avoid
+        # Stage 2/4: skip curriculum, use fixed dense reward to avoid
         # value-head-frozen PPO collapse on reward distribution shift.
-        if args.train_stage == 2:
+        if args.train_stage in (2, 4):
             phase, dense_weight = 1, 1.0
         else:
             phase, dense_weight = get_curriculum_phase(
@@ -351,10 +357,14 @@ def main(argv=None):
             rollout_config = None
             rollout_config_name = config_names[0]
 
-        # T9c Stage 2: activate matching expert for this config
-        if args.train_stage == 2 and model.moe is not None:
+        # T9c Stage 2 / T9f Stage 4: activate matching expert for this config
+        if args.train_stage in (2, 4) and model.moe is not None:
             expert_idx = idx % model.num_experts
             model.set_active_expert(expert_idx)
+            # Stage 4: keep router trainable (unlike Stage 2 which freezes it)
+            if args.train_stage == 4:
+                for param in model.moe.router.parameters():
+                    param.requires_grad = True
 
         info = trainer.train_step(
             num_steps=args.rollout_steps,
