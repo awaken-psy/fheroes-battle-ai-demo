@@ -1,6 +1,6 @@
 # 里程碑 — 战斗 AI 复刻
 
-> **T 系列训练实战 — T1✅ T2✅ T3✅ T4✅ T5✅ T6✅ T7✅，T8 架构升级训练失败(4.4%)，T9a✅ T9b✅(有改善但不够)，T9c✅(MoE遗忘缓解，mage_duel突破40%)，T9d❌(per-expert heads冷启动失败)，T9e✅(best avg 56.25%，但Router冻结未分化)，T9f❌(expert太浅分化不足,经验→T9g)，T9g🔥(加深expert残差MLP+重训)。**
+> **T 系列训练实战 — T1✅ T2✅ T3✅ T4✅ T5✅ T6✅ T7✅，T8 架构升级训练失败(4.4%)，T9a✅ T9b✅(有改善但不够)，T9c✅(MoE遗忘缓解，mage_duel突破40%)，T9d❌(per-expert heads冷启动失败)，T9e✅(best avg 56.25%，但Router冻结未分化)，T9f❌(expert太浅分化不足,经验→T9g)，T9g✅(diversity loss让expert分化,-0.33余弦相似度,avg 53.75%)。**
 >
 > - 规则层 M1–M7e：~99% 保真度，63 兵种，38 法术，298 测试
 > - AI 决策层 A1–A4：~97% 决策行为覆盖（126 条审计），356 测试
@@ -19,9 +19,9 @@
 > - **T9d MoE架构打磨** ❌：per-expert heads冷启动失败（avg 24.4% < T9c 32.5%），代码正确但训练策略有缺陷
 > - **T9e MoE热启动训练** ✅：best avg 56.25%@143K（超 T9c 32.5%），但 Router 完全冻结，MoE 退化为单 expert
 > - **T9f 配置绑定训练** ❌：Phase1✅ expert分化不足(0.958), PPO软路由4次失败, 监督router 42%(expert太浅), 经验→T9g
-> - **T9g 深层 Expert 训练** 🔥：2层残差MLP expert + expert-aware router + 重训Phase1，当前
+> - **T9g 深层 Expert + Diversity Loss** ✅：2层MLP expert + diversity loss(w=0.5) → expert余弦相似度 0.91→**-0.33**, avg **53.75%**(even_clash 100%/mage_duel 75%/example 30%/dragon 10%), 监督router 99%但过度自信routing反 hurt 性能, soft MoE均匀路由效果最佳
 > - **T10 MoE扩展配置训练**：4→16配置扩展 + expert数量调参（待 T9g 完成）
-> - **总计 827 测试，CI 守护**
+> - **总计 856 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
 > AI 行为审计见 [`docs/ai-audit.md`](ai-audit.md)（126 条）。
