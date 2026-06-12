@@ -1,8 +1,11 @@
-# T9f — 配置绑定训练
+# T9f — 配置绑定训练 ❌ 结案
 
-> 解决 T9e Router 冻结问题：Phase 1 强制 expert 专精 → Phase 2 监督式 router 预训练 → Phase 3 联合微调。
+> Expert 太浅（单层 Linear），分化不足，路由无法学习。经验传入 T9g。
 
-目标：通过配置-expert 绑定打破初始化对称性，用监督学习训练 router
+**结论**：配置绑定 + PPO 软路由和配置绑定 + 监督 router 两条路都因 expert 分化不足而失败。
+根因是 expert 层 `Linear(384,384)+ReLU` 太浅，200K 步训练后 expert hidden 特征余弦相似度仍达 0.98-0.99。
+
+**T9g 方向**：加深 expert 到 2 层残差 MLP，增强表达能力后再训练。
 
 ## 问题分析
 
