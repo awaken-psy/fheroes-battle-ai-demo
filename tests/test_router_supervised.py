@@ -197,7 +197,7 @@ class TestCheckpointRoundtrip:
                      num_epochs=5, batch_size=32, lr=1e-3, device="cpu")
 
         # Save router weights
-        router_w_before = moe_model.moe.router.weight.data.clone()
+        router_w_before = moe_model.moe.router[2].weight.data.clone()
 
         with tempfile.NamedTemporaryFile(suffix=".pt", delete=False) as f:
             torch.save({
@@ -214,7 +214,7 @@ class TestCheckpointRoundtrip:
                               weights_only=False)
             model2.load_state_dict(ckpt["model"])
 
-            router_w_after = model2.moe.router.weight.data
+            router_w_after = model2.moe.router[2].weight.data
             assert torch.allclose(router_w_before, router_w_after, atol=1e-6), \
                 "Router weights should match after save/load"
         finally:
@@ -239,7 +239,7 @@ class TestCheckpointRoundtrip:
             # Create fresh model with default router weights
             model2 = BattleNet(num_experts=4, moe_hidden_dim=384,
                                routing_topk=2)
-            default_w = model2.moe.router.weight.data.clone()
+            default_w = model2.moe.router[2].weight.data.clone()
 
             # Simulate --load-router logic
             router_ckpt = torch.load(supervised_ckpt, map_location="cpu",
@@ -253,11 +253,11 @@ class TestCheckpointRoundtrip:
             model2.load_state_dict(model_state)
 
             # Router weights should now match supervised model
-            loaded_w = model2.moe.router.weight.data
+            loaded_w = model2.moe.router[2].weight.data
             assert not torch.allclose(default_w, loaded_w, atol=1e-3), \
                 "Router weights should differ from default after --load-router"
             assert torch.allclose(
-                moe_model.moe.router.weight.data, loaded_w, atol=1e-6), \
+                moe_model.moe.router[2].weight.data, loaded_w, atol=1e-6), \
                 "Loaded router weights should match supervised model"
         finally:
             os.unlink(supervised_ckpt)
