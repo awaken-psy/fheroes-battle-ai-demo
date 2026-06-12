@@ -65,12 +65,12 @@ def collect_features(
     max_steps_per_episode: int = 200,
     device: str = "cpu",
     seed: int = 0,
+    use_model_policy: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Collect expert-enhanced features for one config.
 
-    Uses random-legal actions for speed.  The model extracts bottleneck
-    features, then passes them through all experts to capture per-expert
-    processing differences — the key signal for router classification.
+    Uses the model's greedy policy by default (``use_model_policy=True``)
+    for more informative game states, or random-legal actions for speed.
 
     Parameters
     ----------
@@ -84,6 +84,8 @@ def collect_features(
         Target number of (feature, label) pairs to collect.
     device : str
         Torch device.
+    use_model_policy : bool
+        If True, use model's greedy action.  Otherwise random-legal.
 
     Returns
     -------
@@ -107,14 +109,27 @@ def collect_features(
             gvec_t = torch.tensor(
                 obs["global"], dtype=torch.float32
             ).unsqueeze(0).to(device)
+            mask_t = torch.tensor(
+                obs["mask"], dtype=torch.float32
+            ).unsqueeze(0).to(device)
 
             bottleneck = model.extract_bottleneck(grid_t, gvec_t)  # (1, 384)
-            feat = extract_expert_features(model, bottleneck)      # (1, 384+E*H)
+            feat = extract_expert_features(model, bottleneck)      # (1, E*H)
             features_list.append(feat.squeeze(0).cpu())
             collected += 1
 
-            # Step with random legal action
-            action = _random_legal_action(obs["mask"])
+            # Step with model policy or random action
+            if use_model_policy:
+                logits, _ = model(grid_t, gvec_t, mask_t)
+                # Model already masks illegal actions to -inf, just argmax
+                action = logits.argmax(dim=-1).item()
+                mask_arr = obs["mask"]
+                # Fallback if action is out of mask range
+                if action >= len(mask_arr) or not mask_arr[action]:
+                    action = _random_legal_action(mask_arr)
+            else:
+                action = _random_legal_action(obs["mask"])
+
             obs, _, terminated, truncated, _ = env.step(action)
             steps_in_episode += 1
             done = terminated or truncated
@@ -140,6 +155,9 @@ def main():
                         help="Output dataset path (default data/router_dataset.pt)")
     parser.add_argument("--device", default="cpu",
                         help="Torch device (default cpu)")
+    parser.add_argument("--use-model-policy", action="store_true",
+                        help="Use model's greedy policy instead of random actions "
+                             "(produces more config-specific game states)")
     args = parser.parse_args()
 
     # Load model
@@ -180,6 +198,7 @@ def main():
             num_samples=args.samples_per_config,
             device=args.device,
             seed=42 + idx,
+            use_model_policy=args.use_model_policy,
         )
         elapsed = time.time() - t0
         print(f"  [{idx}] {name}: {len(feats)} samples in {elapsed:.1f}s",

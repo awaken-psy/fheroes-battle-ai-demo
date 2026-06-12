@@ -329,7 +329,7 @@ def main(argv=None):
 
     # ── T9f: Save initial router weights for stability tracking ──
     if model.moe is not None:
-        model._initial_router_weight = model.moe.router.weight.data.clone()
+        model._initial_router_weight = model.moe.router[2].weight.data.clone()
 
     # ── Opponent pool (T3) ────────────────────────────────────────
     pool = None
@@ -504,7 +504,7 @@ def main(argv=None):
                 # T9f: router stability tracking (vs initial pretrained weights)
                 if hasattr(model, "_initial_router_weight"):
                     import torch.nn.functional as _F
-                    rw = model.moe.router.weight.data
+                    rw = model.moe.router[2].weight.data
                     iw = model._initial_router_weight
                     eval_log["router_w_delta"] = round(
                         (rw - iw).norm().item(), 4)

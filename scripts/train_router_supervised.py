@@ -414,7 +414,7 @@ def main():
     print(f"\nSaved checkpoint to {args.output}", flush=True)
 
     # Router weight analysis
-    w = model.moe.router.weight.data
+    w = model.moe.router[2].weight.data
     print(f"\n=== Router Weight Analysis ===")
     print(f"  Weight shape: {w.shape}")
     print(f"  Row norms: {w.norm(dim=1).tolist()}")
