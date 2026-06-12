@@ -190,6 +190,8 @@ class PPOTrainer:
         grad_accum_steps: int = 1,
         device: str = "cpu",
         replay_buffer: Optional[ReplayBuffer] = None,
+        balance_loss_weight: float = 0.0,
+        diversity_loss_weight: float = 0.0,
     ):
         self.model = model.to(device)
         self.device = device
@@ -204,6 +206,8 @@ class PPOTrainer:
         self.max_grad_norm = max_grad_norm
         self.grad_accum_steps = max(1, grad_accum_steps)
         self.replay_buffer = replay_buffer
+        self.balance_loss_weight = balance_loss_weight
+        self.diversity_loss_weight = diversity_loss_weight
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr, eps=1e-5)
         self.buffer = TrajectoryBuffer()
@@ -357,13 +361,14 @@ class PPOTrainer:
         """Run PPO update on the collected buffer.
 
         Returns dict with policy_loss, value_loss, entropy, total_loss,
-        approx_kl.
+        approx_kl, balance_loss.
         """
         data = self.buffer.get_tensors()
         T = len(self.buffer)
         if T == 0:
             return {"policy_loss": 0.0, "value_loss": 0.0,
-                    "entropy": 0.0, "total_loss": 0.0, "approx_kl": 0.0}
+                    "entropy": 0.0, "total_loss": 0.0, "approx_kl": 0.0,
+                    "balance_loss": 0.0, "diversity_loss": 0.0}
 
         # Compute GAE
         rewards = data["rewards"]
@@ -449,6 +454,8 @@ class PPOTrainer:
         total_value_loss = 0.0
         total_entropy = 0.0
         total_approx_kl = 0.0
+        total_balance_loss = 0.0
+        total_diversity_loss = 0.0
         n_updates = 0
         accum_count = 0  # minibatches since last optimizer step
 
@@ -468,7 +475,7 @@ class PPOTrainer:
                 mb_adv = advantages[mb_idx]
                 mb_ret = returns[mb_idx]
 
-                # Forward pass
+                # Forward pass (MoE or shared heads)
                 logits, value_pred = self.model(mb_grid, mb_global, mb_mask)
                 dist = Categorical(logits=logits)
                 new_logp = dist.log_prob(mb_actions)
@@ -484,10 +491,36 @@ class PPOTrainer:
                 # Value loss
                 value_loss = ((value_pred.squeeze() - mb_ret) ** 2).mean()
 
+                # Balance loss (MoE router auxiliary, T9d)
+                bl_loss = torch.tensor(0.0, device=self.device)
+                if (self.balance_loss_weight > 0
+                        and self.model.moe is not None):
+                    with torch.no_grad():
+                        bottleneck = self.model.extract_bottleneck(
+                            mb_grid, mb_global)
+                        # Expert-aware routing: compute expert features first
+                        expert_feats = []
+                        for ei in range(self.model.moe.num_experts):
+                            expert_feats.append(
+                                self.model.moe.experts[ei](bottleneck))
+                        router_input = torch.cat(expert_feats, dim=-1)
+                    router_logits = self.model.moe.router(router_input)
+                    bl_loss = self.model.moe.balance_loss(router_logits)
+
+                # Diversity loss — penalize expert output similarity (T9g)
+                div_loss = torch.tensor(0.0, device=self.device)
+                if (self.diversity_loss_weight > 0
+                        and self.model.moe is not None):
+                    bottleneck = self.model.extract_bottleneck(
+                        mb_grid, mb_global)
+                    div_loss = self.model.moe.compute_diversity_loss(bottleneck)
+
                 # Total loss (scaled by accumulation factor)
                 loss = (policy_loss
                         + self.value_coeff * value_loss
-                        - self.entropy_coeff * entropy)
+                        - self.entropy_coeff * entropy
+                        + self.balance_loss_weight * bl_loss
+                        + self.diversity_loss_weight * div_loss)
                 scaled_loss = loss / self.grad_accum_steps
 
                 # Accumulate gradients
@@ -506,6 +539,8 @@ class PPOTrainer:
                 total_policy_loss += float(policy_loss.item())
                 total_value_loss += float(value_loss.item())
                 total_entropy += float(entropy.item())
+                total_balance_loss += float(bl_loss.item())
+                total_diversity_loss += float(div_loss.item())
 
                 # Approx KL for monitoring
                 with torch.no_grad():
@@ -520,6 +555,8 @@ class PPOTrainer:
             "entropy": total_entropy / max(n_updates, 1),
             "total_loss": (total_policy_loss + total_value_loss) / max(n_updates, 1),
             "approx_kl": total_approx_kl / max(n_updates, 1),
+            "balance_loss": total_balance_loss / max(n_updates, 1),
+            "diversity_loss": total_diversity_loss / max(n_updates, 1),
         }
 
     # ── Full training step ───────────────────────────────────────
