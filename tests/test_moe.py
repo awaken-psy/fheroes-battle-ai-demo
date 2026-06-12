@@ -210,7 +210,7 @@ class TestGradientFlow:
         x = torch.randn(4, 384)
         logits, values, _ = moe(x)
         logits.sum().backward()
-        assert moe.router[2].weight.grad is not None
+        assert moe.router.weight.grad is not None
 
     def test_policy_heads_receive_gradient(self):
         moe = _make_moe_layer(num_experts=4, top_k=2)
@@ -276,8 +276,8 @@ class TestActiveExpert:
     def test_router_frozen(self):
         moe = _make_moe_layer(num_experts=4)
         moe.set_active_expert(0)
-        assert not moe.router[2].weight.requires_grad
-        assert not moe.router[2].bias.requires_grad
+        assert not moe.router.weight.requires_grad
+        assert not moe.router.bias.requires_grad
 
     def test_inactive_expert_no_gradient(self):
         moe = _make_moe_layer(num_experts=4)
@@ -318,7 +318,7 @@ class TestActiveExpert:
         moe = _make_moe_layer(num_experts=4)
         moe.freeze_experts_and_heads()
         # Router stays trainable
-        assert moe.router[2].weight.requires_grad
+        assert moe.router.weight.requires_grad
         # Experts frozen
         for expert in moe.experts:
             for param in expert.parameters():
@@ -420,12 +420,12 @@ class TestParameterCount:
         # MoE removes shared heads, adds per-expert heads (hidden_dim=128):
         # Removed: policy_head(384→13566)=5,222,910 + value_head(384→1)=385 = 5,223,295
         # Added:
-        #   Router (2-layer MLP): Linear(512,128)+ReLU+Linear(128,4) = 66,180
+        #   Router (expert-aware): (4*128*4+4) = 2,052
         #   4 experts: 49,280 * 4 = 197,120
         #   4 policy_heads: 1,750,014 * 4 = 7,000,056
         #   4 value_heads: 129 * 4 = 516
-        # Net = (66,180 + 197,120 + 7,000,056 + 516) - 5,223,295 = 2,040,577
-        expected = 2_106_625
+        # Net = (2,052 + 197,120 + 7,000,056 + 516) - 5,223,295 = 1,976,449
+        expected = 2_042_497
         assert added == expected, f"Expected {expected} added params, got {added}"
 
     def test_moe_hidden_dim_384_parameter_count(self):
@@ -439,12 +439,12 @@ class TestParameterCount:
         # MoE removes shared heads, adds per-expert heads (hidden_dim=384):
         # Removed: policy_head(384→13566)=5,222,910 + value_head(384→1)=385 = 5,223,295
         # Added:
-        #   Router (2-layer MLP): Linear(1536,384)+ReLU+Linear(384,4) = 591,748
-        #   4 experts: (384*384+384) * 2 * 4 = 1,182,720  (2-layer MLP)
+        #   Router (expert-aware): (4*384*4+4) = 6,148
+        #   4 experts: (384*384+384) * 4 = 591,360
         #   4 policy_heads: (384*13566+13566) * 4 = 20,891,640
         #   4 value_heads: (384*1+1) * 4 = 1,540
-        # Net = (591,748 + 1,182,720 + 20,891,640 + 1,540) - 5,223,295 = 17,444,353
-        expected = 17_444_353
+        # Net = (6,148 + 591,360 + 20,891,640 + 1,540) - 5,223,295 = 16,267,393
+        expected = 16_858_753
         assert added == expected, f"Expected {expected} added params, got {added}"
 
     def test_moe_hidden_dim_affects_count(self):
@@ -508,7 +508,7 @@ class TestPartialLoading:
         """MoE layers should NOT be overwritten by backbone loading."""
         moe_model = BattleNet(num_experts=4)
         # Save MoE router weights before loading
-        router_w_before = moe_model.moe.router[2].weight.data.clone()
+        router_w_before = moe_model.moe.router.weight.data.clone()
 
         # Save a non-MoE checkpoint
         base_model = BattleNet(num_experts=0)
@@ -517,7 +517,7 @@ class TestPartialLoading:
 
         load_backbone_weights(moe_model, tmp_path, "cpu")
         # Router weights should be unchanged (not in old checkpoint)
-        assert torch.equal(moe_model.moe.router[2].weight.data, router_w_before)
+        assert torch.equal(moe_model.moe.router.weight.data, router_w_before)
         os.unlink(tmp_path)
 
 
@@ -535,7 +535,7 @@ class TestFreezeUnfreeze:
         assert not model.unit_embed.weight.requires_grad
 
         # MoE should still be trainable
-        assert model.moe.router[2].weight.requires_grad
+        assert model.moe.router.weight.requires_grad
         assert model.moe.experts[0].linear1.weight.requires_grad
         assert model.moe.policy_heads[0].weight.requires_grad
         assert model.moe.value_heads[0].weight.requires_grad
@@ -545,7 +545,7 @@ class TestFreezeUnfreeze:
         model.freeze_experts_and_heads()
 
         # Router trainable
-        assert model.moe.router[2].weight.requires_grad
+        assert model.moe.router.weight.requires_grad
         # Experts frozen
         assert not model.moe.experts[0].linear1.weight.requires_grad
         # Policy/value heads frozen
@@ -579,7 +579,7 @@ class TestFreezeUnfreeze:
         assert model.moe.value_heads[2].weight.requires_grad
         assert not model.moe.value_heads[0].weight.requires_grad
         # Router frozen during per-expert training
-        assert not model.moe.router[2].weight.requires_grad
+        assert not model.moe.router.weight.requires_grad
 
 
 # -- 13. T9e Identity initialization ------------------------------------------

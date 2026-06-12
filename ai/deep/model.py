@@ -179,13 +179,10 @@ class SoftMoELayer(nn.Module):
         self.action_dim = action_dim
         self.top_k = min(top_k, num_experts)
 
-        # Router — 2-layer MLP for stronger classification (T9g)
-        # Expert-aware routing: sees concatenated expert outputs, not raw bottleneck
-        router_hidden = max(128, num_experts * hidden_dim // 4)
-        self.router = nn.Sequential(
-            nn.Linear(num_experts * hidden_dim, router_hidden),
-            nn.ReLU(),
-            nn.Linear(router_hidden, num_experts),
+        # Router — takes concatenated expert hidden features as input
+        # (expert-aware routing: route based on how each expert responds)
+        self.router = nn.Linear(
+            num_experts * hidden_dim, num_experts
         )
 
         # Per-expert networks — 2-layer residual MLP (T9g)
