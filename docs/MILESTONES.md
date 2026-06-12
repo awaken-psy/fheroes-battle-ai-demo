@@ -19,7 +19,7 @@
 > - **T9d MoE架构打磨** ❌：per-expert heads冷启动失败（avg 24.4% < T9c 32.5%），代码正确但训练策略有缺陷
 > - **T9e MoE热启动训练** ✅：best avg 56.25%@143K（超 T9c 32.5%），但 Router 完全冻结，MoE 退化为单 expert
 > - **T9f 配置绑定训练** ❌：Phase1✅ expert分化不足(0.958), PPO软路由4次失败, 监督router 42%(expert太浅), 经验→T9g
-> - **T9g 深层 Expert + Diversity Loss** ✅：2层MLP expert + diversity loss(w=0.5) → expert余弦相似度 0.91→**-0.33**, avg **53.75%**(even_clash 100%/mage_duel 75%/example 30%/dragon 10%), 监督router 99%但过度自信routing反 hurt 性能, soft MoE均匀路由效果最佳
+> - **T9g 深层 Expert + Diversity Loss** ✅：2层MLP expert + diversity loss(w=0.5) → expert余弦相似度 0.91→**-0.33**, avg **68.1%**(even_clash 100%/mage_duel 77.5%/example 52.5%/dragon 42.5%), 超T9e(56.25%), MoE有效防遗忘
 > - **T10 MoE扩展配置训练**：4→16配置扩展 + expert数量调参（待 T9g 完成）
 > - **总计 856 测试，CI 守护**
 >

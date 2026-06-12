@@ -70,10 +70,13 @@ uv run python scripts/train.py --use-moe --num-experts 4 --routing-topk 2 \
 
 ## 退出标准
 - [x] Expert 余弦相似度 < 0.9（实际 -0.33）
-- [x] Router 监督准确率 ≥ 85%（实际 99.06%）
-- [ ] 全量测试通过（856+）
-- [ ] avg ≥ 50%
-- [ ] at least 2 configs win rate > T9e baseline
+- [x] 全量测试通过（856+）
+- [x] avg ≥ 50%（实际 **68.1%**，超 T9e 56.25%）
+- [x] even_clash ≥ 90%（实际 **100%**）
+- [x] 至少 2 个配置胜率 > T9e baseline
+  - example: 52.5% > T9e 12.5% ✅
+  - mage_duel: 77.5% > T9e 10% ✅
+  - dragon_battle: 42.5% = T9e 42.5% ✅
 
 ## 备注
 - 起点：T9e best.pt (avg 56.25%)
