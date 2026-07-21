@@ -75,6 +75,7 @@ class BattleScreen:
         self._spell_list = []           # available spell names
         self._spell_sel = 0             # selected spell index in list
         self._selected_spell_slot = None  # spell slot for casting
+        self._await_spell_target = False  # waiting for spell target hex
         self._actions_remaining = 1     # morale: 2 if good morale
 
     # ── event handling ────────────────────────────────────────
@@ -97,7 +98,7 @@ class BattleScreen:
                 self._cast_mode = False
             elif ev.key == pygame.K_f:
                 self._fast_forward()
-            elif ev.key == pygame.K_d:
+            elif ev.key == pygame.K_d and not self._await_input:
                 self.debug = not self.debug
 
         # Player input — only when waiting and not paused
@@ -269,8 +270,9 @@ class BattleScreen:
                 self._cast_mode = False
                 self._await_spell_target = False
                 self._selected_spell_slot = None
-                # After casting, go to unit action (don't consume action)
-                # Stay in await_input for unit action
+                # After casting, refresh legal mask (state may have changed)
+                if self._pending_unit and self._pending_unit.is_alive:
+                    self._legal_mask = legal_mask(self.battle, self._pending_unit)
 
     # ── update ────────────────────────────────────────────────
 
@@ -727,7 +729,7 @@ class BattleScreen:
         panel_y = s(50)
 
         panel = pygame.Rect(int(panel_x), int(panel_y), int(panel_w), int(panel_h))
-        pygame.draw.rect(canvas, (20, 28, 45, 220), panel, border_radius=int(s(6)))
+        pygame.draw.rect(canvas, (20, 28, 45), panel, border_radius=int(s(6)))
         pygame.draw.rect(canvas, (80, 100, 140), panel, 2, border_radius=int(s(6)))
 
         canvas.blit(fonts.TITLE.render("SPELLS", True, config.WHITE),
@@ -837,4 +839,9 @@ class BattleScreen:
         self._pending_unit = None
         self._legal_mask = None
         self._hover_cell = None
+        self._await_spell_target = False
+        self._selected_spell_slot = None
+        self._spell_list = []
+        self._spell_sel = 0
+        self._actions_remaining = 1
         self.logger.reset()

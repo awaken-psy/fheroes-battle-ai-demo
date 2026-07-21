@@ -91,8 +91,10 @@ class Game:
                     self.win_w, self.win_h = ev.w, ev.h
                     self._apply_window_size()
                 if ev.type == pygame.KEYDOWN and ev.key == pygame.K_F12:
-                    pygame.image.save(self.canvas, '/tmp/demo-screenshot.png')
-                    print('Screenshot saved to /tmp/demo-screenshot.png')
+                    import tempfile, os
+                    shot_path = os.path.join(tempfile.gettempdir(), 'demo-screenshot.png')
+                    pygame.image.save(self.canvas, shot_path)
+                    print(f'Screenshot saved to {shot_path}')
                 self._handle(ev)
             self._update(dt)
             self._draw()
@@ -148,6 +150,15 @@ class Game:
         self.screen_battle._order_idx = 0
         self.screen_battle._round_num = 0
         self.screen_battle._ph = 0
+        self.screen_battle._await_input = False
+        self.screen_battle._cast_mode = False
+        self.screen_battle._pending_unit = None
+        self.screen_battle._legal_mask = None
+        self.screen_battle._await_spell_target = False
+        self.screen_battle._selected_spell_slot = None
+        self.screen_battle._spell_list = []
+        self.screen_battle._spell_sel = 0
+        self.screen_battle._actions_remaining = 1
         # Position grid for battle screen before first update runs
         grid_w = self.grid.cols * self.hex_renderer.hex_w
         self.hex_renderer.reposition((self.win_w - grid_w) / 2, self._s(config.GRID_OFFSET_Y))
