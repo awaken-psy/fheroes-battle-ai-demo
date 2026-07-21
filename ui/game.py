@@ -142,6 +142,7 @@ class Game:
         heroes = {0: Hero(), 1: Hero()}
         castle = Castle() if self._siege else None
         self.screen_battle.player_team = self.player_team
+        self.screen_battle.ai_strategy = dict(self.screen_setup.ai_strategy)
         self.screen_battle.battle = BattleState(self.grid, self.units, heroes=heroes,
                                                  castle=castle)
         self.screen_battle.b_log = []

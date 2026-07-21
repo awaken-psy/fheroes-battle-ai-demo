@@ -36,6 +36,9 @@ class SetupScreen:
         self.preset_scroll = 0
         self._unit_sb_drag = False
         self._preset_sb_drag = False
+        # AI strategy per team: "classic" or "deep"
+        self.ai_strategy = {0: "classic", 1: "classic"}
+        self._ai_popup_team = None  # which team's popup is open
 
     # ── name wrapping check ────────────────────────────────────
 
@@ -151,6 +154,30 @@ class SetupScreen:
         cx = s(config.WINDOW_WIDTH) // 2
         return pygame.Rect(cx - s(100), s(config.WINDOW_HEIGHT - 55), s(200), s(44))
 
+    def _ai_btn_rect(self, team):
+        """Rect for the AI strategy button on the right side, above Start."""
+        s = self.game._s
+        vw = config.WINDOW_WIDTH
+        vh = config.WINDOW_HEIGHT
+        w = s(140)
+        y = s(vh - 55 - 40 - 10)  # above Start button
+        if team == 0:
+            x = s(vw) // 2 - w - s(5)
+        else:
+            x = s(vw) // 2 + s(5)
+        return pygame.Rect(int(x), int(y), int(w), int(s(32)))
+
+    def _ai_popup_rect(self):
+        """Rect for the AI strategy popup."""
+        s = self.game._s
+        vw = config.WINDOW_WIDTH
+        vh = config.WINDOW_HEIGHT
+        w = s(200)
+        h = s(100)
+        x = s(vw) // 2 - w // 2
+        y = s(vh) // 2 - h // 2
+        return pygame.Rect(int(x), int(y), int(w), int(h))
+
     # ── scrollbar helpers ─────────────────────────────────────
 
     def _scroll_unit_to_pixel(self, my):
@@ -168,6 +195,63 @@ class SetupScreen:
             return
         frac = (my - track.y) / max(track.h, 1)
         self.preset_scroll = max(0, min(ms, round(frac * ms)))
+
+    # ── AI popup ──────────────────────────────────────────────
+
+    def _handle_ai_popup_click(self, mx, my):
+        """Handle clicks inside the AI strategy popup."""
+        s = self.game._s
+        popup = self._ai_popup_rect()
+        # Option rects: Classic / Deep / Cancel
+        opts = [("Classic AI", "classic"), ("Deep Learning", "deep")]
+        for i, (label, key) in enumerate(opts):
+            opt_y = popup.y + s(36 + i * 28)
+            opt_rect = pygame.Rect(popup.x + s(10), opt_y,
+                                   popup.w - s(20), s(24))
+            if opt_rect.collidepoint(mx, my):
+                self.ai_strategy[self._ai_popup_team] = key
+                self._ai_popup_team = None
+                return
+        # Cancel (click outside options closes)
+        if not popup.collidepoint(mx, my):
+            self._ai_popup_team = None
+
+    def _draw_ai_btn(self, canvas, s, team):
+        """Draw an AI strategy button."""
+        r = self._ai_btn_rect(team)
+        strategy = self.ai_strategy[team]
+        label = f"{fonts.team_name(team)}: {strategy}"
+        bg = fonts.team_color(team)
+        draw_btn(canvas, r.x, r.y, r.w, r.h, label, bg, config.BLACK)
+
+    def _draw_ai_popup(self, canvas, s):
+        """Draw the AI strategy selection popup."""
+        popup = self._ai_popup_rect()
+        # Overlay
+        overlay = pygame.Surface((self.game.win_w, self.game.win_h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 120))
+        self.game.canvas.blit(overlay, (0, 0))
+        # Panel
+        pygame.draw.rect(canvas, (30, 38, 55), popup, border_radius=int(s(6)))
+        pygame.draw.rect(canvas, (80, 100, 140), popup, 2, border_radius=int(s(6)))
+        # Title
+        title = f"AI Strategy: {fonts.team_name(self._ai_popup_team)}"
+        canvas.blit(fonts.TITLE.render(title, True, config.WHITE),
+                    (popup.x + s(10), popup.y + s(8)))
+        # Options
+        opts = [("Classic AI", "classic"), ("Deep Learning", "deep")]
+        for i, (label, key) in enumerate(opts):
+            y = popup.y + s(36 + i * 28)
+            sel = self.ai_strategy[self._ai_popup_team] == key
+            bg = (50, 55, 78) if sel else (38, 45, 65)
+            r = pygame.Rect(popup.x + s(10), y, popup.w - s(20), s(24))
+            pygame.draw.rect(canvas, bg, r, border_radius=int(s(3)))
+            if sel:
+                pygame.draw.rect(canvas, config.YELLOW, r, 2, border_radius=int(s(3)))
+            else:
+                pygame.draw.rect(canvas, (60, 68, 92), r, 1, border_radius=int(s(3)))
+            canvas.blit(fonts.BODY.render(label, True, config.WHITE),
+                        (r.x + s(8), r.y + s(3)))
 
     # ── event handling ────────────────────────────────────────
 
@@ -197,6 +281,15 @@ class SetupScreen:
             mx, my = ev.pos
             s = self.game._s
             if ev.button == 1:
+                # AI popup — handle first (highest priority)
+                if self._ai_popup_team is not None:
+                    self._handle_ai_popup_click(mx, my)
+                    return
+                # AI strategy buttons
+                for team in (0, 1):
+                    if self._ai_btn_rect(team).collidepoint(mx, my):
+                        self._ai_popup_team = team
+                        return
                 # Unit scrollbar
                 if self._unit_max_scroll() > 0:
                     if self._unit_scrollbar_thumb().collidepoint(mx, my):
@@ -385,11 +478,19 @@ class SetupScreen:
         g.hex_renderer.draw_grid(canvas, highlights)
         self._draw_units()
 
+        # AI strategy buttons (above Start)
+        self._draw_ai_btn(canvas, s, 0)
+        self._draw_ai_btn(canvas, s, 1)
+
         # start button
         sr = self._start_btn_rect()
         can = self._can_start()
         draw_btn(canvas, sr.x, sr.y, sr.w, sr.h, "Start Battle",
                  config.GREEN if can else config.GRAY, config.BLACK)
+
+        # AI popup (on top of everything)
+        if self._ai_popup_team is not None:
+            self._draw_ai_popup(canvas, s)
 
         # team unit counts above grid
         for team in (0, 1):

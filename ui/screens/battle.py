@@ -38,6 +38,8 @@ class BattleScreen:
         self.game = game
         self.player_team = player_team
         self.ai = create_ai("classic")
+        self.ai_strategy = {0: "classic", 1: "classic"}
+        self._ai_cache = {}  # team → AI instance
         self.logger = BattleLogger()
 
         self.battle: BattleState | None = None
@@ -328,12 +330,26 @@ class BattleScreen:
                             self._ph = PH_IDLE
                             return
                         else:
-                            action, desc = self.ai.decide(self.battle, unit)
+                            team_ai = self._get_team_ai(unit.team)
+                            action, desc = team_ai.decide(self.battle, unit)
                             self.b_action = action; self.b_desc = desc
                             self._start_anim(action)
                             return
 
                 self._ph = PH_IDLE
+
+    def _get_team_ai(self, team):
+        """Get or create the AI instance for a team's selected strategy."""
+        if team not in self._ai_cache:
+            strategy = self.ai_strategy.get(team, "classic")
+            if strategy == "deep":
+                try:
+                    self._ai_cache[team] = create_ai("deep", device="cpu")
+                except Exception:
+                    self._ai_cache[team] = create_ai("classic")
+            else:
+                self._ai_cache[team] = create_ai("classic")
+        return self._ai_cache[team]
 
     def _next_unit(self):
         if not self.battle.alive():
@@ -365,8 +381,9 @@ class BattleScreen:
                     self._legal_mask = legal_mask(self.battle, unit)
                     return
                 else:
-                    # AI-controlled unit
-                    retreat = self.ai.check_retreat(self.battle, unit)
+                    # AI-controlled unit — use team's selected strategy
+                    team_ai = self._get_team_ai(unit.team)
+                    retreat = team_ai.check_retreat(self.battle, unit)
                     if retreat is not None:
                         farewell, retreat_action = retreat
                         if farewell is not None:
@@ -377,10 +394,10 @@ class BattleScreen:
                         self.b_action = skip; self.b_desc = f"[RETREAT] {rr['desc']}"
                         self._start_anim(skip)
                         return
-                    cast = self.ai.maybe_cast_spell(self.battle, unit)
+                    cast = team_ai.maybe_cast_spell(self.battle, unit)
                     if cast is not None:
                         self._do_cast(cast)
-                    action, desc = self.ai.decide(self.battle, unit)
+                    action, desc = team_ai.decide(self.battle, unit)
                     self.b_action = action; self.b_desc = desc
                     self._start_anim(action)
                     return
@@ -420,7 +437,8 @@ class BattleScreen:
                     continue
                 if self.battle.is_over():
                     break
-                _take_unit_turn(self.battle, self.ai, unit, log=self.logger.action)
+                team_ai = self._get_team_ai(unit.team)
+                _take_unit_turn(self.battle, team_ai, unit, log=self.logger.action)
             if self.battle._retreated is not None:
                 break
         timeout = self.battle.round_num >= BattleState.MAX_ROUNDS
@@ -844,4 +862,5 @@ class BattleScreen:
         self._spell_list = []
         self._spell_sel = 0
         self._actions_remaining = 1
+        self._ai_cache = {}
         self.logger.reset()
