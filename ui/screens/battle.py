@@ -152,9 +152,9 @@ class BattleScreen:
 
         clicked_unit = self.battle.unit_at(hex_pos)
 
-        # If no unit selected yet — select a friendly unit
+        # If no unit selected yet — select the pending unit (only the unit whose turn it is)
         if self._selected_unit is None:
-            if clicked_unit and clicked_unit.team == self.player_team and clicked_unit.is_alive:
+            if clicked_unit and clicked_unit is self._pending_unit:
                 self._selected_unit = clicked_unit
                 self._legal_mask = legal_mask(self.battle, clicked_unit)
             return
@@ -166,10 +166,8 @@ class BattleScreen:
             self._legal_mask = None
             return
 
-        # Click another friendly unit → switch selection
-        if clicked_unit and clicked_unit.team == self.player_team and clicked_unit.is_alive:
-            self._selected_unit = clicked_unit
-            self._legal_mask = legal_mask(self.battle, clicked_unit)
+        # Click another friendly unit → ignore (can only control current unit)
+        if clicked_unit and clicked_unit.team == self.player_team:
             return
 
         # Click enemy → attack (if legal)
@@ -764,9 +762,8 @@ class BattleScreen:
                         col, row = index_to_cell(i)
                         highlights.setdefault((col, row), (40, 140, 140))
         else:
-            # No unit selected — highlight all selectable friendly units
+            # No unit selected — highlight the pending unit (current acting unit)
             if self._pending_unit and self.battle:
-                # Highlight the pending unit (current acting unit)
                 pos = self._pending_unit.pos
                 highlights[pos] = (80, 120, 80)
                 if self._pending_unit.is_wide and self._pending_unit.tail_cell:
@@ -814,9 +811,9 @@ class BattleScreen:
                 cx, cy = self._anim_px
             else:
                 cx, cy = g.hex_renderer.center(*u.pos)
-            # Player-selectable units get a green ring
+            # Player-selectable: only the pending unit when no unit is selected
             selectable = (self._await_input and self.player_team is not None
-                          and u.team == self.player_team and u.is_alive
+                          and u is self._pending_unit and u.is_alive
                           and self._selected_unit is None)
             draw_unit(g.canvas, g._s, g.hex_renderer, u, cx, cy,
                       current=(u is current), selectable=selectable)
