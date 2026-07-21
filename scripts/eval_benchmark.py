@@ -115,9 +115,20 @@ def load_model(checkpoint_path: str, device: str = "cpu") -> BattleNet:
     """Load BattleNet from a checkpoint file."""
     import torch
 
-    model = BattleNet()
     ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    model.load_state_dict(ckpt["model"])
+    state = ckpt["model"]
+    num_experts = 0
+    moe_hidden_dim = 384
+    if any(k.startswith("moe.") for k in state):
+        num_experts = sum(
+            1 for k in state
+            if k.startswith("moe.experts.") and k.endswith(".linear1.weight")
+        )
+    model = BattleNet(
+        num_experts=num_experts,
+        moe_hidden_dim=moe_hidden_dim if num_experts > 0 else 384,
+    )
+    model.load_state_dict(state)
     model.to(device).eval()
     return model
 
@@ -182,7 +193,7 @@ def format_table(results: list) -> str:
     total_pass = 0
     for r in results:
         ci = f"[{r['ci95'][0]*100:.1f}%, {r['ci95'][1]*100:.1f}%]"
-        mark = "✓" if r["pass"] else "✗"
+        mark = "Y" if r["pass"] else "N"
         lines.append(
             f"{r['name']:<30} {r['wins']:>3}/{r['games']:<2} "
             f"{r['win_rate']*100:>6.1f}% {ci:>14} "

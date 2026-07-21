@@ -70,18 +70,18 @@ def inputs():
 class TestShapes:
     def test_policy_logits_shape(self, model, inputs):
         grid, gvec, mask = inputs
-        policy, value = model(grid, gvec, mask)
+        policy, value, _ = model(grid, gvec, mask)
         assert policy.shape == (4, ACTION_DIM)
 
     def test_value_shape(self, model, inputs):
         grid, gvec, mask = inputs
-        _, value = model(grid, gvec, mask)
+        _, value, _ = model(grid, gvec, mask)
         assert value.shape == (4, 1)
 
     def test_single_sample(self, model):
         """Batch dim = 1 should work."""
         grid, gvec, mask = _make_inputs(batch_size=1)
-        policy, value = model(grid, gvec, mask)
+        policy, value, _ = model(grid, gvec, mask)
         assert policy.shape == (1, ACTION_DIM)
         assert value.shape == (1, 1)
 
@@ -92,13 +92,13 @@ class TestShapes:
 class TestMasking:
     def test_illegal_actions_are_neg_inf(self, model, inputs):
         grid, gvec, mask = inputs
-        policy, _ = model(grid, gvec, mask)
+        policy, _, _ = model(grid, gvec, mask)
         illegal = mask == 0
         assert torch.all(policy[illegal] == float("-inf"))
 
     def test_legal_actions_finite(self, model, inputs):
         grid, gvec, mask = inputs
-        policy, _ = model(grid, gvec, mask)
+        policy, _, _ = model(grid, gvec, mask)
         legal = mask == 1
         assert torch.all(torch.isfinite(policy[legal]))
 
@@ -106,14 +106,14 @@ class TestMasking:
         """With all-ones mask, no logit should be -inf."""
         grid, gvec, _ = _make_inputs(batch_size=2)
         mask = torch.ones(2, ACTION_DIM)
-        policy, _ = model(grid, gvec, mask)
+        policy, _, _ = model(grid, gvec, mask)
         assert torch.all(torch.isfinite(policy))
 
     def test_all_illegal_all_neg_inf(self, model):
         """With all-zeros mask, every logit should be -inf."""
         grid, gvec, _ = _make_inputs(batch_size=2)
         mask = torch.zeros(2, ACTION_DIM)
-        policy, _ = model(grid, gvec, mask)
+        policy, _, _ = model(grid, gvec, mask)
         assert torch.all(policy == float("-inf"))
 
 
@@ -122,7 +122,7 @@ class TestMasking:
 
 class TestValueRange:
     def test_value_in_range(self, model, inputs):
-        _, value = model(*inputs)
+        _, value, _ = model(*inputs)
         assert torch.all(value >= -1.0)
         assert torch.all(value <= 1.0)
 
@@ -131,7 +131,7 @@ class TestValueRange:
         grid = torch.randn(3, NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS) * 10
         gvec = torch.randn(3, GLOBAL_DIM) * 10
         mask = torch.ones(3, ACTION_DIM)
-        _, value = model(grid, gvec, mask)
+        _, value, _ = model(grid, gvec, mask)
         assert torch.all(value >= -1.0)
         assert torch.all(value <= 1.0)
 
@@ -158,7 +158,7 @@ class TestParameterCount:
 class TestBatchProcessing:
     def test_large_batch(self, model):
         grid, gvec, mask = _make_inputs(batch_size=32)
-        policy, value = model(grid, gvec, mask)
+        policy, value, _ = model(grid, gvec, mask)
         assert policy.shape == (32, ACTION_DIM)
         assert value.shape == (32, 1)
 
@@ -168,11 +168,11 @@ class TestBatchProcessing:
         grid, gvec, mask = _make_inputs(batch_size=3)
 
         with torch.no_grad():
-            policy_batch, value_batch = model(grid, gvec, mask)
+            policy_batch, value_batch, _ = model(grid, gvec, mask)
 
         # Process element 1 alone
         with torch.no_grad():
-            p1, v1 = model(grid[1:2], gvec[1:2], mask[1:2])
+            p1, v1, _ = model(grid[1:2], gvec[1:2], mask[1:2])
 
         assert torch.allclose(policy_batch[1:2], p1, atol=1e-5)
         assert torch.allclose(value_batch[1:2], v1, atol=1e-5)
@@ -186,8 +186,8 @@ class TestDeterminism:
         model.eval()
         grid, gvec, mask = _make_inputs(batch_size=2)
         with torch.no_grad():
-            p1, v1 = model(grid, gvec, mask)
-            p2, v2 = model(grid, gvec, mask)
+            p1, v1, _ = model(grid, gvec, mask)
+            p2, v2, _ = model(grid, gvec, mask)
         assert torch.equal(p1, p2)
         assert torch.equal(v1, v2)
 
@@ -201,7 +201,7 @@ class TestSerialization:
         grid, gvec, mask = inputs
 
         with torch.no_grad():
-            p_orig, v_orig = model(grid, gvec, mask)
+            p_orig, v_orig, _ = model(grid, gvec, mask)
 
         # Save
         buf = io.BytesIO()
@@ -214,7 +214,7 @@ class TestSerialization:
         model2.eval()
 
         with torch.no_grad():
-            p_loaded, v_loaded = model2(grid, gvec, mask)
+            p_loaded, v_loaded, _ = model2(grid, gvec, mask)
 
         assert torch.allclose(p_orig, p_loaded, atol=1e-6)
         assert torch.allclose(v_orig, v_loaded, atol=1e-6)
@@ -226,7 +226,7 @@ class TestSerialization:
 class TestGradientFlow:
     def test_policy_gradient(self, model, inputs):
         grid, gvec, mask = inputs
-        policy, _ = model(grid, gvec, mask)
+        policy, _, _ = model(grid, gvec, mask)
         loss = policy.sum()
         loss.backward()
         # Check stem conv has gradients
@@ -235,7 +235,7 @@ class TestGradientFlow:
 
     def test_value_gradient(self, model, inputs):
         grid, gvec, mask = inputs
-        _, value = model(grid, gvec, mask)
+        _, value, _ = model(grid, gvec, mask)
         loss = value.sum()
         loss.backward()
         assert model.value_head.weight.grad is not None
@@ -244,7 +244,7 @@ class TestGradientFlow:
     def test_both_heads_propagate(self, model, inputs):
         """Combined loss should produce gradients in shared layers."""
         grid, gvec, mask = inputs
-        policy, value = model(grid, gvec, mask)
+        policy, value, _ = model(grid, gvec, mask)
         loss = policy.sum() + value.sum()
         loss.backward()
         # Shared bottleneck should receive gradients from both heads
@@ -328,7 +328,7 @@ class TestGroupNormMigration:
         grid = torch.randn(1, NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS)
         gvec = torch.randn(1, GLOBAL_DIM)
         mask = torch.ones(1, ACTION_DIM)
-        logits, value = model(grid, gvec, mask)
+        logits, value, _ = model(grid, gvec, mask)
         assert not logits.isnan().any()
         assert not value.isnan().any()
 
@@ -370,7 +370,7 @@ class TestUnitEmbedding:
         """Embedding weights should receive gradients during training."""
         model = BattleNet()
         grid, gvec, mask = _make_inputs(batch_size=2)
-        policy, value = model(grid, gvec, mask)
+        policy, value, _ = model(grid, gvec, mask)
         loss = policy.sum() + value.sum()
         loss.backward()
         assert model.unit_embed.weight.grad is not None
@@ -381,7 +381,7 @@ class TestUnitEmbedding:
         """After a forward + backward pass, the padding row should remain zero."""
         model = BattleNet()
         grid, gvec, mask = _make_inputs(batch_size=2)
-        policy, value = model(grid, gvec, mask)
+        policy, value, _ = model(grid, gvec, mask)
         loss = policy.sum() + value.sum()
         loss.backward()
         # padding_idx=0 ensures the weight row stays zero
@@ -399,13 +399,13 @@ class TestUnitEmbedding:
         grid[0, 33, 4, 2] = 10 / 66  # type index = 10
 
         with torch.no_grad():
-            p1, v1 = model(grid, gvec, mask)
+            p1, v1, _ = model(grid, gvec, mask)
 
         # Change type index to something different
         grid[0, 33, 4, 2] = 50 / 66  # type index = 50
 
         with torch.no_grad():
-            p2, v2 = model(grid, gvec, mask)
+            p2, v2, _ = model(grid, gvec, mask)
 
         # Outputs should differ
         assert not torch.allclose(p1, p2, atol=1e-6), \
@@ -427,7 +427,7 @@ class TestUnitEmbedding:
         mask = torch.ones(1, ACTION_DIM)
 
         with torch.no_grad():
-            p_a, v_a = model(grid_a, gvec, mask)
-            p_b, v_b = model(grid_b, gvec, mask)
+            p_a, v_a, _ = model(grid_a, gvec, mask)
+            p_b, v_b, _ = model(grid_b, gvec, mask)
 
         assert torch.allclose(p_a, p_b, atol=1e-6)

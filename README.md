@@ -10,7 +10,7 @@
 
 里程碑 M1–M7e（规则层）+ A1–A4（经典 AI 决策层）+ R1–R7（深度学习训练管线）+ T1–T6（训练实战）**全部完成**。
 
-- **633 个测试**全通过，CI 守护
+- **846 个测试**全通过，CI 守护
 - **63 种兵种**，**38 种法术**，规则保真度 ~99%
 - 经典 AI 决策覆盖率 ~97%（126 条审计逐条对齐）
 - 3600 局实战验证
@@ -53,7 +53,7 @@ R1(可插拔骨架) → R2(观测编码) ──┐
 
 | 里程碑 | 文件 | 说明 | 测试 |
 |--------|------|------|------|
-| R2 | `ai/observation.py` | 33 通道 hex grid + 20 维全局向量，player-relative | 38 |
+| R2 | `ai/observation.py` | 35 通道 hex grid + 20 维全局向量，player-relative | 38 |
 | R3 | `ai/action_space.py` | 13566 维扁平离散 + 合法性 mask | 53 |
 | R4 | `ai/env.py`, `ai/self_play.py` | Gymnasium BattleEnv + 自博弈 runner | 32 |
 | R5 | `ai/deep/model.py` | 4×64 ResBlock CNN + Policy/Value 双头，~4.15M 参数 | 21 |
@@ -66,7 +66,7 @@ R1(可插拔骨架) → R2(观测编码) ──┐
 uv sync                                    # 安装依赖（含 PyTorch）
 uv run main.py                             # GUI 模式
 uv run main.py configs/example.json        # CLI 无头模式
-uv run pytest                              # 跑测试（605 个）
+uv run pytest                              # 跑测试（846 个）
 uv run python scripts/arena.py --preset Balanced --games 500 --mirror   # 经典 AI 批量自对弈
 ```
 
@@ -101,7 +101,7 @@ uv run python scripts/train.py --total-steps 50000 | jq 'select(.type=="eval")'
 ```
 
 训练参数全部可通过 CLI 控制（`--lr`, `--gamma`, `--clip-eps`, `--phase1-steps` 等）。
-训练结果详见 [docs/t4-training-report.md](docs/t4-training-report.md)。
+训练结果详见 [docs/MILESTONES.md](docs/MILESTONES.md)。
 
 ## 使用方式
 
@@ -287,7 +287,7 @@ fheroes-battle-ai-demo/
 ├── ai/                      AI 决策系统
 │   ├── base.py              AIPlayer 抽象基类
 │   ├── factory.py           工厂 + 注册表（create_ai）
-│   ├── observation.py       观测编码（R2: 33 通道 grid + 20 维全局）
+│   ├── observation.py       观测编码（R2: 35 通道 grid + 20 维全局）
 │   ├── action_space.py      动作空间（R3: 13566 维 + 合法性 mask）
 │   ├── env.py               Gymnasium BattleEnv（R4）
 │   ├── self_play.py         自博弈 runner + eval_vs_classic
@@ -314,7 +314,7 @@ fheroes-battle-ai-demo/
 │       ├── setup.py         布阵界面
 │       └── battle.py        战斗界面 + 动画引擎
 │
-├── tests/                   自动化测试（633 个，无需显示器）
+├── tests/                   自动化测试（846 个，无需显示器）
 └── log/                     战斗日志（自动生成，gitignore）
 ```
 

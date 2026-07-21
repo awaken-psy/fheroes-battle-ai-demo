@@ -340,7 +340,7 @@ class TestBattleNetMoE:
     def test_forward_shapes(self):
         model = BattleNet(num_experts=4)
         grid, gvec, mask = _make_inputs(batch_size=4)
-        policy, value = model(grid, gvec, mask)
+        policy, value, _ = model(grid, gvec, mask)
         assert policy.shape == (4, ACTION_DIM)
         assert value.shape == (4, 1)
 
@@ -353,7 +353,7 @@ class TestBattleNetMoE:
     def test_value_range(self):
         model = BattleNet(num_experts=4)
         grid, gvec, mask = _make_inputs()
-        _, value = model(grid, gvec, mask)
+        _, value, _ = model(grid, gvec, mask)
         assert torch.all(value >= -1.0)
         assert torch.all(value <= 1.0)
 
@@ -362,7 +362,7 @@ class TestBattleNetMoE:
         grid, gvec, _ = _make_inputs(batch_size=2)
         mask = torch.zeros(2, ACTION_DIM)
         mask[:, :5] = 1.0  # only first 5 actions legal
-        policy, _ = model(grid, gvec, mask)
+        policy, _, _ = model(grid, gvec, mask)
         # Illegal actions should be -inf
         assert torch.all(policy[:, 5:] == float("-inf"))
         # Legal actions should be finite
@@ -389,7 +389,7 @@ class TestBackwardCompat:
         """Without MoE, forward pass produces same shapes as T8."""
         model = BattleNet()
         grid, gvec, mask = _make_inputs()
-        policy, value = model(grid, gvec, mask)
+        policy, value, _ = model(grid, gvec, mask)
         assert policy.shape == (4, ACTION_DIM)
         assert value.shape == (4, 1)
 
@@ -464,7 +464,7 @@ class TestStateDict:
         grid, gvec, mask = _make_inputs()
         model.eval()
         with torch.no_grad():
-            p_orig, v_orig = model(grid, gvec, mask)
+            p_orig, v_orig, _ = model(grid, gvec, mask)
 
         # Save and reload
         buf = io.BytesIO()
@@ -475,7 +475,7 @@ class TestStateDict:
         model2.load_state_dict(torch.load(buf, weights_only=True))
         model2.eval()
         with torch.no_grad():
-            p_loaded, v_loaded = model2(grid, gvec, mask)
+            p_loaded, v_loaded, _ = model2(grid, gvec, mask)
 
         assert torch.allclose(p_orig, p_loaded, atol=1e-6)
         assert torch.allclose(v_orig, v_loaded, atol=1e-6)
@@ -485,7 +485,7 @@ class TestStateDict:
 
 
 class TestPartialLoading:
-    def test_load_non_moe_into_moe(self):
+    def test_load_non_moe_into_moe(self, tmp_path):
         """Loading a T8 checkpoint into a MoE model only loads backbone keys."""
         # Save a non-MoE checkpoint
         base_model = BattleNet(num_experts=0)
@@ -495,16 +495,15 @@ class TestPartialLoading:
 
         # Load into MoE model
         moe_model = BattleNet(num_experts=4)
-        tmp_path = "/tmp/_test_t8_ckpt.pt"
-        with open(tmp_path, "wb") as f:
+        ckpt_path = str(tmp_path / "_test_t8_ckpt.pt")
+        with open(ckpt_path, "wb") as f:
             f.write(buf.getvalue())
 
-        matched, skipped = load_backbone_weights(moe_model, tmp_path, "cpu")
+        matched, skipped = load_backbone_weights(moe_model, ckpt_path, "cpu")
         # All backbone keys should match
         assert matched > 0
-        os.unlink(tmp_path)
 
-    def test_preserves_moe_random_init(self):
+    def test_preserves_moe_random_init(self, tmp_path):
         """MoE layers should NOT be overwritten by backbone loading."""
         moe_model = BattleNet(num_experts=4)
         # Save MoE router weights before loading
@@ -512,13 +511,12 @@ class TestPartialLoading:
 
         # Save a non-MoE checkpoint
         base_model = BattleNet(num_experts=0)
-        tmp_path = "/tmp/_test_t8_ckpt2.pt"
-        torch.save({"model": base_model.state_dict()}, tmp_path)
+        ckpt_path = str(tmp_path / "_test_t8_ckpt2.pt")
+        torch.save({"model": base_model.state_dict()}, ckpt_path)
 
-        load_backbone_weights(moe_model, tmp_path, "cpu")
+        load_backbone_weights(moe_model, ckpt_path, "cpu")
         # Router weights should be unchanged (not in old checkpoint)
         assert torch.equal(moe_model.moe.router.weight.data, router_w_before)
-        os.unlink(tmp_path)
 
 
 # -- 12. Freeze / unfreeze -------------------------------------------------
@@ -641,7 +639,7 @@ class TestIdentityInit:
 
 
 class TestWeightTransfer:
-    def test_transfer_copies_weights(self):
+    def test_transfer_copies_weights(self, tmp_path):
         """Shared head weights are copied to all per-expert heads."""
         # Create a non-MoE model with known shared head weights
         base = BattleNet(num_experts=0)
@@ -651,15 +649,15 @@ class TestWeightTransfer:
         value_b = base.value_head.bias.data.clone()
 
         # Save checkpoint
-        tmp_path = "/tmp/_test_transfer_ckpt.pt"
-        torch.save({"model": base.state_dict()}, tmp_path)
+        ckpt_path = str(tmp_path / "_test_transfer_ckpt.pt")
+        torch.save({"model": base.state_dict()}, ckpt_path)
 
         # Create MoE model with hidden_dim=384 (matching bottleneck)
         moe = BattleNet(num_experts=4, moe_hidden_dim=384)
 
         # Manually run the transfer logic
         from scripts.train import _transfer_shared_head_weights
-        _transfer_shared_head_weights(moe, tmp_path, "cpu")
+        _transfer_shared_head_weights(moe, ckpt_path, "cpu")
 
         # All per-expert heads should match original shared heads
         for i in range(4):
@@ -676,13 +674,12 @@ class TestWeightTransfer:
                 f"Value head {i} bias doesn't match original"
             )
 
-        os.unlink(tmp_path)
 
-    def test_transfer_not_called_for_hidden128(self):
+    def test_transfer_not_called_for_hidden128(self, tmp_path):
         """Weight transfer is skipped when hidden_dim != input_dim (dims mismatch)."""
         base = BattleNet(num_experts=0)
-        tmp_path = "/tmp/_test_transfer_ckpt2.pt"
-        torch.save({"model": base.state_dict()}, tmp_path)
+        ckpt_path = str(tmp_path / "_test_transfer_ckpt2.pt")
+        torch.save({"model": base.state_dict()}, ckpt_path)
 
         # hidden_dim=128 != input_dim=384 — transfer should print warning and skip
         moe = BattleNet(num_experts=4, moe_hidden_dim=128)
@@ -697,17 +694,15 @@ class TestWeightTransfer:
         # Here we just verify the guard logic: hidden_dim != input_dim.
         assert moe.moe.hidden_dim != moe.moe.input_dim
 
-        os.unlink(tmp_path)
-
-    def test_all_experts_start_equal_after_transfer(self):
+    def test_all_experts_start_equal_after_transfer(self, tmp_path):
         """After transfer, all per-expert heads produce identical output."""
         base = BattleNet(num_experts=0)
-        tmp_path = "/tmp/_test_transfer_ckpt3.pt"
-        torch.save({"model": base.state_dict()}, tmp_path)
+        ckpt_path = str(tmp_path / "_test_transfer_ckpt3.pt")
+        torch.save({"model": base.state_dict()}, ckpt_path)
 
         moe = BattleNet(num_experts=4, moe_hidden_dim=384)
         from scripts.train import _transfer_shared_head_weights
-        _transfer_shared_head_weights(moe, tmp_path, "cpu")
+        _transfer_shared_head_weights(moe, ckpt_path, "cpu")
 
         # With identity init experts + transferred heads, all experts should
         # produce the same output for non-negative input
@@ -727,4 +722,3 @@ class TestWeightTransfer:
                 f"Expert {i} values differ from expert 0 after transfer"
             )
 
-        os.unlink(tmp_path)

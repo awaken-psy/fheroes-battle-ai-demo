@@ -77,7 +77,7 @@ class DeepAI(AIPlayer):
                         .unsqueeze(0).to(self.device))
             t_mask = (torch.tensor(mask, dtype=torch.float32)
                       .unsqueeze(0).to(self.device))
-            logits, _ = self.model(t_grid, t_global, t_mask)
+            logits, _, _ = self.model(t_grid, t_global, t_mask)
 
         if self.stochastic:
             action_idx = int(Categorical(logits=logits).sample().item())
@@ -111,7 +111,7 @@ def make_agent_fn(
                         .unsqueeze(0).to(device))
             t_mask = (torch.tensor(obs["mask"], dtype=torch.float32)
                       .unsqueeze(0).to(device))
-            logits, _ = model(t_grid, t_global, t_mask)
+            logits, _, _ = model(t_grid, t_global, t_mask)
 
         if stochastic:
             return int(Categorical(logits=logits).sample().item())

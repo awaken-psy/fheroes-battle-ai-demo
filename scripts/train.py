@@ -161,16 +161,12 @@ def parse_args(argv=None):
                         "Penalizes pairwise cosine similarity between experts "
                         "(default: 0.0=disabled, try 0.1-1.0)")
     p.add_argument("--train-stage", type=int, default=0,
-                   choices=[0, 2, 3, 4],
+                   choices=[0, 2, 3],
                    help="0=normal training, 2=per-expert (Stage 2), "
-                        "3=router-only (Stage 3), "
-                        "4=per-expert + trainable router (T9f Phase 2)")
+                        "3=router-only (Stage 3)")
     p.add_argument("--load-backbone", type=str, default=None,
                    help="Load backbone weights from a non-MoE checkpoint "
                         "(for Stage 2 bootstrap)")
-    p.add_argument("--load-router", type=str, default=None,
-                   help="Load router weights from a supervised-pretrained "
-                        "checkpoint (T9f Phase 2→3 bridge)")
 
     # Curriculum
     p.add_argument("--phase1-steps", type=int, default=10_000,
@@ -272,11 +268,6 @@ def main(argv=None):
         model.freeze_experts_and_heads()
         log_step(0, {"msg": "Stage 3: backbone + experts + heads frozen, "
                           "router-only training"})
-    elif args.train_stage == 4:
-        model.freeze_backbone()
-        log_step(0, {"msg": f"Stage 4 (T9f): backbone frozen, "
-                          f"{model.num_experts} experts round-robin, "
-                          f"router TRAINABLE"})
 
     multi_config = len(configs) > 1
     if multi_config:
@@ -313,24 +304,6 @@ def main(argv=None):
         total_steps = load_checkpoint(trainer, args.resume)
         log_step(total_steps, {"msg": f"resumed from {args.resume}"})
 
-    # ── T9f: Load pretrained router weights (Phase 2→3 bridge) ────
-    if args.load_router and model.moe is not None:
-        router_ckpt = torch.load(
-            args.load_router, map_location=args.device, weights_only=False)
-        router_state = {
-            k: v for k, v in router_ckpt["model"].items()
-            if k.startswith("moe.router")
-        }
-        model_state = model.state_dict()
-        model_state.update(router_state)
-        model.load_state_dict(model_state)
-        log_step(total_steps, {"msg": f"loaded router from {args.load_router} "
-                                    f"({len(router_state)} keys)"})
-
-    # ── T9f: Save initial router weights for stability tracking ──
-    if model.moe is not None:
-        model._initial_router_weight = model.moe.router.weight.data.clone()
-
     # ── Opponent pool (T3) ────────────────────────────────────────
     pool = None
     if args.opponent_pool > 0:
@@ -353,7 +326,7 @@ def main(argv=None):
     while total_steps < args.total_steps:
         # Stage 2/4: skip curriculum, use fixed dense reward to avoid
         # value-head-frozen PPO collapse on reward distribution shift.
-        if args.train_stage in (2, 4):
+        if args.train_stage == 2:
             phase, dense_weight = 1, 1.0
         else:
             phase, dense_weight = get_curriculum_phase(
@@ -383,14 +356,10 @@ def main(argv=None):
             rollout_config = None
             rollout_config_name = config_names[0]
 
-        # T9c Stage 2 / T9f Stage 4: activate matching expert for this config
-        if args.train_stage in (2, 4) and model.moe is not None:
+        # Stage 2: activate matching expert for this config
+        if args.train_stage == 2 and model.moe is not None:
             expert_idx = idx % model.num_experts
             model.set_active_expert(expert_idx)
-            # Stage 4: keep router trainable (unlike Stage 2 which freezes it)
-            if args.train_stage == 4:
-                for param in model.moe.router.parameters():
-                    param.requires_grad = True
 
         info = trainer.train_step(
             num_steps=args.rollout_steps,
@@ -500,19 +469,6 @@ def main(argv=None):
                     for ei, w in enumerate(mean_w):
                         writer.add_scalar(
                             f"router/expert_{ei}_weight", w, total_steps)
-
-                # T9f: router stability tracking (vs initial pretrained weights)
-                if hasattr(model, "_initial_router_weight"):
-                    import torch.nn.functional as _F
-                    rw = model.moe.router.weight.data
-                    iw = model._initial_router_weight
-                    eval_log["router_w_delta"] = round(
-                        (rw - iw).norm().item(), 4)
-                    eval_log["router_w_cos_sim"] = round(
-                        _F.cosine_similarity(
-                            rw.flatten().unsqueeze(0),
-                            iw.flatten().unsqueeze(0),
-                        ).item(), 4)
 
             log_eval(total_steps, eval_log)
 

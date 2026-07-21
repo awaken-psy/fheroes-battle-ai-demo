@@ -8,14 +8,23 @@ dependencies = [
     "numpy>=2.4.6",
     "pygame>=2.6",
     "tensorboard>=2.14",
-    "torch>=2.12.0",
+    "torch>=2.6.0",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu124" }
 
 [project.scripts]
 fheroes-battle-ai-demo = "main:main"
 
 [dependency-groups]
 dev = [
+    "matplotlib>=3.8",
     "pytest>=8.0",
 ]
 

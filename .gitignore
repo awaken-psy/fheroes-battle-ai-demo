@@ -9,3 +9,5 @@ checkpoints/
 results/
 runs/
 data/*.pt
+CODELY.md
+.codely-cli/

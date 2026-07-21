@@ -21,7 +21,7 @@
 > - **T9f 配置绑定训练** ❌：Phase1✅ expert分化不足(0.958), PPO软路由4次失败, 监督router 42%(expert太浅), 经验→T9g
 > - **T9g 深层 Expert + Diversity Loss** ✅：2层MLP expert + diversity loss(w=0.5) → expert余弦相似度 0.91→**-0.33**, avg **68.1%**(even_clash 100%/mage_duel 77.5%/example 52.5%/dragon 42.5%), 超T9e(56.25%), MoE有效防遗忘
 > - **T10 MoE扩展配置训练**：4→16配置扩展 + expert数量调参（待 T9g 完成）
-> - **总计 856 测试，CI 守护**
+> - **总计 846 测试，CI 守护**
 >
 > 详细规则对照见 [`docs/rules-audit.md`](rules-audit.md)（318 项）。
 > AI 行为审计见 [`docs/ai-audit.md`](ai-audit.md)（126 条）。
@@ -230,7 +230,7 @@ python scripts/train.py \
 **退出标准**：
 - [x] 200k 步训练完成，TensorBoard 曲线记录完整
 - [x] 最佳 checkpoint 保存为 `checkpoints/t4-campaign/best.pt`
-- [x] 训练结果写入 [`docs/t4-training-report.md`](t4-training-report.md)
+- [~] 训练结果写入 `docs/t4-training-report.md`（未单独写报告，结果记录在本文件 T4 章节）
 - [x] README 更新训练结果展示
 - [x] 所有测试通过（605 passed）
 - ⚠️ Benchmark Suite：example 88% ✅（≥50%），其余 3 配置 0%（单一配置训练未泛化）
@@ -272,13 +272,13 @@ python scripts/train.py \
 - Entropy: 3.56 → 1.73
 - best.pt (step 430,080): 平均胜率 **57%**
   - example 83% ✅ | even_clash 95% ✅ | mage_duel 51% ✅ | dragon_battle 0% ✗
-- 训练报告：[`docs/t6-training-report.md`](t6-training-report.md)
+- 训练结果记录在本文件 T6 章节
 
 **退出标准**：
 - [x] Cosine annealing LR scheduler 选项添加
 - [x] 500k 步混合配置训练完成
 - [x] 4 配置 benchmark 与 T4 baseline 对比（3/4 配置有非零胜率 ✅）
-- [x] 训练报告写入 `docs/t6-training-report.md`
+- [~] 训练报告写入 `docs/t6-training-report.md`（未单独写报告，结果记录在本文件 T6 章节）
 - [x] 所有测试通过（633 passed）
 
 ---

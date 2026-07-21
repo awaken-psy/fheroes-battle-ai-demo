@@ -113,7 +113,7 @@ class ResidualBlock(nn.Module):
 # -- Residual Expert Block (T9g) -------------------------------------------
 
 
-class _ResidualExpertBlock(nn.Module):
+class _ExpertMLPBlock(nn.Module):
     """2-layer MLP for expert specialization (T9g).
 
     Architecture:
@@ -189,7 +189,7 @@ class SoftMoELayer(nn.Module):
         # output = x + Linear2(ReLU(Linear1(x)))
         # Much stronger expressiveness than single Linear+ReLU.
         self.experts = nn.ModuleList([
-            _ResidualExpertBlock(input_dim, hidden_dim)
+            _ExpertMLPBlock(input_dim, hidden_dim)
             for _ in range(num_experts)
         ])
 
@@ -462,7 +462,7 @@ class BattleNet(nn.Module):
         grid: torch.Tensor,
         global_vec: torch.Tensor,
         mask: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Forward pass.
 
         Args:
@@ -473,6 +473,8 @@ class BattleNet(nn.Module):
         Returns:
             policy_logits: ``(B, 13566)`` — masked logits (illegal = -inf).
             value:         ``(B, 1)`` — value estimate in [-1, 1].
+            bottleneck:   ``(B, 384)`` — shared backbone features (for
+                           auxiliary losses to reuse without recomputation).
         """
         # 1. CNN backbone — original feature channels only (0-32)
         x = F.relu(self.stem_gn(self.stem_conv(grid[:, :_NUM_ORIG_CHANNELS])))
@@ -494,6 +496,7 @@ class BattleNet(nn.Module):
 
         # 5. Shared backbone
         x = F.relu(self.fc_bottleneck(x))                     # (B, 384)
+        bottleneck = x
 
         # 6. Heads (MoE or shared)
         if self.moe is not None:
@@ -509,26 +512,21 @@ class BattleNet(nn.Module):
             mask == 0, float("-inf")
         )
 
-        return policy_logits, value
+        return policy_logits, value, bottleneck
 
     def extract_bottleneck(self, grid: torch.Tensor,
                            global_vec: torch.Tensor) -> torch.Tensor:
         """Forward through backbone only, return bottleneck features (B, 384).
 
-        Useful for router weight analysis with real game states.
+        Equivalent to the third return value of :meth:`forward` but without
+        running the heads.  Useful when you need bottleneck features without
+        a legality mask (e.g. router weight analysis).
         """
-        # 1. CNN backbone
-        x = F.relu(self.stem_gn(self.stem_conv(grid[:, :_NUM_ORIG_CHANNELS])))
-        x = self.res_blocks(x)
-        # 2. Unit-type embedding
-        my_type_idx = (grid[:, 33] * _MAX_TYPE_INDEX).round().long().clamp(0, _MAX_TYPE_INDEX)
-        enemy_type_idx = (grid[:, 34] * _MAX_TYPE_INDEX).round().long().clamp(0, _MAX_TYPE_INDEX)
-        my_emb = self.unit_embed(my_type_idx).permute(0, 3, 1, 2)
-        enemy_emb = self.unit_embed(enemy_type_idx).permute(0, 3, 1, 2)
-        # 3. Concat + flatten + bottleneck
-        x = torch.cat([x, my_emb, enemy_emb], dim=1)
-        x = torch.cat([x.flatten(start_dim=1), global_vec], dim=1)
-        return F.relu(self.fc_bottleneck(x))
+        _, _, bottleneck = self.forward(
+            grid, global_vec,
+            torch.ones(grid.shape[0], ACTION_DIM, device=grid.device),
+        )
+        return bottleneck
 
     # -- Freeze / unfreeze helpers (T9c staged training) ------------------
 
@@ -548,7 +546,7 @@ class BattleNet(nn.Module):
     def set_active_expert(self, idx: int) -> None:
         """Only train expert *idx*, freeze all other experts (Stage 2).
 
-        Router and merge remain trainable.
+        Router remains trainable.
         """
         if self.moe is not None:
             self.moe.set_active_expert(idx)

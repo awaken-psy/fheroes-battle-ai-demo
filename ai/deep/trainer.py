@@ -231,7 +231,7 @@ class PPOTrainer:
         t_mask = torch.tensor(mask, dtype=torch.float32).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
-            logits, value = m(t_grid, t_global, t_mask)
+            logits, value, _ = m(t_grid, t_global, t_mask)
 
         dist = Categorical(logits=logits)
         action = dist.sample()
@@ -338,7 +338,7 @@ class PPOTrainer:
                 t_grid = torch.tensor(obs["grid"]).unsqueeze(0).to(self.device)
                 t_global = torch.tensor(obs["global"]).unsqueeze(0).to(self.device)
                 t_mask = torch.tensor(obs["mask"]).unsqueeze(0).to(self.device)
-                _, next_val = self.model(t_grid, t_global, t_mask)
+                _, next_val, _ = self.model(t_grid, t_global, t_mask)
                 self._last_next_value = float(next_val.squeeze().item())
         else:
             self._last_next_value = 0.0
@@ -390,7 +390,7 @@ class PPOTrainer:
 
             # Forward pass on old observations → fresh value estimates
             with torch.no_grad():
-                _, fresh_values = self.model(
+                _, fresh_values, _ = self.model(
                     replay_data["grid"].to(self.device),
                     replay_data["global"].to(self.device),
                     replay_data["mask"].to(self.device),
@@ -476,7 +476,7 @@ class PPOTrainer:
                 mb_ret = returns[mb_idx]
 
                 # Forward pass (MoE or shared heads)
-                logits, value_pred = self.model(mb_grid, mb_global, mb_mask)
+                logits, value_pred, bottleneck = self.model(mb_grid, mb_global, mb_mask)
                 dist = Categorical(logits=logits)
                 new_logp = dist.log_prob(mb_actions)
                 entropy = dist.entropy().mean()
@@ -495,14 +495,13 @@ class PPOTrainer:
                 bl_loss = torch.tensor(0.0, device=self.device)
                 if (self.balance_loss_weight > 0
                         and self.model.moe is not None):
+                    # Reuse bottleneck from forward pass (detached —
+                    # balance loss should only update router, not experts)
                     with torch.no_grad():
-                        bottleneck = self.model.extract_bottleneck(
-                            mb_grid, mb_global)
-                        # Expert-aware routing: compute expert features first
                         expert_feats = []
                         for ei in range(self.model.moe.num_experts):
                             expert_feats.append(
-                                self.model.moe.experts[ei](bottleneck))
+                                self.model.moe.experts[ei](bottleneck.detach()))
                         router_input = torch.cat(expert_feats, dim=-1)
                     router_logits = self.model.moe.router(router_input)
                     bl_loss = self.model.moe.balance_loss(router_logits)
@@ -511,8 +510,6 @@ class PPOTrainer:
                 div_loss = torch.tensor(0.0, device=self.device)
                 if (self.diversity_loss_weight > 0
                         and self.model.moe is not None):
-                    bottleneck = self.model.extract_bottleneck(
-                        mb_grid, mb_global)
                     div_loss = self.model.moe.compute_diversity_loss(bottleneck)
 
                 # Total loss (scaled by accumulation factor)
