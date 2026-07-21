@@ -122,7 +122,9 @@ def parse_args(argv=None):
     p.add_argument("--gamma", type=float, default=0.99)
     p.add_argument("--gae-lambda", type=float, default=0.95)
     p.add_argument("--clip-eps", type=float, default=0.2)
-    p.add_argument("--update-epochs", type=int, default=4)
+    p.add_argument("--update-epochs", type=int, default=2,
+                   help="PPO update epochs per rollout (default: 2, "
+                        "lower = less overfitting to current config)")
     p.add_argument("--minibatch-size", type=int, default=64)
     p.add_argument("--entropy-coeff", type=float, default=0.01)
     p.add_argument("--value-coeff", type=float, default=0.5)
@@ -139,12 +141,19 @@ def parse_args(argv=None):
                    help="Enable TensorBoard logging to runs/")
 
     # T3 opponent pool
-    p.add_argument("--opponent-pool", type=int, default=0,
-                   help="Opponent pool capacity (0 = disabled, default: 0)")
+    p.add_argument("--opponent-pool", type=int, default=5,
+                   help="Opponent pool capacity (0 = disabled, default: 5)")
 
     # T9b replay buffer
-    p.add_argument("--replay-buffer", type=int, default=0,
-                   help="Replay buffer capacity in rollouts (0 = disabled, default: 0)")
+    p.add_argument("--replay-buffer", type=int, default=10,
+                   help="Replay buffer capacity in rollouts (0 = disabled, default: 10)")
+
+    # Mixed opponent strategy
+    p.add_argument("--classic-ratio", type=float, default=0.33,
+                   help="Fraction of rollouts vs ClassicAI (default: 0.33)")
+    p.add_argument("--self-play-ratio", type=float, default=0.34,
+                   help="Fraction of pure self-play rollouts (default: 0.34)")
+    # pool ratio = 1 - classic - self_play
 
     # T9c/T9d MoE
     p.add_argument("--use-moe", action="store_true",
@@ -170,11 +179,11 @@ def parse_args(argv=None):
                    help="Load backbone weights from a non-MoE checkpoint "
                         "(for Stage 2 bootstrap)")
 
-    # Curriculum
-    p.add_argument("--phase1-steps", type=int, default=10_000,
-                   help="Steps for phase 1 (dense+sparse)")
-    p.add_argument("--phase2-steps", type=int, default=30_000,
-                   help="Step at which phase 3 (sparse-only) begins")
+    # Curriculum (default: pure sparse from step 0)
+    p.add_argument("--phase1-steps", type=int, default=0,
+                   help="Steps for phase 1 (dense+sparse, default: 0 = skip)")
+    p.add_argument("--phase2-steps", type=int, default=0,
+                   help="Step at which phase 3 (sparse-only) begins (default: 0)")
 
     # Evaluation
     p.add_argument("--eval-interval", type=int, default=5_000,
@@ -334,9 +343,21 @@ def main(argv=None):
             phase, dense_weight = get_curriculum_phase(
                 total_steps, args.phase1_steps, args.phase2_steps)
 
-        # Decide opponent for this rollout (T3)
+        # Decide opponent for this rollout (mixed strategy)
+        # 33% ClassicAI + 33% self-play + 33% pool (if available)
         opponent_model = None
-        if pool is not None and len(pool) > 0 and random.random() < 0.5:
+        opponent_classic = False
+        roll = random.random()
+        pool_ratio = max(0.0, 1.0 - args.classic_ratio - args.self_play_ratio)
+
+        if roll < args.classic_ratio:
+            # vs ClassicAI
+            opponent_classic = True
+        elif roll < args.classic_ratio + args.self_play_ratio:
+            # Pure self-play
+            pass
+        elif pool is not None and len(pool) > 0:
+            # vs pool opponent
             state_dict = pool.sample()
             if state_dict is not None:
                 opponent_model = BattleNet(
@@ -368,6 +389,7 @@ def main(argv=None):
             reward_phase=phase,
             dense_weight=dense_weight,
             opponent_model=opponent_model,
+            opponent_classic=opponent_classic,
             env_config=rollout_config,
         )
         total_steps += info.pop("steps")
@@ -375,6 +397,7 @@ def main(argv=None):
         info["phase"] = phase
         info["dense_w"] = round(dense_weight, 3)
         info["elapsed"] = round(time.time() - t0, 1)
+        info["opponent"] = info.get("opponent", "self_play")
         if multi_config:
             info["config"] = rollout_config_name
 

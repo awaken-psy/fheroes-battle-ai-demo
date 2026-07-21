@@ -21,7 +21,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
 
-from ai.action_space import ACTION_DIM
+from ai.action_space import ACTION_DIM, action_to_index, WAIT_IDX
 from ai.deep.model import BattleNet
 from ai.env import BattleEnv
 from ai.self_play import random_legal_action
@@ -247,24 +247,22 @@ class PPOTrainer:
         dense_weight: float = 1.0,
         seed: Optional[int] = None,
         opponent_model: Optional[BattleNet] = None,
+        opponent_classic: Optional[bool] = False,
         env_config: Optional[dict] = None,
     ) -> Dict[str, float]:
         """Collect *num_steps* env steps of experience.
 
-        When *opponent_model* is ``None`` (default), runs pure self-play:
-        the current policy plays both sides (parameter sharing) and all
-        transitions are stored in the buffer.
-
-        When *opponent_model* is provided, the current policy always plays
-        as team 0 (learning agent).  Team 1 is controlled by the frozen
-        *opponent_model* and its transitions are **not** stored — only the
-        learning agent's steps enter the buffer.
-
-        When *env_config* is provided, it overrides ``self.env_config`` for
-        this rollout only (T5 multi-config training).
+        Opponent modes:
+          - opponent_model=None, opponent_classic=False: pure self-play
+            (same policy plays both sides, all transitions stored).
+          - opponent_model=<BattleNet>: learning agent (team 0) vs frozen
+            opponent model (team 1). Only team-0 transitions stored.
+          - opponent_classic=True: learning agent (team 0) vs ClassicAI
+            (team 1). ClassicAI does cast+act directly on the battle state;
+            only team-0 transitions stored.
 
         Returns summary dict with keys: steps, episodes, mean_reward,
-        mean_length, opponent ("self_play" or "pool").
+        mean_length, opponent ("self_play", "pool", or "classic").
         """
         env = BattleEnv(env_config or self.env_config)
         self.buffer.clear()
@@ -280,19 +278,60 @@ class PPOTrainer:
         ep_reward = 0.0
         ep_length = 0
         learning_team = 0
-        use_opponent = opponent_model is not None
+
+        # Determine opponent type
+        use_pool = opponent_model is not None
+        use_classic = opponent_classic
+
+        if use_classic:
+            from ai.classic import ClassicAI
+            classic_ai = ClassicAI()
 
         for _ in range(num_steps):
             grid, global_vec, mask = obs["grid"], obs["global"], obs["mask"]
             current_team = info.get("current_team", 0)
 
-            if use_opponent and current_team != learning_team:
-                # Opponent's turn — act but don't store
-                action, _, _ = self._select_action(
-                    grid, global_vec, mask, model=opponent_model)
-                next_obs, reward, terminated, truncated, info = env.step(action)
-                # Only count episode-level stats from opponent steps
-                # when the episode ends on the opponent's turn.
+            # ── Opponent's turn ──
+            if current_team != learning_team and (use_pool or use_classic):
+                if use_classic:
+                    # ClassicAI executes full turn (cast + act) directly
+                    # on the battle state, bypassing env's cast phase.
+                    unit = env._current_unit
+                    battle = env._battle
+
+                    # ClassicAI: hero spell (if cast phase)
+                    if info.get("is_cast_phase"):
+                        cast = classic_ai.maybe_cast_spell(battle, unit)
+                        if cast is not None:
+                            battle.execute(cast[0])
+                        # Skip cast phase — set env to unit phase
+                        env._is_cast_phase = False
+                        # Re-obs after spell
+                        obs = env._make_obs()
+                        info = env._make_info()
+                        if battle.is_over():
+                            episodes += 1
+                            episode_rewards.append(ep_reward)
+                            episode_lengths.append(ep_length)
+                            ep_reward = 0.0
+                            ep_length = 0
+                            obs, info = env.reset(options={
+                                "reward_phase": reward_phase,
+                                "dense_weight": dense_weight,
+                            })
+                            continue
+                        # Now it's unit phase — fall through to ClassicAI decide
+
+                    # ClassicAI: unit action
+                    action_obj, _ = classic_ai.decide(battle, unit)
+                    action_idx = action_to_index(action_obj, battle, unit)
+                    next_obs, reward, terminated, truncated, info = env.step(action_idx)
+                else:
+                    # Pool opponent (frozen BattleNet)
+                    action, _, _ = self._select_action(
+                        grid, global_vec, mask, model=opponent_model)
+                    next_obs, reward, terminated, truncated, info = env.step(action)
+
                 if terminated or truncated:
                     episodes += 1
                     episode_rewards.append(ep_reward)
@@ -307,7 +346,7 @@ class PPOTrainer:
                     obs = next_obs
                 continue
 
-            # Learning agent's turn (or pure self-play)
+            # ── Learning agent's turn (or pure self-play) ──
             action, value, log_prob = self._select_action(
                 grid, global_vec, mask)
 
@@ -347,12 +386,13 @@ class PPOTrainer:
         self._rollout_episode_rewards = episode_rewards
         self._rollout_episode_lengths = episode_lengths
 
+        opp_label = "classic" if use_classic else ("pool" if use_pool else "self_play")
         return {
             "steps": num_steps,
             "episodes": episodes,
             "mean_reward": float(np.mean(episode_rewards)) if episode_rewards else 0.0,
             "mean_length": float(np.mean(episode_lengths)) if episode_lengths else 0.0,
-            "pool_play": 1.0 if use_opponent else 0.0,
+            "opponent": opp_label,
         }
 
     # ── PPO update ───────────────────────────────────────────────
@@ -567,6 +607,7 @@ class PPOTrainer:
         dense_weight: float = 1.0,
         seed: Optional[int] = None,
         opponent_model=None,
+        opponent_classic: bool = False,
         env_config: Optional[dict] = None,
     ) -> Dict[str, float]:
         """One training iteration: collect + update.
@@ -578,7 +619,9 @@ class PPOTrainer:
         """
         collect_info = self.collect_rollout(
             num_steps, reward_phase, dense_weight, seed,
-            opponent_model=opponent_model, env_config=env_config)
+            opponent_model=opponent_model,
+            opponent_classic=opponent_classic,
+            env_config=env_config)
 
         # Save current rollout to replay buffer (T9b)
         if self.replay_buffer is not None:
