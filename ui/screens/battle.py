@@ -310,7 +310,14 @@ class BattleScreen:
 
                 # Good morale: extra action for same unit
                 if self._actions_remaining > 0:
-                    unit = self.b_action.unit if self.b_action else None
+                    if isinstance(self.b_action, MoveAction):
+                        unit = self.b_action.unit
+                    elif isinstance(self.b_action, AttackAction):
+                        unit = self.b_action.attacker
+                    elif isinstance(self.b_action, SkipAction):
+                        unit = self.b_action.unit
+                    else:
+                        unit = None
                     if unit and unit.is_alive and not self.battle.is_over():
                         if unit.team == self.player_team:
                             self._await_input = True
