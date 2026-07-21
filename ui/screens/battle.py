@@ -87,6 +87,8 @@ class BattleScreen:
 
     def handle(self, ev):
         if ev.type == pygame.KEYDOWN:
+            print(f"KEY: {ev.key} (K_s={pygame.K_s}) await={self._await_input} paused={self.paused} sel={self._selected_unit} pend={self._pending_unit}")
+        if ev.type == pygame.KEYDOWN:
             if ev.key == pygame.K_SPACE:
                 self.paused = not self.paused
             elif ev.key == pygame.K_1:
