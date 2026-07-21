@@ -217,12 +217,17 @@ class SetupScreen:
             self._ai_popup_team = None
 
     def _draw_ai_btn(self, canvas, s, team):
-        """Draw an AI strategy button."""
+        """Draw an AI strategy button. Gray/disabled if player controls this team."""
         r = self._ai_btn_rect(team)
         strategy = self.ai_strategy[team]
-        label = f"{fonts.team_name(team)}: {strategy}"
-        bg = fonts.team_color(team)
-        draw_btn(canvas, r.x, r.y, r.w, r.h, label, bg, config.BLACK)
+        is_player = (self.game.player_team is not None and self.game.player_team == team)
+        if is_player:
+            label = f"{fonts.team_name(team)}: Player"
+            draw_btn(canvas, r.x, r.y, r.w, r.h, label, (60, 60, 60), (120, 120, 120))
+        else:
+            label = f"{fonts.team_name(team)}: {strategy}"
+            bg = fonts.team_color(team)
+            draw_btn(canvas, r.x, r.y, r.w, r.h, label, bg, config.BLACK)
 
     def _draw_ai_popup(self, canvas, s):
         """Draw the AI strategy selection popup."""
@@ -287,7 +292,11 @@ class SetupScreen:
                     return
                 # AI strategy buttons
                 for team in (0, 1):
-                    if self._ai_btn_rect(team).collidepoint(mx, my):
+                    btn = self._ai_btn_rect(team)
+                    if btn.collidepoint(mx, my):
+                        # Disabled if player controls this team
+                        if self.game.player_team is not None and self.game.player_team == team:
+                            return  # ignore click
                         self._ai_popup_team = team
                         return
                 # Unit scrollbar
