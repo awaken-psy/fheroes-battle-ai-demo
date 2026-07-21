@@ -321,7 +321,7 @@ class BattleScreen:
                     else:
                         unit = None
                     if unit and unit.is_alive and not self.battle.is_over():
-                        if unit.team == self.player_team:
+                        if unit.team == self.player_team and self.player_team is not None:
                             self._await_input = True
                             self._pending_unit = unit
                             self._legal_mask = legal_mask(self.battle, unit)
@@ -358,7 +358,7 @@ class BattleScreen:
 
                 self._actions_remaining = 2 if morale > 0 else 1
 
-                if unit.team == self.player_team:
+                if unit.team == self.player_team and self.player_team is not None:
                     # Player-controlled unit — wait for input
                     self._await_input = True
                     self._pending_unit = unit

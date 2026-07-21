@@ -38,7 +38,7 @@ class Game:
 
         self.units = []
         self._siege = False
-        self.player_team = 0
+        self.player_team = 0  # 0=Blue, 1=Red, None=Auto (AI vs AI)
         self.state = SETUP
 
         # screens

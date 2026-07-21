@@ -222,7 +222,13 @@ class SetupScreen:
                 player_rect = pygame.Rect(int(s(120)), int(s(12)),
                                           int(s(100)), int(s(32)))
                 if player_rect.collidepoint(mx, my):
-                    self.game.player_team = 1 - self.game.player_team; return
+                    if self.game.player_team is None:
+                        self.game.player_team = 0
+                    elif self.game.player_team == 0:
+                        self.game.player_team = 1
+                    else:
+                        self.game.player_team = None
+                    return
                 # Preset rows
                 preset_names = list(config.PRESETS)
                 for slot in range(min(self.PRESET_VISIBLE, len(preset_names))):
@@ -269,10 +275,17 @@ class SetupScreen:
         draw_btn(canvas, s(14), s(12), s(100), s(32),
                  f"Team: {fonts.team_name(self.sel_team)}",
                  fonts.team_color(self.sel_team), config.WHITE)
-        # player side selector
+        # player side selector (3-state: Blue / Red / Auto)
+        if self.game.player_team is None:
+            play_label = "Auto Battle"
+            play_color = config.GRAY
+            play_text_color = config.WHITE
+        else:
+            play_label = f"Play: {fonts.team_name(self.game.player_team)}"
+            play_color = fonts.team_color(self.game.player_team)
+            play_text_color = config.BLACK
         draw_btn(canvas, s(120), s(12), s(100), s(32),
-                 f"Play: {fonts.team_name(self.game.player_team)}",
-                 config.YELLOW, config.BLACK)
+                 play_label, play_color, play_text_color)
         hint = fonts.BODY.render("Click palette -> hex. Right-click remove.",
                                  True, (170, 180, 200))
         canvas.blit(hint, (s(230), s(16)))
