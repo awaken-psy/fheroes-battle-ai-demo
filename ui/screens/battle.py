@@ -232,10 +232,11 @@ class BattleScreen:
             return
 
         from engine.spells import SPELLS
+        hero_spell_names = {s.name for s in hero.spellbook}
         self._spell_list = []
         for spell_name in _SPELL_ORDER:
             spell = SPELLS[spell_name]
-            if spell_name in [s.name for s in hero.spellbook] and hero.can_cast(spell):
+            if spell_name in hero_spell_names and hero.can_cast(spell):
                 self._spell_list.append(spell_name)
 
         if not self._spell_list:
