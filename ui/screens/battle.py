@@ -1,10 +1,11 @@
 """Battle screen: animation engine, combat rendering, player + AI control.
 
-Supports two modes:
-  - Player control: when the current unit belongs to player_team, the
-    screen waits for mouse/keyboard input instead of calling AI.
-    Click a hex to move/attack, right-click to wait, S to cast a spell.
-  - AI control: ClassicAI drives all non-player units (retreat, cast, act).
+Player interaction flow:
+  1. When player's unit turn comes, all player units glow (selectable).
+  2. Player clicks a friendly unit → show move/attack highlights.
+  3. Player clicks a move hex or enemy → execute action.
+  4. Player clicks same unit again or presses ESC → deselect.
+  5. "End Turn" button skips the current unit's action.
 """
 
 import math
@@ -25,6 +26,7 @@ from ai.action_space import (
     CAST_START, CAST_END,
     GRID_CELLS, cell_to_index, index_to_cell,
     _SPELL_ORDER, _SPELL_INDEX,
+    MAX_ATTACK_POSITIONS,
 )
 
 # Animation phases
@@ -39,7 +41,7 @@ class BattleScreen:
         self.player_team = player_team
         self.ai = create_ai("classic")
         self.ai_strategy = {0: "classic", 1: "classic"}
-        self._ai_cache = {}  # team → AI instance
+        self._ai_cache = {}
         self.logger = BattleLogger()
 
         self.battle: BattleState | None = None
@@ -69,16 +71,17 @@ class BattleScreen:
         self._round_num = 0
 
         # Player input state
-        self._await_input = False       # waiting for player to act
-        self._pending_unit = None       # unit the player controls
-        self._legal_mask = None         # cached legal mask for current unit
-        self._hover_cell = None         # hex under mouse
-        self._cast_mode = False         # spell selection mode
-        self._spell_list = []           # available spell names
-        self._spell_sel = 0             # selected spell index in list
-        self._selected_spell_slot = None  # spell slot for casting
-        self._await_spell_target = False  # waiting for spell target hex
-        self._actions_remaining = 1     # morale: 2 if good morale
+        self._await_input = False
+        self._pending_unit = None       # the unit whose turn it is
+        self._selected_unit = None      # unit selected by player click
+        self._legal_mask = None         # legal mask for _selected_unit
+        self._hover_cell = None
+        self._cast_mode = False
+        self._spell_list = []
+        self._spell_sel = 0
+        self._selected_spell_slot = None
+        self._await_spell_target = False
+        self._actions_remaining = 1
 
     # ── event handling ────────────────────────────────────────
 
@@ -98,84 +101,110 @@ class BattleScreen:
                 self.game.reset()
                 self._await_input = False
                 self._cast_mode = False
+                self._selected_unit = None
             elif ev.key == pygame.K_f:
                 self._fast_forward()
             elif ev.key == pygame.K_d and not self._await_input:
                 self.debug = not self.debug
 
-        # Player input — only when waiting and not paused
         if self._await_input and not self.paused:
             self._handle_player_input(ev)
 
     def _handle_player_input(self, ev):
-        """Process mouse/keyboard events for player-controlled units."""
-
-        # ── Spell selection mode ──
         if self._cast_mode:
             self._handle_spell_input(ev)
             return
 
-        # ── Normal mode ──
         if ev.type == pygame.KEYDOWN:
-            if ev.key == pygame.K_s:
+            if ev.key == pygame.K_ESCAPE:
+                # Deselect
+                self._selected_unit = None
+                self._legal_mask = None
+            elif ev.key == pygame.K_s:
                 self._open_spell_list()
             elif ev.key == pygame.K_d:
-                self._player_act(WAIT_IDX)  # Defend/Wait
-            elif ev.key == pygame.K_ESCAPE:
-                pass  # no-op in normal mode
+                # Defend — only works if a unit is selected
+                if self._selected_unit:
+                    self._execute_player_action(WAIT_IDX)
         elif ev.type == pygame.MOUSEMOTION:
             self._hover_cell = self.game.hex_renderer.pixel_to_hex(*ev.pos)
         elif ev.type == pygame.MOUSEBUTTONDOWN:
-            if ev.button == 1:  # left click: move or attack
+            if ev.button == 1:
+                # Check End Turn button
+                if self._end_turn_rect().collidepoint(ev.pos):
+                    self._execute_player_action(WAIT_IDX)
+                    return
                 hex_pos = self.game.hex_renderer.pixel_to_hex(*ev.pos)
                 if hex_pos:
                     self._handle_hex_click(hex_pos)
-            elif ev.button == 3:  # right click: wait
-                self._player_act(WAIT_IDX)
+            elif ev.button == 3:
+                # Right click: deselect or wait
+                if self._selected_unit:
+                    self._selected_unit = None
+                    self._legal_mask = None
+                else:
+                    self._execute_player_action(WAIT_IDX)
 
     def _handle_hex_click(self, hex_pos):
-        """Left-click on a hex: determine if it's a move or attack action."""
-        if self._legal_mask is None or self._pending_unit is None:
+        """Handle left-click on a hex."""
+        if self._pending_unit is None:
             return
 
-        cell_idx = cell_to_index(*hex_pos)
+        clicked_unit = self.battle.unit_at(hex_pos)
 
-        # Check if clicking an enemy → attack
-        enemies = self.battle.enemies_of(self._pending_unit)
-        clicked_enemy = self.battle.unit_at(hex_pos)
+        # If no unit selected yet — select a friendly unit
+        if self._selected_unit is None:
+            if clicked_unit and clicked_unit.team == self.player_team and clicked_unit.is_alive:
+                self._selected_unit = clicked_unit
+                self._legal_mask = legal_mask(self.battle, clicked_unit)
+            return
 
-        if clicked_enemy and clicked_enemy in enemies:
-            # Find the attack action index for this enemy
-            from ai.action_space import _enemy_list, _attack_positions, MAX_ATTACK_POSITIONS
-            enemy_idx = enemies.index(clicked_enemy)
-            positions = _attack_positions(self.battle.grid, self._pending_unit, clicked_enemy)
+        # A unit is already selected
+        # Click same unit → deselect
+        if clicked_unit is self._selected_unit:
+            self._selected_unit = None
+            self._legal_mask = None
+            return
 
-            # Try ranged first (position 0)
-            if self._pending_unit.is_archer:
+        # Click another friendly unit → switch selection
+        if clicked_unit and clicked_unit.team == self.player_team and clicked_unit.is_alive:
+            self._selected_unit = clicked_unit
+            self._legal_mask = legal_mask(self.battle, clicked_unit)
+            return
+
+        # Click enemy → attack (if legal)
+        enemies = self.battle.enemies_of(self._selected_unit)
+        if clicked_unit and clicked_unit in enemies:
+            enemy_idx = enemies.index(clicked_unit)
+            from ai.action_space import _attack_positions
+            positions = _attack_positions(self.battle.grid, self._selected_unit, clicked_unit)
+
+            if self._selected_unit.is_archer:
                 idx = ATTACK_START + enemy_idx * MAX_ATTACK_POSITIONS + 0
                 if self._legal_mask[idx] == 1.0:
-                    self._player_act(idx)
+                    self._execute_player_action(idx)
                     return
 
-            # Try melee positions
             for pos_idx in range(1, min(len(positions), MAX_ATTACK_POSITIONS)):
                 idx = ATTACK_START + enemy_idx * MAX_ATTACK_POSITIONS + pos_idx
                 if self._legal_mask[idx] == 1.0:
-                    self._player_act(idx)
+                    self._execute_player_action(idx)
                     return
             return
 
-        # Check if clicking a reachable hex → move
+        # Click empty hex → move (if legal)
+        cell_idx = cell_to_index(*hex_pos)
         move_idx = MOVE_START + cell_idx
         if move_idx <= MOVE_END and self._legal_mask[move_idx] == 1.0:
-            self._player_act(move_idx)
+            self._execute_player_action(move_idx)
 
-    def _player_act(self, action_idx: int):
+    def _execute_player_action(self, action_idx: int):
         """Execute a player action from its flat index."""
-        if self._pending_unit is None or self.battle is None:
+        unit = self._selected_unit or self._pending_unit
+        if unit is None or self.battle is None:
             return
 
-        action = index_to_action(action_idx, self.battle, self._pending_unit)
+        action = index_to_action(action_idx, self.battle, unit)
         self.b_action = action
 
         if isinstance(action, SkipAction):
@@ -190,16 +219,17 @@ class BattleScreen:
         self._await_input = False
         self._legal_mask = None
         self._cast_mode = False
+        self._selected_unit = None
         self._pending_unit = None
         self._start_anim(action)
 
     # ── Spell UI ──
 
     def _open_spell_list(self):
-        """Open the spell selection panel."""
-        if self._pending_unit is None or self.battle is None:
+        if self._selected_unit is None and self._pending_unit is None:
             return
-        hero = self.battle.heroes.get(self._pending_unit.team)
+        unit = self._selected_unit or self._pending_unit
+        hero = self.battle.heroes.get(unit.team)
         if hero is None or hero._cast_this_round:
             return
 
@@ -217,7 +247,6 @@ class BattleScreen:
         self._spell_sel = 0
 
     def _handle_spell_input(self, ev):
-        """Handle input while spell panel is open."""
         if ev.type == pygame.KEYDOWN:
             if ev.key == pygame.K_ESCAPE:
                 self._cast_mode = False
@@ -230,28 +259,25 @@ class BattleScreen:
         elif ev.type == pygame.MOUSEMOTION:
             self._hover_cell = self.game.hex_renderer.pixel_to_hex(*ev.pos)
         elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-            # Click on hex → cast selected spell on that hex
             self._select_spell(target_hex=self._hover_cell)
 
     def _select_spell(self, target_hex=None):
-        """Confirm spell selection and enter target selection or cast directly."""
         if not self._spell_list:
             return
 
         spell_name = self._spell_list[self._spell_sel]
         spell_slot = _SPELL_INDEX[spell_name]
+        unit = self._selected_unit or self._pending_unit
+        if unit is None:
+            return
 
         if target_hex is None:
-            # Need to pick a target — switch to target mode
             self._selected_spell_slot = spell_slot
-            # Compute legal targets for this spell
             if self._legal_mask is None:
                 return
-            # Set mask to only show cast targets for this spell
             self._cast_spell_mask = np.zeros_like(self._legal_mask)
             base = CAST_START + spell_slot * GRID_CELLS
             self._cast_spell_mask[base:base + GRID_CELLS] = self._legal_mask[base:base + GRID_CELLS]
-            # If there are legal targets, keep cast_mode and wait for click
             if self._cast_spell_mask[base:base + GRID_CELLS].sum() > 0:
                 self._await_spell_target = True
                 return
@@ -259,21 +285,18 @@ class BattleScreen:
                 self._cast_mode = False
                 return
 
-        # Have target hex — cast
         cell_idx = cell_to_index(*target_hex)
         base = CAST_START + spell_slot * GRID_CELLS
         cast_idx = base + cell_idx
         if self._legal_mask[cast_idx] == 1.0:
-            # Execute spell
-            action = index_to_action(cast_idx, self.battle, self._pending_unit)
+            action = index_to_action(cast_idx, self.battle, unit)
             if isinstance(action, CastAction):
                 self._do_cast((action, f"Player: Cast {action.spell.name}"))
                 self._cast_mode = False
                 self._await_spell_target = False
                 self._selected_spell_slot = None
-                # After casting, refresh legal mask (state may have changed)
-                if self._pending_unit and self._pending_unit.is_alive:
-                    self._legal_mask = legal_mask(self.battle, self._pending_unit)
+                if self._selected_unit and self._selected_unit.is_alive:
+                    self._legal_mask = legal_mask(self.battle, self._selected_unit)
 
     # ── update ────────────────────────────────────────────────
 
@@ -286,7 +309,7 @@ class BattleScreen:
         if self.paused:
             return
         if self._await_input:
-            return  # wait for player
+            return
 
         spd = [1.5, 1.0, 0.5][self.speed]
 
@@ -311,10 +334,8 @@ class BattleScreen:
                                     timeout=timeout)
                     self.game.state = config.GAME_OVER; return
 
-                # Decrement actions remaining (morale)
                 self._actions_remaining -= 1
 
-                # Good morale: extra action for same unit
                 if self._actions_remaining > 0:
                     if isinstance(self.b_action, MoveAction):
                         unit = self.b_action.unit
@@ -328,7 +349,6 @@ class BattleScreen:
                         if unit.team == self.player_team and self.player_team is not None:
                             self._await_input = True
                             self._pending_unit = unit
-                            self._legal_mask = legal_mask(self.battle, unit)
                             self._ph = PH_IDLE
                             return
                         else:
@@ -341,7 +361,6 @@ class BattleScreen:
                 self._ph = PH_IDLE
 
     def _get_team_ai(self, team):
-        """Get or create the AI instance for a team's selected strategy."""
         if team not in self._ai_cache:
             strategy = self.ai_strategy.get(team, "classic")
             if strategy == "deep":
@@ -369,21 +388,19 @@ class BattleScreen:
             unit = self._round_order[self._order_idx]
             self._order_idx += 1
             if unit.is_alive:
-                # Morale roll
                 morale = self.battle.roll_morale(unit.team, unit)
                 if morale < 0:
-                    continue  # bad morale → skip
+                    continue
 
                 self._actions_remaining = 2 if morale > 0 else 1
 
                 if unit.team == self.player_team and self.player_team is not None:
-                    # Player-controlled unit — wait for input
                     self._await_input = True
                     self._pending_unit = unit
-                    self._legal_mask = legal_mask(self.battle, unit)
+                    self._selected_unit = None
+                    self._legal_mask = None
                     return
                 else:
-                    # AI-controlled unit — use team's selected strategy
                     team_ai = self._get_team_ai(unit.team)
                     retreat = team_ai.check_retreat(self.battle, unit)
                     if retreat is not None:
@@ -403,11 +420,9 @@ class BattleScreen:
                     self.b_action = action; self.b_desc = desc
                     self._start_anim(action)
                     return
-        # all units in this round processed
         self._round_order = None
 
     def _do_cast(self, cast):
-        """Execute a hero spellcast instantly (no movement animation), with a popup."""
         action, desc = cast
         result = self.battle.execute(action)
         self.b_log.append(result['desc'])
@@ -423,10 +438,10 @@ class BattleScreen:
         self._flash = (action.target.pos, 0.4)
 
     def _fast_forward(self):
-        """Skip all animations, resolve battle to completion, log and return."""
         if not self.battle or self.battle.is_over():
             return
         self._await_input = False
+        self._selected_unit = None
         from headless import _take_unit_turn
         while not self.battle.is_over():
             order = self.battle.turn_order()
@@ -605,12 +620,22 @@ class BattleScreen:
 
     # ── drawing ───────────────────────────────────────────────
 
+    def _end_turn_rect(self):
+        """Rect for the End Turn button below the grid."""
+        s = self.game._s
+        vw = config.WINDOW_WIDTH
+        vh = config.WINDOW_HEIGHT
+        w = s(140)
+        h = s(32)
+        cx = s(vw) // 2
+        y = s(vh) - s(110)
+        return pygame.Rect(int(cx - w // 2), int(y), int(w), int(h))
+
     def draw(self):
         g = self.game
         s = g._s
         canvas = g.canvas
 
-        # centre grid
         grid_w = g.grid.cols * g.hex_renderer.hex_w
         g.hex_renderer.reposition((g.win_w - grid_w) / 2, s(config.GRID_OFFSET_Y))
 
@@ -648,8 +673,8 @@ class BattleScreen:
 
         # hex highlights
         highlights = {}
-        if self._await_input and self._legal_mask is not None:
-            self._draw_legal_highlights(highlights)
+        if self._await_input and self.player_team is not None:
+            self._draw_player_highlights(highlights)
         if self.b_path:
             for p in self.b_path:
                 highlights.setdefault(p, config.PATH_COLOR)
@@ -662,7 +687,6 @@ class BattleScreen:
             highlights[self._flash[0]] = (intensity, 40, 40)
         g.hex_renderer.draw_grid(canvas, highlights)
 
-        # Siege structures
         if self.battle and self.battle.castle:
             g.hex_renderer.draw_siege(canvas, self.battle.castle)
 
@@ -694,6 +718,12 @@ class BattleScreen:
         for p in self._popups:
             p.draw(canvas)
 
+        # End Turn button (only in player mode)
+        if self._await_input and self.player_team is not None:
+            r = self._end_turn_rect()
+            draw_btn(canvas, r.x, r.y, r.w, r.h, "End Turn",
+                     (140, 60, 60), config.WHITE)
+
         # Spell panel overlay
         if self._cast_mode:
             self._draw_spell_panel(canvas, s)
@@ -702,39 +732,45 @@ class BattleScreen:
             self._draw_debug(canvas, s)
         self._draw_hints(canvas, s)
 
-    def _draw_legal_highlights(self, highlights):
-        """Highlight legal move/attack/spell hexes for player."""
-        mask = self._legal_mask
-        unit = self._pending_unit
-        if mask is None or unit is None:
-            return
+    def _draw_player_highlights(self, highlights):
+        """Draw highlights for player interaction."""
+        if self._selected_unit is not None and self._legal_mask is not None:
+            # Unit is selected — show move/attack highlights
+            mask = self._legal_mask
+            unit = self._selected_unit
 
-        # Move highlights (blue)
-        for i in range(MOVE_START, MOVE_END + 1):
-            if mask[i] == 1.0:
-                col, row = index_to_cell(i - MOVE_START)
-                highlights.setdefault((col, row), (40, 80, 140))
+            # Move highlights (blue)
+            for i in range(MOVE_START, MOVE_END + 1):
+                if mask[i] == 1.0:
+                    col, row = index_to_cell(i - MOVE_START)
+                    highlights.setdefault((col, row), (40, 80, 140))
 
-        # Attack highlights (red overlay on enemy positions)
-        enemies = self.battle.enemies_of(unit)
-        from ai.action_space import MAX_ATTACK_POSITIONS
-        for enemy_idx, enemy in enumerate(enemies):
-            if enemy_idx >= 7:
-                break
-            for pos_idx in range(MAX_ATTACK_POSITIONS):
-                idx = ATTACK_START + enemy_idx * MAX_ATTACK_POSITIONS + pos_idx
-                if mask[idx] == 1.0:
-                    # Mark enemy position with red
-                    highlights[enemy.pos] = (140, 40, 40)
+            # Attack highlights (red on enemy positions)
+            enemies = self.battle.enemies_of(unit)
+            for enemy_idx, enemy in enumerate(enemies):
+                if enemy_idx >= 7:
                     break
+                for pos_idx in range(MAX_ATTACK_POSITIONS):
+                    idx = ATTACK_START + enemy_idx * MAX_ATTACK_POSITIONS + pos_idx
+                    if mask[idx] == 1.0:
+                        highlights[enemy.pos] = (140, 40, 40)
+                        break
 
-        # Cast highlights (cyan) — only in cast mode
-        if self._cast_mode and self._selected_spell_slot is not None:
-            base = CAST_START + self._selected_spell_slot * GRID_CELLS
-            for i in range(GRID_CELLS):
-                if mask[base + i] == 1.0:
-                    col, row = index_to_cell(i)
-                    highlights.setdefault((col, row), (40, 140, 140))
+            # Cast highlights (cyan)
+            if self._cast_mode and self._selected_spell_slot is not None:
+                base = CAST_START + self._selected_spell_slot * GRID_CELLS
+                for i in range(GRID_CELLS):
+                    if mask[base + i] == 1.0:
+                        col, row = index_to_cell(i)
+                        highlights.setdefault((col, row), (40, 140, 140))
+        else:
+            # No unit selected — highlight all selectable friendly units
+            if self._pending_unit and self.battle:
+                # Highlight the pending unit (current acting unit)
+                pos = self._pending_unit.pos
+                highlights[pos] = (80, 120, 80)
+                if self._pending_unit.is_wide and self._pending_unit.tail_cell:
+                    highlights[self._pending_unit.tail_cell] = (80, 120, 80)
 
         # Hover highlight
         if self._hover_cell:
@@ -742,7 +778,6 @@ class BattleScreen:
                 self._hover_cell, (200, 200, 200))
 
     def _draw_spell_panel(self, canvas, s):
-        """Draw the spell selection panel on the right side."""
         panel_w = s(220)
         panel_h = s(40 + len(self._spell_list) * 28)
         panel_x = self.game.win_w - panel_w - s(10)
@@ -779,7 +814,12 @@ class BattleScreen:
                 cx, cy = self._anim_px
             else:
                 cx, cy = g.hex_renderer.center(*u.pos)
-            draw_unit(g.canvas, g._s, g.hex_renderer, u, cx, cy, current=(u is current))
+            # Player-selectable units get a green ring
+            selectable = (self._await_input and self.player_team is not None
+                          and u.team == self.player_team and u.is_alive
+                          and self._selected_unit is None)
+            draw_unit(g.canvas, g._s, g.hex_renderer, u, cx, cy,
+                      current=(u is current), selectable=selectable)
 
     def _draw_debug(self, canvas, s):
         vw, vh = config.WINDOW_WIDTH, config.WINDOW_HEIGHT
@@ -806,9 +846,14 @@ class BattleScreen:
         vw, vh = config.WINDOW_WIDTH, config.WINDOW_HEIGHT
         spd_names = ["Slow", "Normal", "Fast"]
         if self._await_input:
-            hints = ("[L-Click] Move/Attack  [R-Click] Wait  "
-                     "[S] Spells  [D] Defend  [R] Reset  "
-                     f"[1/2/3] {spd_names[self.speed]}  [F] Auto-Finish")
+            if self._selected_unit:
+                hints = ("[L-Click] Move/Attack  [R-Click/ESC] Deselect  "
+                         "[S] Spells  [D] Defend  [End Turn] Skip  "
+                         f"[1/2/3] {spd_names[self.speed]}  [F] Auto")
+            else:
+                hints = ("Click a friendly unit to select  "
+                         "[End Turn] Skip  [R-Click] Wait  "
+                         f"[1/2/3] {spd_names[self.speed]}  [F] Auto")
         else:
             hints = (f"[Space] {'>> Play' if self.paused else '|| Pause'}   "
                      f"[1/2/3] Speed: {spd_names[self.speed]}   "
@@ -857,6 +902,7 @@ class BattleScreen:
         self._await_input = False
         self._cast_mode = False
         self._pending_unit = None
+        self._selected_unit = None
         self._legal_mask = None
         self._hover_cell = None
         self._await_spell_target = False

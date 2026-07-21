@@ -46,11 +46,12 @@ def draw_btn(surf, x, y, bw, bh, text, bg, fg):
 
 # ── Unit drawing ──────────────────────────────────────────────
 
-def draw_unit(canvas, s, grid, u, cx, cy, current=False):
+def draw_unit(canvas, s, grid, u, cx, cy, current=False, selectable=False):
     """Render one unit (shape, symbol, hp bar, count) at pixel (cx, cy).
 
     ``cx, cy`` is the head cell's centre (or the animated position). A wide unit
     also fills its trailing tail cell, drawn underneath the head.
+    ``selectable`` draws a pulsing green ring around the unit.
     """
     color = fonts.team_color(u.team)
     r = s(15)
@@ -92,3 +93,6 @@ def draw_unit(canvas, s, grid, u, cx, cy, current=False):
 
     if current:
         pygame.draw.circle(canvas, config.YELLOW, (int(cx), int(cy)), int(s(18)), 2)
+
+    if selectable:
+        pygame.draw.circle(canvas, (60, 180, 60), (int(cx), int(cy)), int(s(20)), 2)
