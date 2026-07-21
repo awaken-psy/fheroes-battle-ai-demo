@@ -121,6 +121,7 @@ class BattleScreen:
                 self._selected_unit = None
                 self._legal_mask = None
             elif ev.key == pygame.K_s:
+                print(f"DEBUG: S pressed. selected={self._selected_unit}, pending={self._pending_unit}, await={self._await_input}, cast_mode={self._cast_mode}")
                 self._open_spell_list()
             elif ev.key == pygame.K_d:
                 # Defend — only works if a unit is selected
@@ -244,6 +245,8 @@ class BattleScreen:
 
         self._cast_mode = True
         self._spell_sel = 0
+        self._selected_unit = unit  # ensure _selected_unit is set for _select_spell
+        self._legal_mask = legal_mask(self.battle, unit)
 
     def _handle_spell_input(self, ev):
         if ev.type == pygame.KEYDOWN:

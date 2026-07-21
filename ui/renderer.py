@@ -59,13 +59,15 @@ def draw_unit(canvas, s, grid, u, cx, cy, current=False, selectable=False):
     # Wide units span two cells: draw a body reaching into the tail cell first,
     # so the head shape (and symbol / bars) render on top of it.
     if u.is_wide and u.tail_cell is not None:
-        hx, hy = grid.center(*u.pos)
-        tx, ty = grid.center(*u.tail_cell)
-        tcx, tcy = cx + (tx - hx), cy + (ty - hy)
-        pygame.draw.line(canvas, color, (int(cx), int(cy)),
-                         (int(tcx), int(tcy)), int(s(16)))
-        pygame.draw.circle(canvas, color, (int(tcx), int(tcy)), int(s(11)))
-        pygame.draw.circle(canvas, config.WHITE, (int(tcx), int(tcy)), int(s(11)), 1)
+        tc, tr = u.tail_cell
+        if 0 <= tc < grid.cols and 0 <= tr < grid.rows:
+            hx, hy = grid.center(*u.pos)
+            tx, ty = grid.center(*u.tail_cell)
+            tcx, tcy = cx + (tx - hx), cy + (ty - hy)
+            pygame.draw.line(canvas, color, (int(cx), int(cy)),
+                             (int(tcx), int(tcy)), int(s(16)))
+            pygame.draw.circle(canvas, color, (int(tcx), int(tcy)), int(s(11)))
+            pygame.draw.circle(canvas, config.WHITE, (int(tcx), int(tcy)), int(s(11)), 1)
 
     if u.is_archer:
         pts = [(cx, cy - r), (cx - s(12), cy + s(10)), (cx + s(12), cy + s(10))]
