@@ -38,11 +38,12 @@ class Game:
 
         self.units = []
         self._siege = False
+        self.player_team = 0
         self.state = SETUP
 
         # screens
         self.screen_setup = SetupScreen(self)
-        self.screen_battle = BattleScreen(self)
+        self.screen_battle = BattleScreen(self, player_team=self.player_team)
         self._playagain_rect = None
 
     # ── scale helpers ───────────────────────────────────────
@@ -138,6 +139,7 @@ class Game:
         # Both sides get a default spellcasting hero so the demo shows spells.
         heroes = {0: Hero(), 1: Hero()}
         castle = Castle() if self._siege else None
+        self.screen_battle.player_team = self.player_team
         self.screen_battle.battle = BattleState(self.grid, self.units, heroes=heroes,
                                                  castle=castle)
         self.screen_battle.b_log = []

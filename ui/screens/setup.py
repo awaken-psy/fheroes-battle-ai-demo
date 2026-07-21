@@ -95,6 +95,10 @@ class SetupScreen:
                                         int(s(100)), int(s(32)))
                 if team_rect.collidepoint(mx, my):
                     self.sel_team = 1 - self.sel_team; return
+                player_rect = pygame.Rect(int(s(120)), int(s(12)),
+                                          int(s(100)), int(s(32)))
+                if player_rect.collidepoint(mx, my):
+                    self.game.player_team = 1 - self.game.player_team; return
                 for i, pname in enumerate(config.PRESETS):
                     if self._preset_rect(i).collidepoint(mx, my):
                         self._load_preset(pname); return
@@ -137,6 +141,10 @@ class SetupScreen:
         draw_btn(canvas, s(14), s(12), s(100), s(32),
                  f"Team: {fonts.team_name(self.sel_team)}",
                  fonts.team_color(self.sel_team), config.WHITE)
+        # player side selector
+        draw_btn(canvas, s(120), s(12), s(100), s(32),
+                 f"Play: {fonts.team_name(self.game.player_team)}",
+                 config.YELLOW, config.BLACK)
         hint = fonts.BODY.render("Click palette -> hex. Right-click remove.",
                                  True, (170, 180, 200))
         canvas.blit(hint, (s(230), s(16)))
