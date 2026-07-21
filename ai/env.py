@@ -1,15 +1,25 @@
 """R4 — Gymnasium battle environment for RL training.
 
 Wraps the fheroes2 battle engine as a standard Gymnasium environment.
-Each ``step()`` corresponds to one unit activation: the agent picks one
-action from the 13 566-dim flat discrete space (Cast / Move / Attack /
-Wait / Defend / Retreat).  Good morale grants an extra step for the same
-unit; bad morale causes a silent skip.
+Each unit activation consists of up to two steps:
 
-Observation:  Dict with keys ``"grid"`` (33×9×11), ``"global"`` (20,),
-              ``"mask"`` (13566,).
-Action:       ``int`` in [0, 13 565].
-Reward:       From the current acting team's perspective (see below).
+  1. **Cast phase** (optional): the hero may cast one spell, or skip.
+     If the unit's team has no hero or the hero already cast this round,
+     this phase is skipped entirely.
+
+  2. **Unit phase** (mandatory): the unit moves, attacks, waits, defends,
+     or retreats.
+
+This mirrors the ClassicAI's ``_take_unit_turn`` flow (cast → act),
+giving DeepAI the same action budget as ClassicAI.
+
+Good morale grants an extra unit-phase step for the same unit;
+bad morale causes a silent skip.
+
+Observation:  Dict with keys ``"grid"`` (36×9×11), ``"global"`` (20,),
+              ``"mask"`` (ACTION_DIM,).
+Action:       ``int`` in [0, ACTION_DIM - 1].
+Reward:       From the current acting team's perspective.
 
 Reward phases (controlled by ``reset(options={...})``):
   Phase 1  — dense + sparse:  δ_hp + kills + terminal ±1
@@ -31,10 +41,17 @@ from engine.unit import Unit
 from engine.battle_state import BattleState
 from engine.hero import Hero
 from engine.castle import Castle
-from engine.actions import SkipAction, RetreatAction
+from engine.actions import (Action, MoveAction, AttackAction, SkipAction,
+                            CastAction, RetreatAction)
 from ai.observation import (encode_observation, NUM_GRID_CHANNELS,
                              GRID_ROWS, GRID_COLS, GLOBAL_DIM)
-from ai.action_space import (ACTION_DIM, index_to_action, legal_mask)
+from ai.action_space import (ACTION_DIM, index_to_action, legal_mask,
+                             WAIT_IDX, DEFEND_IDX, MOVE_START, MOVE_END,
+                             ATTACK_START, ATTACK_END,
+                             CAST_START, CAST_END, RETREAT_IDX,
+                             GRID_CELLS, NUM_SPELLS,
+                             cell_to_index, _SPELL_ORDER, _SPELL_INDEX,
+                             _is_mass_or_armywide, _is_ring_aoe)
 
 
 class BattleEnv(gymnasium.Env):
@@ -83,6 +100,7 @@ class BattleEnv(gymnasium.Env):
         self._turn_idx: int = 0
         self._reward_phase: int = 1
         self._dense_weight: float = 1.0
+        self._is_cast_phase: bool = False
 
         # Reward tracking
         self._prev_hp: Dict[int, float] = {0: 0.0, 1: 0.0}
@@ -116,6 +134,7 @@ class BattleEnv(gymnasium.Env):
         # Advance to first acting unit
         self._current_unit = None
         self._actions_remaining = 0
+        self._is_cast_phase = False
         self._advance_to_next_unit()
 
         return self._make_obs(), self._make_info()
@@ -127,7 +146,46 @@ class BattleEnv(gymnasium.Env):
 
         team = self._current_unit.team
 
-        # 1. Convert and execute
+        if self._is_cast_phase:
+            # ── Cast phase: execute spell (or skip) ──
+            if CAST_START <= action_index <= CAST_END:
+                action = index_to_action(action_index, self._battle,
+                                         self._current_unit)
+                if isinstance(action, CastAction):
+                    result = self._battle.execute(action)
+                else:
+                    result = {"desc": "cast phase fallback to skip"}
+            else:
+                # Agent chose to skip casting
+                result = {"desc": "skip cast"}
+
+            # Cast phase is done — transition to unit phase
+            self._is_cast_phase = False
+
+            # Check if battle ended (e.g. lethal spell killed last enemy)
+            if self._battle.is_over():
+                reward = self._dense_reward(team)
+                self._prev_hp = self._team_hp()
+                self._prev_alive = self._team_alive()
+                winner = self._battle.winner()
+                reward += 1.0 if winner == team else -1.0
+                obs = self._make_obs()
+                info = self._make_info(result)
+                info["winner"] = winner
+                info["end_reason"] = self._end_reason()
+                return obs, float(reward), True, False, info
+
+            # Reward for the cast action
+            reward = self._dense_reward(team)
+            self._prev_hp = self._team_hp()
+            self._prev_alive = self._team_alive()
+
+            obs = self._make_obs()
+            info = self._make_info(result)
+            info["is_cast_phase"] = False
+            return obs, float(reward), False, False, info
+
+        # ── Unit phase: execute unit action ──
         action = index_to_action(action_index, self._battle, self._current_unit)
         result = self._battle.execute(action)
 
@@ -153,6 +211,7 @@ class BattleEnv(gymnasium.Env):
 
         obs = self._make_obs()
         info = self._make_info(result)
+        info["is_cast_phase"] = self._is_cast_phase
         if terminated:
             info["winner"] = self._battle.winner()
             info["end_reason"] = self._end_reason()
@@ -165,6 +224,7 @@ class BattleEnv(gymnasium.Env):
         """Find next unit needing an agent action.
 
         Handles dead units, bad-morale skips, and round transitions.
+        Sets ``_is_cast_phase`` if the next unit's hero can cast.
         Returns False when the battle has ended.
         """
         while True:
@@ -185,6 +245,16 @@ class BattleEnv(gymnasium.Env):
                 self._current_team = unit.team
                 unit._acted = True
                 self._actions_remaining = 2 if morale > 0 else 1
+
+                # Check if hero can cast this round
+                hero = self._battle.heroes.get(unit.team)
+                if (hero is not None
+                        and not hero._cast_this_round
+                        and self._has_castable_spells(hero, unit)):
+                    self._is_cast_phase = True
+                else:
+                    self._is_cast_phase = False
+
                 return True
 
             # ── End of round ───────────────────────────────────
@@ -201,6 +271,19 @@ class BattleEnv(gymnasium.Env):
 
             if not self._turn_order:
                 return False
+
+    def _has_castable_spells(self, hero: Hero, unit: Unit) -> bool:
+        """Check if the hero has any spell that can be cast right now."""
+        from engine.spells import SPELLS
+        for spell in hero.spellbook:
+            if not hero.can_cast(spell):
+                continue
+            # At least one valid target must exist
+            spell_def = SPELLS.get(spell.name)
+            if spell_def is None:
+                continue
+            return True  # any castable spell is enough
+        return False
 
     # ── Reward computation ──────────────────────────────────────
 
@@ -288,8 +371,54 @@ class BattleEnv(gymnasium.Env):
             return {k: np.zeros(s.shape, dtype=s.dtype)
                     for k, s in self.observation_space.spaces.items()}
         grid, gvec = encode_observation(self._battle, self._current_unit)
-        mask = legal_mask(self._battle, self._current_unit)
+        if self._is_cast_phase:
+            mask = self._cast_phase_mask()
+        else:
+            mask = legal_mask(self._battle, self._current_unit)
         return {"grid": grid, "global": gvec, "mask": mask}
+
+    def _cast_phase_mask(self) -> np.ndarray:
+        """Legal mask for the cast phase: legal spells + Wait (skip cast)."""
+        mask = np.zeros(ACTION_DIM, dtype=np.float32)
+        # Wait = skip casting
+        mask[WAIT_IDX] = 1.0
+
+        hero = self._battle.heroes.get(self._current_unit.team)
+        if hero is None or hero._cast_this_round:
+            return mask
+
+        from engine.spells import SPELLS
+        hero_spell_names = {s.name for s in hero.spellbook}
+
+        for spell_slot, spell_name in enumerate(_SPELL_ORDER):
+            spell = SPELLS[spell_name]
+            if spell_name not in hero_spell_names:
+                continue
+            if not hero.can_cast(spell):
+                continue
+
+            base = CAST_START + spell_slot * GRID_CELLS
+
+            if _is_mass_or_armywide(spell) or _is_ring_aoe(spell):
+                mask[base:base + GRID_CELLS] = 1.0
+                continue
+
+            if spell.aoe_pattern == "chain":
+                enemies = self._battle.enemies_of(self._current_unit)
+                for e in enemies:
+                    if not e.is_immune_to_spells:
+                        mask[base + cell_to_index(*e.pos)] = 1.0
+                continue
+
+            # Single-target
+            from ai.action_space import _mark_single_target_spell
+            _mark_single_target_spell(
+                mask, base, self._battle, spell,
+                self._current_unit.team,
+                self._battle.alive(self._current_unit.team),
+                self._battle.alive(1 - self._current_unit.team))
+
+        return mask
 
     def _make_info(self, result: dict = None) -> Dict[str, Any]:
         info: Dict[str, Any] = {
@@ -298,6 +427,7 @@ class BattleEnv(gymnasium.Env):
                                   if self._current_unit else ""),
             "round_num": (self._battle.round_num
                           if self._battle else 0),
+            "is_cast_phase": self._is_cast_phase,
         }
         if result is not None:
             info["action_result"] = result
@@ -311,17 +441,3 @@ class BattleEnv(gymnasium.Env):
         if self._battle.round_num >= BattleState.MAX_ROUNDS:
             return "cap"
         return "elim"
-
-
-# ── Gymnasium registration ──────────────────────────────────────
-
-def register_envs():
-    """Register fheroes2 environments with gymnasium.
-
-    Call once before using ``gymnasium.make("fheroes2-battle-v0", ...)``.
-    """
-    if "fheroes2-battle-v0" not in gymnasium.envs.registry:
-        gymnasium.register(
-            id="fheroes2-battle-v0",
-            entry_point="ai.env:BattleEnv",
-        )

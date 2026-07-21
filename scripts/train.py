@@ -150,8 +150,9 @@ def parse_args(argv=None):
                    help="Enable Soft MoE layer (T9c)")
     p.add_argument("--num-experts", type=int, default=4,
                    help="Number of MoE experts (default: 4)")
-    p.add_argument("--moe-hidden-dim", type=int, default=128,
-                   help="Hidden dim for each MoE expert (default: 128)")
+    p.add_argument("--moe-hidden-dim", type=int, default=384,
+                   help="Hidden dim for each MoE expert (default: 384, "
+                        "must match bottleneck for identity init)")
     p.add_argument("--routing-topk", type=int, default=2,
                    help="Number of experts to activate per input (default: 2)")
     p.add_argument("--balance-loss-weight", type=float, default=0.01,

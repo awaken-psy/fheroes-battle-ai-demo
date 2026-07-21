@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ai.env import BattleEnv, register_envs
+from ai.env import BattleEnv
 from ai.observation import NUM_GRID_CHANNELS, GRID_ROWS, GRID_COLS
 from ai.action_space import ACTION_DIM, WAIT_IDX, RETREAT_IDX
 from ai.self_play import (run_episode, random_legal_action,
@@ -248,7 +248,9 @@ class TestRetreat:
     def test_retreat_ends_episode(self):
         env = BattleEnv(HERO_CONFIG)
         obs, info = env.reset(seed=42)
-        # Both teams have heroes → Retreat is legal
+        # Skip cast phase if present
+        if info.get("is_cast_phase"):
+            obs, _, _, _, info = env.step(WAIT_IDX)
         assert obs["mask"][RETREAT_IDX] == 1.0
         obs, reward, terminated, _, info = env.step(RETREAT_IDX)
         assert terminated is True
@@ -258,6 +260,9 @@ class TestRetreat:
         env = BattleEnv(HERO_CONFIG)
         obs, info = env.reset(seed=42)
         team = info["current_team"]
+        # Skip cast phase if present
+        if info.get("is_cast_phase"):
+            obs, _, _, _, info = env.step(WAIT_IDX)
         obs, reward, terminated, _, info = env.step(RETREAT_IDX)
         assert terminated
         # Retreating team loses
@@ -310,10 +315,8 @@ class TestConfigVariants:
 # ═══════════════════════════════════════════════════════════════
 
 class TestGymnasiumCompliance:
-    def test_register_and_make(self):
-        register_envs()
-        import gymnasium
-        env = gymnasium.make("fheroes2-battle-v0", battle_config=BALANCED_CONFIG)
+    def test_env_make_directly(self):
+        env = BattleEnv(BALANCED_CONFIG)
         obs, info = env.reset(seed=0)
         assert "grid" in obs
         assert "global" in obs
@@ -346,20 +349,6 @@ class TestSelfPlay:
         assert result["winner"] in (0, 1)
         assert result["steps"] > 0
         assert result["rounds"] > 0
-        assert len(result["trajectory"]) == result["steps"]
-
-    def test_trajectory_structure(self):
-        result = run_episode(
-            BALANCED_CONFIG,
-            agent_fn=random_legal_action,
-            seed=42,
-        )
-        for t in result["trajectory"][:3]:
-            assert "obs" in t
-            assert "action" in t
-            assert "reward" in t
-            assert "terminated" in t
-            assert "info" in t
 
     def test_eval_vs_random(self):
         result = eval_vs_random(

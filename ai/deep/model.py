@@ -70,8 +70,9 @@ _BOTTLENECK_DIM = 384
 _EMBED_DIM = 16
 _GN_GROUPS = 16  # GroupNorm groups: 128 channels / 16 groups = 8 ch/group
 
-# CNN processes original feature channels (0-32), not the type-index channels.
-_NUM_ORIG_CHANNELS = 33
+# CNN processes original feature channels (0-32) + selected unit (35),
+# not the type-index channels (33, 34).
+_NUM_ORIG_CHANNELS = 34
 
 # Embedding: index 0 = padding (no unit), indices 1-66 = real unit types.
 _NUM_UNIT_TYPES = 67  # 66 real + 1 padding
@@ -411,7 +412,7 @@ class BattleNet(nn.Module):
         self._action_dim = action_dim
         self._num_experts = num_experts
 
-        # -- Stem (processes original 33 feature channels) ----
+        # -- Stem (processes 34 channels: 0-32 + selected unit) ----
         self.stem_conv = nn.Conv2d(_NUM_ORIG_CHANNELS, _CONV_CHANNELS,
                                    kernel_size=3, padding=1, bias=False)
         self.stem_gn = nn.GroupNorm(_GN_GROUPS, _CONV_CHANNELS)
@@ -476,9 +477,9 @@ class BattleNet(nn.Module):
             bottleneck:   ``(B, 384)`` — shared backbone features (for
                            auxiliary losses to reuse without recomputation).
         """
-        # 1. CNN backbone — original feature channels only (0-32)
-        x = F.relu(self.stem_gn(self.stem_conv(grid[:, :_NUM_ORIG_CHANNELS])))
-        x = self.res_blocks(x)                               # (B, 128, 9, 11)
+        # 1. CNN backbone — original channels (0-32) + selected unit (35)
+        cnn_idx = [i for i in range(33)] + [35]
+        x = F.relu(self.stem_gn(self.stem_conv(grid[:, cnn_idx])))
 
         # 2. Unit-type embedding — channels 33 (my) and 34 (enemy)
         my_type_idx = (grid[:, 33] * _MAX_TYPE_INDEX).round().long().clamp(0, _MAX_TYPE_INDEX)

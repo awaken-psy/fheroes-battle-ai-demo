@@ -459,12 +459,14 @@ class PPOTrainer:
         n_updates = 0
         accum_count = 0  # minibatches since last optimizer step
 
+        total_len = len(grids)
+
         for _ in range(self.update_epochs):
             # Shuffle indices for mini-batch updates
-            indices = torch.randperm(T, device=self.device)
+            indices = torch.randperm(total_len, device=self.device)
 
-            for start in range(0, T, self.minibatch_size):
-                end = min(start + self.minibatch_size, T)
+            for start in range(0, total_len, self.minibatch_size):
+                end = min(start + self.minibatch_size, total_len)
                 mb_idx = indices[start:end]
 
                 mb_grid = grids[mb_idx]

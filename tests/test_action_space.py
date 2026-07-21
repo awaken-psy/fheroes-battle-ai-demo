@@ -19,6 +19,7 @@ from engine.spells import SPELLS, DAMAGE, AOE, BUFF, DEBUFF, CONTROL
 
 from ai.action_space import (
     ACTION_DIM, GRID_CELLS, NUM_SPELLS,
+    MAX_ENEMIES, MAX_ATTACK_POSITIONS,
     WAIT_IDX, DEFEND_IDX, RETREAT_IDX,
     MOVE_START, MOVE_END,
     ATTACK_START, ATTACK_END,
@@ -98,7 +99,7 @@ class TestCellIndexing:
 class TestConstants:
 
     def test_action_dim(self):
-        expected = 2 + GRID_CELLS + GRID_CELLS ** 2 + NUM_SPELLS * GRID_CELLS + 1
+        expected = 2 + GRID_CELLS + MAX_ENEMIES * MAX_ATTACK_POSITIONS + NUM_SPELLS * GRID_CELLS + 1
         assert ACTION_DIM == expected
 
     def test_spell_count(self):
@@ -112,11 +113,11 @@ class TestConstants:
         assert MOVE_START == 2
         assert MOVE_END == 100
         assert ATTACK_START == 101
-        assert ATTACK_END == 9901
-        assert CAST_START == 9902
-        assert CAST_END == 13564
-        assert RETREAT_IDX == 13565
-        assert ACTION_DIM == 13566
+        assert ATTACK_END == 156
+        assert CAST_START == 157
+        assert CAST_END == 3819
+        assert RETREAT_IDX == 3820
+        assert ACTION_DIM == 3821
 
     def test_all_spells_have_index(self):
         for name in _SPELL_ORDER:
@@ -268,9 +269,10 @@ class TestLegalMask:
         archer = b.alive(0)[0]
         enemy = b.alive(1)[0]
         m = legal_mask(b, archer)
-        pos_idx = cell_to_index(*archer.pos)
-        tgt_idx = cell_to_index(*enemy.pos)
-        attack_idx = ATTACK_START + pos_idx * GRID_CELLS + tgt_idx
+        enemies = b.enemies_of(archer)
+        enemy_idx = enemies.index(enemy)
+        # Position 0 = ranged
+        attack_idx = ATTACK_START + enemy_idx * MAX_ATTACK_POSITIONS + 0
         assert m[attack_idx] == 1.0
 
     def test_no_ranged_for_non_archer(self):
@@ -278,11 +280,10 @@ class TestLegalMask:
         u0 = b.alive(0)[0]
         u1 = b.alive(1)[0]
         m = legal_mask(b, u0)
-        pos_idx = cell_to_index(*u0.pos)
-        tgt_idx = cell_to_index(*u1.pos)
-        attack_idx = ATTACK_START + pos_idx * GRID_CELLS + tgt_idx
-        # Pikeman is not archer, no ranged attack
-        # But might have melee if adjacent
+        enemies = b.enemies_of(u0)
+        enemy_idx = enemies.index(u1)
+        # Position 0 = ranged, should NOT be legal for non-archer
+        attack_idx = ATTACK_START + enemy_idx * MAX_ATTACK_POSITIONS + 0
         if b.grid.distance(u0.pos, u1.pos) > 1:
             assert m[attack_idx] == 0.0
 
@@ -294,10 +295,17 @@ class TestLegalMask:
         # Place adjacent
         u0.pos = (9, 4)
         m = legal_mask(b, u0)
-        pos_idx = cell_to_index(*u0.pos)
-        tgt_idx = cell_to_index(*u1.pos)
-        attack_idx = ATTACK_START + pos_idx * GRID_CELLS + tgt_idx
-        assert m[attack_idx] == 1.0
+        enemies = b.enemies_of(u0)
+        enemy_idx = enemies.index(u1)
+        # Check if any melee position is legal
+        from ai.action_space import _attack_positions
+        positions = _attack_positions(b.grid, u0, u1)
+        found_legal = False
+        for pos_idx in range(1, min(len(positions), MAX_ATTACK_POSITIONS)):
+            if m[ATTACK_START + enemy_idx * MAX_ATTACK_POSITIONS + pos_idx] == 1.0:
+                found_legal = True
+                break
+        assert found_legal, "Expected at least one legal melee position"
 
     def test_mask_values_binary(self):
         b = _archer_battle()
@@ -505,12 +513,13 @@ class TestWideUnits:
         pike = b.alive(1)[0]
         cav.pos = (9, 4)  # adjacent to pike at (10,4)
         m = legal_mask(b, cav)
-        tgt_idx = cell_to_index(*pike.pos)
+        enemies = b.enemies_of(cav)
+        enemy_idx = enemies.index(pike)
         # Check that some melee attack position is legal
         has_melee = False
-        for pos_idx in range(GRID_CELLS):
-            idx = ATTACK_START + pos_idx * GRID_CELLS + tgt_idx
-            if m[idx] == 1.0:
+        for pos_idx in range(1, MAX_ATTACK_POSITIONS):
+            idx = ATTACK_START + enemy_idx * MAX_ATTACK_POSITIONS + pos_idx
+            if idx < ACTION_DIM and m[idx] == 1.0:
                 has_melee = True
                 break
         assert has_melee

@@ -3,18 +3,21 @@
 Encodes every possible battle action into a single integer index and provides
 a binary mask indicating which actions are legal in the current state.
 
-Action layout (13 566 total):
+Action layout (3 825 total):
   Index 0              → Wait
   Index 1              → Defend
   Indices 2–100        → Move(hex[0..98])
-  Indices 101–9901     → Attack(pos, target)  = pos × 99 + target
-  Indices 9902–13564   → Cast(spell[0..36], hex[0..98])
-  Index 13565          → Retreat
+  Indices 101–156      → Attack(enemy_index[0..6] × position[0..7])
+  Indices 157–3823     → Cast(spell[0..36], hex[0..98])
+  Index 3824           → Retreat
 
 Hex indexing: row-major  = row × 11 + col  (0–98).
 
+Attack uses a compact enemy_index × position encoding instead of the
+old pos × target (9 801 dim) scheme.  This reduces ACTION_DIM by 72%
+and makes the policy head much smaller.
+
 Teleport is excluded (needs two hexes; niche spell).
-Wait and Defend both map to engine SkipAction (no distinct semantics yet).
 """
 
 from typing import List, Optional, Set, Tuple
@@ -52,6 +55,11 @@ _SPELL_ORDER: List[str] = sorted(n for n in SPELLS if n != "Teleport")
 _SPELL_INDEX: dict = {n: i for i, n in enumerate(_SPELL_ORDER)}  # 0–36
 NUM_SPELLS = len(_SPELL_ORDER)  # 37
 
+# ── Attack sub-space constants ─────────────────────────────────
+
+MAX_ENEMIES = 7          # max alive enemy units in a standard army
+MAX_ATTACK_POSITIONS = 8  # 6 hex neighbors + current pos + ranged marker
+
 # ── Action-range boundaries ────────────────────────────────────
 
 WAIT_IDX    = 0
@@ -59,11 +67,12 @@ DEFEND_IDX  = 1
 MOVE_START  = 2
 MOVE_END    = MOVE_START + GRID_CELLS - 1              # 100
 ATTACK_START = MOVE_END + 1                             # 101
-ATTACK_END   = ATTACK_START + GRID_CELLS ** 2 - 1      # 9901
-CAST_START   = ATTACK_END + 1                           # 9902
-CAST_END     = CAST_START + NUM_SPELLS * GRID_CELLS - 1 # 13564
-RETREAT_IDX  = CAST_END + 1                             # 13565
-ACTION_DIM   = RETREAT_IDX + 1                          # 13566
+ATTACK_DIM   = MAX_ENEMIES * MAX_ATTACK_POSITIONS      # 56
+ATTACK_END   = ATTACK_START + ATTACK_DIM - 1            # 156
+CAST_START   = ATTACK_END + 1                           # 157
+CAST_END     = CAST_START + NUM_SPELLS * GRID_CELLS - 1 # 3823
+RETREAT_IDX  = CAST_END + 1                             # 3824
+ACTION_DIM   = RETREAT_IDX + 1                          # 3825
 
 
 # ── Wide-unit geometry helpers (mirrors ClassicAI) ─────────────
@@ -123,15 +132,6 @@ def _pos_dist(grid, pos: Tuple[int, int], unit: Unit) -> int:
 
 # ── Spell legality helpers ─────────────────────────────────────
 
-def _spell_target_team(spell: Spell) -> Optional[int]:
-    """Which team can this spell target?  None = both (Dispel)."""
-    if spell.kind in (BUFF, CURE):
-        return 0  # side_friendly — resolved per-caster at call site
-    if spell.kind in (DAMAGE, DEBUFF, CONTROL):
-        return 1  # enemy — resolved per-caster at call site
-    return None  # DISPEL: either team
-
-
 def _is_mass_or_armywide(spell: Spell) -> bool:
     """True if the spell doesn't need an individual target hex."""
     return (spell.is_mass
@@ -144,13 +144,37 @@ def _is_ring_aoe(spell: Spell) -> bool:
     return spell.aoe_pattern in ("ring1", "ring2", "ring_outer")
 
 
+# ── Attack position encoding ───────────────────────────────────
+
+def _enemy_list(battle: BattleState, current_unit: Unit) -> List[Unit]:
+    """Return the ordered list of alive enemy units (for enemy_index)."""
+    return battle.enemies_of(current_unit)
+
+
+def _attack_positions(grid, unit: Unit, target: Unit) -> List[Tuple[int, int]]:
+    """Return the ordered list of positions from which *unit* can melee *target*.
+
+    Position index 0 is always the attacker's current position (for ranged).
+    Positions 1-7 are melee attack cells (neighbors of target, or neighbors
+    of target's tail if wide).
+    """
+    cells = _attack_cells(grid, target)
+    # Current position first (position index 0 = ranged)
+    result = [unit.pos]
+    for ac in cells:
+        if ac != unit.pos:
+            result.append(ac)
+    return result[:MAX_ATTACK_POSITIONS]
+
+
 # ── Core API ───────────────────────────────────────────────────
 
 def action_to_index(action: Action, battle: BattleState,
                     current_unit: Unit) -> int:
     """Convert an Action object to its flat index.
 
-    SkipAction maps to WAIT_IDX by default (Defend distinction lost).
+    SkipAction maps to WAIT_IDX.
+    AttackAction uses enemy_index × position encoding.
     """
     if isinstance(action, SkipAction):
         return WAIT_IDX
@@ -159,13 +183,22 @@ def action_to_index(action: Action, battle: BattleState,
     if isinstance(action, MoveAction):
         return MOVE_START + cell_to_index(*action.path[-1])
     if isinstance(action, AttackAction):
-        tgt_idx = cell_to_index(*action.target.pos)
+        enemies = _enemy_list(battle, current_unit)
+        try:
+            enemy_idx = enemies.index(action.target)
+        except ValueError:
+            raise ValueError(
+                f"Target {action.target.name} not in enemy list")
+        positions = _attack_positions(battle.grid, current_unit, action.target)
         if action.ranged:
-            pos_idx = cell_to_index(*action.attacker.pos)
+            pos_idx = 0  # position 0 = ranged (current position)
         else:
-            from_cell = action.from_pos if action.from_pos else action.attacker.pos
-            pos_idx = cell_to_index(*from_cell)
-        return ATTACK_START + pos_idx * GRID_CELLS + tgt_idx
+            from_cell = action.from_pos if action.from_pos else current_unit.pos
+            try:
+                pos_idx = positions.index(from_cell)
+            except ValueError:
+                pos_idx = 0
+        return ATTACK_START + enemy_idx * MAX_ATTACK_POSITIONS + pos_idx
     if isinstance(action, CastAction):
         slot = _SPELL_INDEX.get(action.spell.name)
         if slot is None:
@@ -213,19 +246,20 @@ def index_to_action(index: int, battle: BattleState,
     # ── Attack ──
     if ATTACK_START <= index <= ATTACK_END:
         offset = index - ATTACK_START
-        pos_idx = offset // GRID_CELLS
-        tgt_idx = offset % GRID_CELLS
-        tgt_col, tgt_row = index_to_cell(tgt_idx)
-        target = battle.unit_at((tgt_col, tgt_row))
-        if target is None:
+        enemy_idx = offset // MAX_ATTACK_POSITIONS
+        pos_idx = offset % MAX_ATTACK_POSITIONS
+        enemies = _enemy_list(battle, current_unit)
+        if enemy_idx >= len(enemies):
             return SkipAction(current_unit)
-        attacker_idx = cell_to_index(*current_unit.pos)
-        pos_col, pos_row = index_to_cell(pos_idx)
-        if pos_idx == attacker_idx and current_unit.is_archer:
+        target = enemies[enemy_idx]
+        if pos_idx == 0 and current_unit.is_archer:
             return AttackAction(current_unit, target, ranged=True)
-        else:
-            return AttackAction(current_unit, target,
-                                from_pos=(pos_col, pos_row), ranged=False)
+        positions = _attack_positions(battle.grid, current_unit, target)
+        if pos_idx >= len(positions):
+            return SkipAction(current_unit)
+        from_pos = positions[pos_idx]
+        return AttackAction(current_unit, target,
+                            from_pos=from_pos, ranged=False)
 
     # ── Cast ──
     if CAST_START <= index <= CAST_END:
@@ -248,7 +282,6 @@ def index_to_action(index: int, battle: BattleState,
         if _is_ring_aoe(spell):
             cell = (hex_col, hex_row)
             if target is None:
-                # Ring AOE can center on any cell; pick a placeholder target
                 alive = battle.alive(1 - team) or battle.alive(team)
                 target = alive[0] if alive else None
         elif spell.aoe_pattern == "chain":
@@ -315,28 +348,32 @@ def legal_mask(battle: BattleState, current_unit: Unit) -> np.ndarray:
 def _mark_attack_legal(mask: np.ndarray, battle: BattleState,
                         unit: Unit, reachable: Set[Tuple[int, int]],
                         occ: Set[Tuple[int, int]], moat) -> None:
-    """Mark legal melee and ranged attack positions."""
+    """Mark legal melee and ranged attack actions."""
     grid = battle.grid
     enemies = battle.enemies_of(unit)
-    attacker_idx = cell_to_index(*unit.pos)
 
-    for enemy in enemies:
-        tgt_idx = cell_to_index(*enemy.pos)
+    for enemy_idx, enemy in enumerate(enemies):
+        if enemy_idx >= MAX_ENEMIES:
+            break
 
-        # ── Ranged (archer only) ──
+        positions = _attack_positions(grid, unit, enemy)
+
+        # ── Ranged (archer only, position 0 = current pos) ──
         if unit.is_archer:
-            mask[ATTACK_START + attacker_idx * GRID_CELLS + tgt_idx] = 1.0
+            base = ATTACK_START + enemy_idx * MAX_ATTACK_POSITIONS
+            mask[base + 0] = 1.0  # ranged attack
 
         # ── Melee ──
-        for ac in _attack_cells(grid, enemy):
+        for pos_idx, ac in enumerate(positions):
+            if pos_idx == 0:
+                continue  # position 0 reserved for ranged
             if ac in occ:
                 continue
             if ac not in reachable and ac != unit.pos:
                 continue
             if not _can_attack_from_pos(grid, unit, enemy, ac, moat):
                 continue
-            pos_idx = cell_to_index(*ac)
-            mask[ATTACK_START + pos_idx * GRID_CELLS + tgt_idx] = 1.0
+            mask[ATTACK_START + enemy_idx * MAX_ATTACK_POSITIONS + pos_idx] = 1.0
 
 
 def _mark_cast_legal(mask: np.ndarray, battle: BattleState,
@@ -346,11 +383,12 @@ def _mark_cast_legal(mask: np.ndarray, battle: BattleState,
     friendly = battle.alive(team)
     enemies = battle.alive(1 - team)
 
+    hero_spell_names = {s.name for s in hero.spellbook}
+
     for spell_slot, spell_name in enumerate(_SPELL_ORDER):
         spell = SPELLS[spell_name]
 
-        # Check hero can afford and hasn't cast this round
-        if spell_name not in [s.name for s in hero.spellbook]:
+        if spell_name not in hero_spell_names:
             continue
         if not hero.can_cast(spell):
             continue
@@ -358,17 +396,14 @@ def _mark_cast_legal(mask: np.ndarray, battle: BattleState,
         base = CAST_START + spell_slot * GRID_CELLS
 
         if _is_mass_or_armywide(spell):
-            # All hexes legal (target ignored at execution)
             mask[base:base + GRID_CELLS] = 1.0
             continue
 
         if _is_ring_aoe(spell):
-            # Any cell can be the center of the AOE
             mask[base:base + GRID_CELLS] = 1.0
             continue
 
         if spell.aoe_pattern == "chain":
-            # Chain Lightning: hex must have an alive enemy (first bounce)
             for e in enemies:
                 if e.is_immune_to_spells:
                     continue
@@ -376,7 +411,6 @@ def _mark_cast_legal(mask: np.ndarray, battle: BattleState,
                 mask[base + idx] = 1.0
             continue
 
-        # ── Single-target spells ──
         _mark_single_target_spell(mask, base, battle, spell, team,
                                    friendly, enemies)
 
@@ -386,14 +420,11 @@ def _mark_single_target_spell(mask: np.ndarray, base: int,
                                 team: int,
                                 friendly: list, enemies: list) -> None:
     """Mark legal hexes for a single-target spell."""
-    # Determine which team the spell can target
     if spell.side_friendly or spell.kind in (BUFF, CURE):
         candidates = friendly
     elif spell.kind == DISPEL:
-        # Dispel can target either side
         candidates = friendly + enemies
     else:
-        # DAMAGE, DEBUFF, CONTROL
         candidates = enemies
 
     for unit in candidates:
@@ -401,10 +432,8 @@ def _mark_single_target_spell(mask: np.ndarray, base: int,
             continue
         if unit.is_immune_to_spells:
             continue
-        # Already has this buff/debuff → skip
         if spell.kind in (BUFF, DEBUFF, CONTROL) and unit.has_effect(spell.name):
             continue
-        # Tag exclusions (e.g. undead can't be Blessed/Cursed)
         if spell.exclude_tags:
             if any(unit.has_tag(t) for t in spell.exclude_tags):
                 continue
@@ -431,11 +460,9 @@ def action_type_label(index: int) -> str:
         return f"Move({col},{row})"
     if ATTACK_START <= index <= ATTACK_END:
         offset = index - ATTACK_START
-        pos_idx = offset // GRID_CELLS
-        tgt_idx = offset % GRID_CELLS
-        pc, pr = index_to_cell(pos_idx)
-        tc, tr = index_to_cell(tgt_idx)
-        return f"Attack(({pc},{pr})->({tc},{tr}))"
+        enemy_idx = offset // MAX_ATTACK_POSITIONS
+        pos_idx = offset % MAX_ATTACK_POSITIONS
+        return f"Attack(enemy={enemy_idx},pos={pos_idx})"
     if CAST_START <= index <= CAST_END:
         offset = index - CAST_START
         slot = offset // GRID_CELLS

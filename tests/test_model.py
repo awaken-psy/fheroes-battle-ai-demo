@@ -142,8 +142,8 @@ class TestValueRange:
 class TestParameterCount:
     def test_param_count_in_range(self, model):
         count = model.count_parameters()
-        assert 10_000_000 <= count <= 20_000_000, (
-            f"Parameter count {count:,} outside target range 10-20M"
+        assert 5_000_000 <= count <= 15_000_000, (
+            f"Parameter count {count:,} outside target range 5-15M"
         )
 
     def test_param_count_matches_manual(self, model):

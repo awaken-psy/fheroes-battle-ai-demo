@@ -9,7 +9,7 @@ Always encoded from the current acting unit's perspective.  When team 0 acts,
 "my" = team 0; when team 1 acts, "my" = team 1.  This enables parameter sharing
 across both sides (AlphaStar-style), doubling data efficiency.
 
-Grid channel layout (35 channels × 9 rows × 11 cols)
+Grid channel layout (36 channels × 9 rows × 11 cols)
 -----------------------------------------------------
  0–9:  My units   (existence, hp, count, atk, def, spd, archer, flyer, wide_tail, acted)
 10–19: Enemy units (same layout, offset by 10)
@@ -17,6 +17,7 @@ Grid channel layout (35 channels × 9 rows × 11 cols)
 30–32: Siege structures (wall HP, moat, towers)
 33:    My unit type index (normalised 0–1, 0 = no unit)
 34:    Enemy unit type index (normalised 0–1, 0 = no unit)
+35:    Selected unit (1.0 on current acting unit's cells, 0 elsewhere)
 
 Global vector (20 dims): round, attacker team, unit counts, HP totals,
 hero stats, siege state, morale/luck, current-unit index.
@@ -34,7 +35,7 @@ from engine.castle import MOAT_CELLS
 
 GRID_ROWS = 9
 GRID_COLS = 11
-NUM_GRID_CHANNELS = 35
+NUM_GRID_CHANNELS = 36
 GLOBAL_DIM = 20
 
 # ── Internal normalisation constants ───────────────────────────
@@ -84,6 +85,9 @@ _CH_TOWER = 32
 _CH_MY_TYPE = 33
 _CH_ENEMY_TYPE = 34
 
+# Selected unit channel (R-refactor)
+_CH_SELECTED = 35
+
 
 # ── Public API ─────────────────────────────────────────────────
 
@@ -109,6 +113,7 @@ def encode_observation(
     _encode_units(grid, battle, my_team)
     _encode_effects(grid, battle)
     _encode_siege(grid, battle)
+    _set_on_cells(grid, _CH_SELECTED, current_unit)
 
     gvec = _encode_global(battle, current_unit)
 

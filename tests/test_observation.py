@@ -52,8 +52,8 @@ def test_output_shapes():
 
 
 def test_num_grid_channels():
-    """T8: 35 channels (33 original + 2 type-index)."""
-    assert NUM_GRID_CHANNELS == 35
+    """36 channels (33 original + 2 type-index + 1 selected unit)."""
+    assert NUM_GRID_CHANNELS == 36
 
 
 # ── Player-relative encoding ──────────────────────────────────

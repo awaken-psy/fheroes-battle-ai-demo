@@ -56,17 +56,14 @@ def run_episode(
         "dense_weight": dense_weight,
     })
 
-    trajectory = []
     total_reward = 0.0
+    steps = 0
 
     while True:
         action = agent_fn(obs, info)
         next_obs, reward, terminated, truncated, info = env.step(action)
-        trajectory.append({
-            "obs": obs, "action": action, "reward": reward,
-            "terminated": terminated, "truncated": truncated, "info": info,
-        })
         total_reward += reward
+        steps += 1
         obs = next_obs
 
         if terminated or truncated:
@@ -76,8 +73,7 @@ def run_episode(
         "winner": info.get("winner"),
         "rounds": info.get("round_num", 0),
         "total_reward": total_reward,
-        "steps": len(trajectory),
-        "trajectory": trajectory,
+        "steps": steps,
     }
 
 

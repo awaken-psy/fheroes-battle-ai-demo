@@ -46,11 +46,21 @@ class DeepAI(AIPlayer):
         device: str = "cpu",
         stochastic: bool = False,
     ):
-        self.model = BattleNet()
         if model_path is not None:
             ckpt = torch.load(model_path, map_location=device,
                               weights_only=False)
-            self.model.load_state_dict(ckpt["model"])
+            state = ckpt["model"]
+            num_experts = sum(
+                1 for k in state
+                if k.startswith("moe.experts.") and k.endswith(".linear1.weight")
+            ) if any(k.startswith("moe.") for k in state) else 0
+            self.model = BattleNet(
+                num_experts=num_experts,
+                moe_hidden_dim=384 if num_experts > 0 else 384,
+            )
+            self.model.load_state_dict(state)
+        else:
+            self.model = BattleNet()
         self.model.to(device).eval()
         self.device = device
         self.stochastic = stochastic

@@ -139,7 +139,7 @@ class TestFormatTable:
         table = format_table(results)
         assert "Test" in table
         assert "30/50" in table
-        assert "✓" in table
+        assert "Y" in table
         assert "Passed: 1/1" in table
 
     def test_fail_marker(self):
@@ -152,7 +152,7 @@ class TestFormatTable:
             }
         ]
         table = format_table(results)
-        assert "✗" in table
+        assert "N" in table
         assert "Passed: 0/1" in table
 
 
