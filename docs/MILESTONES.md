@@ -783,3 +783,142 @@ uv run python scripts/train.py --use-moe --num-experts 4 --routing-topk 2 \
 - [ ] 与原版 fheroes2 C++ AI 决策对照（oracle 一致率）
 - [ ] 挑战人类玩家对战
 
+---
+
+## 🎮 H 系列 — 玩家 vs 电脑
+
+> **目标**：让人类玩家通过 GUI 操控单位（移动/攻击/等待/防御）和英雄施法，与 ClassicAI 对战。
+>
+> **可行性**：引擎层（BattleState / actions / hex_grid / action_space / spells / hero）零修改，渲染层（hex_renderer）零修改。唯一实质编码在 `BattleScreen`——拦截 `_next_unit()` 中玩家方单位，等待鼠标/键盘输入，用 `legal_mask` 高亮合法格，`index_to_action` 生成 Action 后复用现有动画/结算管线。
+>
+> **决策**：
+> - 执子方：布阵界面可选（蓝/红），默认蓝方（Team 0）
+> - 施法 UI：按 S 键打开法术列表，选法术→选目标→执行；不按 S 直接进入单位行动
+> - 士气/运气：一并实现，玩家和 AI 单位行动前都 roll_morale
+> - 范围：H1（移动/攻击/等待/防御）+ H2（英雄施法）一次做完
+
+### 依赖关系
+
+```
+H1(玩家操控单位) ──→ H2(英雄施法) ──→ H3(信息展示) ──→ H4(布阵增强)
+```
+
+---
+
+### H1 — 玩家操控单位 ✅+H2 一起做
+
+**目标**：玩家能控制己方单位移动、攻击、等待、防御，对方由 ClassicAI 控制。
+
+**核心改动**：`BattleScreen._next_unit()` 拦截玩家方单位
+
+#### H1.1 — Game 层 player_team 支持
+
+**文件**：`ui/game.py`
+
+**改动**：
+- `Game.__init__` 增加 `self.player_team = 0`
+- `start_battle()` 将 `player_team` 传入 `BattleScreen`
+- `SetupScreen` 增加执子方选择按钮（蓝/红切换）
+
+**退出标准**：
+- [ ] Game 有 `player_team` 属性
+- [ ] 布阵界面能选择执子方
+- [ ] BattleScreen 接收到 `player_team`
+
+#### H1.2 — BattleScreen 玩家输入拦截
+
+**文件**：`ui/screens/battle.py`
+
+**改动**：
+- `__init__` 增加：`self.player_team`、`self._await_input = False`、`self._legal_mask = None`、`self._hover_cell = None`、`self._cast_mode = False`、`self._selected_spell = None`
+- `_next_unit()` 改造：
+  - 对 `unit.team == self.player_team` 的单位：设 `_await_input = True`，计算 `legal_mask(battle, unit)`，return 等待玩家输入
+  - 对 `unit.team != self.player_team` 的单位：走原 AI 路径（check_retreat / maybe_cast_spell / decide）
+  - 士气/运气：两种路径前都调用 `battle.roll_morale(unit.team, unit)`
+- 新增 `_handle_player_input(ev)`：
+  - 鼠标 hover：`pixel_to_hex` → 存 `_hover_cell`
+  - 左键点击（普通模式）：`legal_mask` 判断点击格是否合法 → `index_to_action` 生成 Action → `_start_anim`
+  - 左键点击（施法模式）：选目标格 → `index_to_action` 生成 CastAction → `_do_cast`
+  - 右键点击：等待（SkipAction）
+  - 键盘：S=打开法术列表，D=防御（SkipAction），Space=暂停（已有）
+
+**退出标准**：
+- [ ] 玩家能移动单位到合法格子
+- [ ] 玩家能攻击敌方单位（近战+远程）
+- [ ] 玩家能等待/防御
+- [ ] ClassicAI 正常控制对方
+- [ ] 战斗能正常结束并判定胜负
+
+#### H1.3 — 合法格高亮
+
+**文件**：`ui/screens/battle.py` `draw()`
+
+**改动**：
+- 当 `_await_input` 时：
+  - 移动格：`legal_mask` 中 Move 区间的合法格 → 蓝色高亮
+  - 攻击目标：`legal_mask` 中 Attack 区间的合法格 → 红色虚线标记
+  - hover 格：白色边框
+- 施法模式时：
+  - 法术目标格：Cast 区间的合法格 → 青色高亮
+
+**退出标准**：
+- [ ] 可移动格子有蓝色高亮
+- [ ] 可攻击目标有红色标记
+- [ ] hover 格子有视觉反馈
+
+---
+
+### H2 — 玩家英雄施法 ✅ 与 H1 一起做
+
+**目标**：玩家按 S 键打开法术列表，选择法术和目标后施放。
+
+**文件**：`ui/screens/battle.py`
+
+**改动**：
+- 新增 `_draw_spell_panel(canvas, s)`：列出英雄可施法术（名称 + 消耗）
+- 按上下键选择法术，回车确认，ESC 取消
+- 选定法术后进入"选目标"模式，`_cast_mode = True`，`_selected_spell = spell_slot`
+- 选目标后 `index_to_action` 生成 CastAction → `_do_cast(cast_action)` → 退出施法模式 → 进入单位行动
+- 无英雄或已施法过的英雄不显示法术列表
+
+**退出标准**：
+- [ ] 玩家能按 S 打开法术列表
+- [ ] 玩家能选择法术
+- [ ] 玩家能选择法术目标
+- [ ] 施法后正常进入单位行动
+- [ ] ClassicAI 施法不受影响
+- [ ] 无英雄配置不显示法术列表
+
+---
+
+### H3 — 战斗信息展示（待排期）
+
+**目标**：玩家能看到完整的战斗信息。
+
+**计划改动**：
+- 当前单位详情面板（攻击/防御/HP/速度/能力）
+- 选中敌方单位时显示其信息
+- 法术效果剩余回合显示
+- 回合顺序预览条
+
+**退出标准**：
+- [ ] 鼠标悬停单位显示详细信息
+- [ ] 回合顺序条显示在界面顶部
+- [ ] 状态效果有视觉标记
+
+---
+
+### H4 — 布阵增强（待排期）
+
+**目标**：更完善的布阵体验。
+
+**计划改动**：
+- 单位数量调整（滑块或滚轮）
+- 英雄配置界面（选择法术/技能）
+- 保存/加载自定义阵型
+
+**退出标准**：
+- [ ] 玩家能调整单位数量
+- [ ] 玩家能配置英雄
+- [ ] 玩家能保存阵型
+
