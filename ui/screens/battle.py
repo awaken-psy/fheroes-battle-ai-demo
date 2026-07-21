@@ -87,8 +87,6 @@ class BattleScreen:
 
     def handle(self, ev):
         if ev.type == pygame.KEYDOWN:
-            print(f"KEY: {ev.key} (K_s={pygame.K_s}) await={self._await_input} paused={self.paused} sel={self._selected_unit} pend={self._pending_unit}")
-        if ev.type == pygame.KEYDOWN:
             if ev.key == pygame.K_SPACE:
                 self.paused = not self.paused
             elif ev.key == pygame.K_1:
@@ -136,6 +134,11 @@ class BattleScreen:
                 # Check End Turn button
                 if self._end_turn_rect().collidepoint(ev.pos):
                     self._execute_player_action(WAIT_IDX)
+                    return
+                # Check Cast Spell button
+                if self._cast_spell_btn_rect().collidepoint(ev.pos):
+                    if self._can_cast_spell():
+                        self._open_spell_list()
                     return
                 hex_pos = self.game.hex_renderer.pixel_to_hex(*ev.pos)
                 if hex_pos:
@@ -629,11 +632,32 @@ class BattleScreen:
         s = self.game._s
         vw = config.WINDOW_WIDTH
         vh = config.WINDOW_HEIGHT
-        w = s(140)
+        w = s(120)
         h = s(32)
         cx = s(vw) // 2
         y = s(vh) - s(110)
-        return pygame.Rect(int(cx - w // 2), int(y), int(w), int(h))
+        return pygame.Rect(int(cx - w - s(5)), int(y), int(w), int(h))
+
+    def _cast_spell_btn_rect(self):
+        """Rect for the Cast Spell button below the grid."""
+        s = self.game._s
+        vw = config.WINDOW_WIDTH
+        vh = config.WINDOW_HEIGHT
+        w = s(120)
+        h = s(32)
+        cx = s(vw) // 2
+        y = s(vh) - s(110)
+        return pygame.Rect(int(cx + s(5)), int(y), int(w), int(h))
+
+    def _can_cast_spell(self):
+        """Check if player can cast a spell right now."""
+        if not self._await_input or self.battle is None:
+            return False
+        unit = self._selected_unit or self._pending_unit
+        if unit is None:
+            return False
+        hero = self.battle.heroes.get(unit.team)
+        return hero is not None and not hero._cast_this_round
 
     def draw(self):
         g = self.game
@@ -722,11 +746,18 @@ class BattleScreen:
         for p in self._popups:
             p.draw(canvas)
 
-        # End Turn button (only in player mode)
+        # End Turn + Cast Spell buttons (only in player mode)
         if self._await_input and self.player_team is not None:
+            # End Turn button
             r = self._end_turn_rect()
             draw_btn(canvas, r.x, r.y, r.w, r.h, "End Turn",
                      (140, 60, 60), config.WHITE)
+            # Cast Spell button
+            cs_r = self._cast_spell_btn_rect()
+            can_cast = self._can_cast_spell()
+            draw_btn(canvas, cs_r.x, cs_r.y, cs_r.w, cs_r.h, "Cast Spell",
+                     (60, 100, 140) if can_cast else (50, 50, 60),
+                     config.WHITE if can_cast else (100, 100, 110))
 
         # Spell panel overlay
         if self._cast_mode:
