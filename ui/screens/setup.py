@@ -110,12 +110,13 @@ class SetupScreen:
 
     def handle(self, ev):
         if ev.type == pygame.MOUSEWHEEL:
-            mx, my = ev.pos if hasattr(ev, 'pos') else (0, 0)
+            mx, my = pygame.mouse.get_pos()
             s = self.game._s
-            # Determine which area the mouse is over
-            if my < s(self.PRESET_HEADER_Y):
+            # Check if mouse is over the unit list area
+            unit_area_bottom = s(self.UNIT_AREA_Y + self.UNIT_VISIBLE * (self.UNIT_ROW_H + self.UNIT_ROW_GAP))
+            if my < unit_area_bottom:
                 self.unit_scroll = max(0, min(self._unit_max_scroll(),
-                                              self.unit_scroll - ev.y))
+                                             self.unit_scroll - ev.y))
             else:
                 self.preset_scroll = max(0, min(self._preset_max_scroll(),
                                                 self.preset_scroll - ev.y))
@@ -233,8 +234,15 @@ class SetupScreen:
             tc = fonts.team_light(self.sel_team)
             canvas.blit(fonts.LABEL.render(ut["symbol"], True, tc),
                         (r.x + s(8), r.y + s(4)))
-            canvas.blit(fonts.BODY.render(name, True, config.WHITE),
-                        (r.x + s(28), r.y + s(3)))
+            # Truncate long unit names to fit
+            name_surf = fonts.BODY.render(name, True, config.WHITE)
+            max_w = r.w - s(34)
+            if name_surf.get_width() > max_w:
+                while name_surf.get_width() > max_w - s(8) and len(name) > 3:
+                    name = name[:-1]
+                name = name + ".."
+                name_surf = fonts.BODY.render(name, True, config.WHITE)
+            canvas.blit(name_surf, (r.x + s(28), r.y + s(3)))
             canvas.blit(fonts.DATA.render(
                 f"A{ut['attack']} D{ut['defense']} H{ut['hp']} S{ut['speed']} x{ut['count']}",
                 True, (170, 180, 200)), (r.x + s(28), r.y + s(22)))
@@ -261,8 +269,15 @@ class SetupScreen:
             r = self._preset_rect(slot)
             pygame.draw.rect(canvas, (30, 38, 55), r, border_radius=int(s(3)))
             pygame.draw.rect(canvas, (60, 68, 92), r, 1, border_radius=int(s(3)))
-            canvas.blit(fonts.BODY.render(f"Preset: {pname}", True, config.WHITE),
-                        (r.x + s(8), r.y + s(4)))
+            label = f"Preset: {pname}"
+            label_surf = fonts.BODY.render(label, True, config.WHITE)
+            max_w = r.w - s(12)
+            if label_surf.get_width() > max_w:
+                while label_surf.get_width() > max_w - s(6) and len(label) > 8:
+                    label = label[:-1]
+                label = label + ".."
+                label_surf = fonts.BODY.render(label, True, config.WHITE)
+            canvas.blit(label_surf, (r.x + s(8), r.y + s(4)))
 
         # Preset scrollbar
         if self._preset_max_scroll() > 0:
