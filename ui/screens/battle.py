@@ -191,7 +191,6 @@ class BattleScreen:
         self._legal_mask = None
         self._cast_mode = False
         self._pending_unit = None
-        self._actions_remaining -= 1
         self._start_anim(action)
 
     # ── Spell UI ──
@@ -311,6 +310,9 @@ class BattleScreen:
                     self.logger.end(self.battle.winner(), self.battle.round_num,
                                     timeout=timeout)
                     self.game.state = config.GAME_OVER; return
+
+                # Decrement actions remaining (morale)
+                self._actions_remaining -= 1
 
                 # Good morale: extra action for same unit
                 if self._actions_remaining > 0:
