@@ -14,16 +14,18 @@ class SetupScreen:
     # Layout constants (in design pixels, before scaling)
     PANEL_X = 4
     PANEL_W = 216
-    HEADER_Y = 48        # "UNITS" label
-    UNIT_AREA_Y = 64     # unit list starts here
-    UNIT_ROW_H = 60
+    HEADER_Y = 48
+    UNIT_AREA_Y = 64
+    UNIT_ROW_H = 50       # single-line row height
+    UNIT_ROW_H_TALL = 64  # two-line row height
     UNIT_ROW_GAP = 4
-    UNIT_VISIBLE = 5     # visible unit rows
-    PRESET_HEADER_Y = 440  # "PRESETS" label
-    PRESET_AREA_Y = 456   # preset list starts here
-    PRESET_ROW_H = 36
+    UNIT_VISIBLE = 6
+    PRESET_HEADER_Y = 460
+    PRESET_AREA_Y = 476
+    PRESET_ROW_H = 28
+    PRESET_ROW_H_TALL = 44
     PRESET_ROW_GAP = 3
-    PRESET_VISIBLE = 5    # visible preset rows
+    PRESET_VISIBLE = 5
 
     def __init__(self, game):
         self.game = game
@@ -35,22 +37,70 @@ class SetupScreen:
         self._unit_sb_drag = False
         self._preset_sb_drag = False
 
+    # ── name wrapping check ────────────────────────────────────
+
+    def _unit_needs_wrap(self, name):
+        """Check if unit name is too wide for one line at current scale."""
+        s = self.game._s
+        name_surf = fonts.BODY.render(name, True, config.WHITE)
+        max_w = s(196 - 34)  # rect width minus symbol column
+        return name_surf.get_width() > max_w
+
+    def _preset_needs_wrap(self, label):
+        """Check if preset label is too wide for one line."""
+        s = self.game._s
+        surf = fonts.BODY.render(label, True, config.WHITE)
+        max_w = s(196 - 12)
+        return surf.get_width() > max_w
+
+    def _unit_row_h(self, item_idx):
+        """Height of a specific unit row (design pixels)."""
+        names = list(config.UNIT_TYPES)
+        if item_idx >= len(names):
+            return self.UNIT_ROW_H
+        return self.UNIT_ROW_H_TALL if self._unit_needs_wrap(names[item_idx]) else self.UNIT_ROW_H
+
+    def _preset_row_h(self, item_idx):
+        """Height of a specific preset row (design pixels)."""
+        names = list(config.PRESETS)
+        if item_idx >= len(names):
+            return self.PRESET_ROW_H
+        label = f"Preset: {names[item_idx]}"
+        return self.PRESET_ROW_H_TALL if self._preset_needs_wrap(label) else self.PRESET_ROW_H
+
     # ── layout rects (design pixels → scaled) ─────────────────
+
+    def _unit_y_offset(self, slot):
+        """Cumulative Y (design px) for visible unit row `slot`."""
+        y = self.UNIT_AREA_Y
+        for i in range(slot):
+            y += self._unit_row_h(self.unit_scroll + i) + self.UNIT_ROW_GAP
+        return y
 
     def _unit_rect(self, slot):
         """Screen rect for visible unit row `slot`."""
         s = self.game._s
-        y = self.UNIT_AREA_Y + slot * (self.UNIT_ROW_H + self.UNIT_ROW_GAP)
-        return pygame.Rect(s(12), s(y), s(196), s(self.UNIT_ROW_H))
+        y = self._unit_y_offset(slot)
+        h = self._unit_row_h(self.unit_scroll + slot)
+        return pygame.Rect(int(s(12)), int(s(y)), int(s(196)), int(s(h)))
+
+    def _unit_visible_height(self):
+        """Total design-pixel height of visible unit rows + gaps."""
+        h = 0
+        for i in range(self.UNIT_VISIBLE):
+            idx = self.unit_scroll + i
+            if idx >= len(config.UNIT_TYPES):
+                break
+            h += self._unit_row_h(idx) + self.UNIT_ROW_GAP
+        return h - self.UNIT_ROW_GAP
 
     def _unit_max_scroll(self):
         return max(0, len(config.UNIT_TYPES) - self.UNIT_VISIBLE)
 
     def _unit_scrollbar_track(self):
         s = self.game._s
-        y = self.UNIT_AREA_Y
-        h = self.UNIT_VISIBLE * (self.UNIT_ROW_H + self.UNIT_ROW_GAP) - self.UNIT_ROW_GAP
-        return pygame.Rect(int(s(212)), int(s(y)), int(s(7)), int(s(h)))
+        h = self._unit_visible_height()
+        return pygame.Rect(int(s(212)), int(s(self.UNIT_AREA_Y)), int(s(7)), int(s(h)))
 
     def _unit_scrollbar_thumb(self):
         track = self._unit_scrollbar_track()
@@ -60,20 +110,33 @@ class SetupScreen:
         off = int((track.h - th) * (self.unit_scroll / ms)) if ms else 0
         return pygame.Rect(track.x, track.y + off, track.w, th)
 
+    def _preset_y_offset(self, slot):
+        """Cumulative Y (design px) for visible preset row `slot`."""
+        y = self.PRESET_AREA_Y
+        for i in range(slot):
+            y += self._preset_row_h(self.preset_scroll + i) + self.PRESET_ROW_GAP
+        return y
+
     def _preset_rect(self, slot):
         """Screen rect for visible preset row `slot`."""
         s = self.game._s
-        y = self.PRESET_AREA_Y + slot * (self.PRESET_ROW_H + self.PRESET_ROW_GAP)
-        return pygame.Rect(s(12), s(y), s(196), s(self.PRESET_ROW_H))
+        y = self._preset_y_offset(slot)
+        h = self._preset_row_h(self.preset_scroll + slot)
+        return pygame.Rect(int(s(12)), int(s(y)), int(s(196)), int(s(h)))
 
     def _preset_max_scroll(self):
         return max(0, len(config.PRESETS) - self.PRESET_VISIBLE)
 
     def _preset_scrollbar_track(self):
         s = self.game._s
-        y = self.PRESET_AREA_Y
-        h = self.PRESET_VISIBLE * (self.PRESET_ROW_H + self.PRESET_ROW_GAP) - self.PRESET_ROW_GAP
-        return pygame.Rect(int(s(212)), int(s(y)), int(s(7)), int(s(h)))
+        h = 0
+        for i in range(self.PRESET_VISIBLE):
+            idx = self.preset_scroll + i
+            if idx >= len(config.PRESETS):
+                break
+            h += self._preset_row_h(idx) + self.PRESET_ROW_GAP
+        h = max(h - self.PRESET_ROW_GAP, 0)
+        return pygame.Rect(int(s(212)), int(s(self.PRESET_AREA_Y)), int(s(7)), int(s(h)))
 
     def _preset_scrollbar_thumb(self):
         track = self._preset_scrollbar_track()
@@ -112,9 +175,8 @@ class SetupScreen:
         if ev.type == pygame.MOUSEWHEEL:
             mx, my = pygame.mouse.get_pos()
             s = self.game._s
-            # Check if mouse is over the unit list area
-            unit_area_bottom = s(self.UNIT_AREA_Y + self.UNIT_VISIBLE * (self.UNIT_ROW_H + self.UNIT_ROW_GAP))
-            if my < unit_area_bottom:
+            unit_bottom = s(self.UNIT_AREA_Y + self._unit_visible_height())
+            if my < unit_bottom:
                 self.unit_scroll = max(0, min(self._unit_max_scroll(),
                                              self.unit_scroll - ev.y))
             else:
@@ -234,7 +296,6 @@ class SetupScreen:
             tc = fonts.team_light(self.sel_team)
             canvas.blit(fonts.LABEL.render(ut["symbol"], True, tc),
                         (r.x + s(8), r.y + s(4)))
-            # Split name into two lines if too long, keep font size
             name_surf = fonts.BODY.render(name, True, config.WHITE)
             max_w = r.w - s(34)
             if name_surf.get_width() <= max_w:
@@ -345,10 +406,9 @@ class SetupScreen:
     def _load_preset(self, name):
         preset = config.PRESETS[name]
         self.game.units = []
-        # Siege flag: if preset has "siege": True, store for start_battle.
         self.game._siege = preset.get("siege", False)
         for team, placements in preset.items():
             if isinstance(team, str):
-                continue  # skip "siege" key
+                continue
             for type_name, col, row in placements:
                 self.game.units.append(Unit.from_type(type_name, team, col, row))
