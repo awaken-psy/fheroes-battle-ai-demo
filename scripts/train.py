@@ -46,6 +46,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import torch
 
 from ai.deep.model import BattleNet
+from ai.action_space import ACTION_DIM
 from ai.deep.opponent_pool import OpponentPool
 from ai.deep.replay_buffer import ReplayBuffer
 from ai.deep.pipeline import (
@@ -455,7 +456,7 @@ def main(argv=None):
                             ).unsqueeze(0).to(args.device)
                             feat = model.extract_bottleneck(grid_t, gvec_t)
                             all_features.append(feat)
-                            legal = [a for a in range(13566)
+                            legal = [a for a in range(ACTION_DIM)
                                      if obs["mask"][a]]
                             if legal:
                                 obs, _, done, _, _ = env.step(
