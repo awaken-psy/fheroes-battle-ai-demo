@@ -16,12 +16,12 @@ class SetupScreen:
     PANEL_W = 216
     HEADER_Y = 48        # "UNITS" label
     UNIT_AREA_Y = 64     # unit list starts here
-    UNIT_ROW_H = 50
+    UNIT_ROW_H = 60
     UNIT_ROW_GAP = 4
-    UNIT_VISIBLE = 6     # visible unit rows
-    PRESET_HEADER_Y = 430  # "PRESETS" label
-    PRESET_AREA_Y = 446   # preset list starts here
-    PRESET_ROW_H = 28
+    UNIT_VISIBLE = 5     # visible unit rows
+    PRESET_HEADER_Y = 440  # "PRESETS" label
+    PRESET_AREA_Y = 456   # preset list starts here
+    PRESET_ROW_H = 36
     PRESET_ROW_GAP = 3
     PRESET_VISIBLE = 5    # visible preset rows
 
@@ -234,7 +234,7 @@ class SetupScreen:
             tc = fonts.team_light(self.sel_team)
             canvas.blit(fonts.LABEL.render(ut["symbol"], True, tc),
                         (r.x + s(8), r.y + s(4)))
-            # Split name into two lines if too long
+            # Split name into two lines if too long, keep font size
             name_surf = fonts.BODY.render(name, True, config.WHITE)
             max_w = r.w - s(34)
             if name_surf.get_width() <= max_w:
@@ -243,7 +243,6 @@ class SetupScreen:
                     f"A{ut['attack']} D{ut['defense']} H{ut['hp']} S{ut['speed']} x{ut['count']}",
                     True, (170, 180, 200)), (r.x + s(28), r.y + s(22)))
             else:
-                # Split at last space before midpoint
                 mid = len(name) // 2
                 split_idx = name.rfind(' ', 0, mid + 3)
                 if split_idx <= 0:
@@ -252,11 +251,11 @@ class SetupScreen:
                 line2 = name[split_idx + 1:] if split_idx < len(name) else ""
                 canvas.blit(fonts.BODY.render(line1, True, config.WHITE),
                             (r.x + s(28), r.y + s(1)))
-                canvas.blit(fonts.DATA.render(line2, True, config.WHITE),
-                            (r.x + s(28), r.y + s(14)))
+                canvas.blit(fonts.BODY.render(line2, True, config.WHITE),
+                            (r.x + s(28), r.y + s(16)))
                 canvas.blit(fonts.DATA.render(
                     f"A{ut['attack']} D{ut['defense']} H{ut['hp']} S{ut['speed']} x{ut['count']}",
-                    True, (170, 180, 200)), (r.x + s(28), r.y + s(28)))
+                    True, (170, 180, 200)), (r.x + s(28), r.y + s(31)))
 
         # Unit scrollbar
         if self._unit_max_scroll() > 0:
@@ -286,17 +285,16 @@ class SetupScreen:
             if label_surf.get_width() <= max_w:
                 canvas.blit(label_surf, (r.x + s(8), r.y + s(4)))
             else:
-                # Split at last space before midpoint
                 mid = len(label) // 2
                 split_idx = label.rfind(' ', 0, mid + 3)
                 if split_idx <= 0:
                     split_idx = mid
                 line1 = label[:split_idx]
                 line2 = label[split_idx + 1:] if split_idx < len(label) else ""
-                canvas.blit(fonts.DATA.render(line1, True, config.WHITE),
+                canvas.blit(fonts.BODY.render(line1, True, config.WHITE),
                             (r.x + s(8), r.y + s(2)))
-                canvas.blit(fonts.DATA.render(line2, True, config.WHITE),
-                            (r.x + s(8), r.y + s(15)))
+                canvas.blit(fonts.BODY.render(line2, True, config.WHITE),
+                            (r.x + s(8), r.y + s(16)))
 
         # Preset scrollbar
         if self._preset_max_scroll() > 0:
