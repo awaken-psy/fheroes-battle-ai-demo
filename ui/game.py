@@ -143,10 +143,10 @@ class Game:
         castle = Castle() if self._siege else None
         self.screen_battle.player_team = self.player_team
         self.screen_battle.ai_strategy = dict(self.screen_setup.ai_strategy)
+        # Full reset to clear any stale state from previous battle
+        self.screen_battle.reset()
         self.screen_battle.battle = BattleState(self.grid, self.units, heroes=heroes,
                                                  castle=castle)
-        self.screen_battle.b_log = []
-        self.screen_battle._popups = []
         self.screen_battle._round_order = None
         self.screen_battle._order_idx = 0
         self.screen_battle._round_num = 0
@@ -154,12 +154,15 @@ class Game:
         self.screen_battle._await_input = False
         self.screen_battle._cast_mode = False
         self.screen_battle._pending_unit = None
+        self.screen_battle._selected_unit = None
         self.screen_battle._legal_mask = None
         self.screen_battle._await_spell_target = False
         self.screen_battle._selected_spell_slot = None
         self.screen_battle._spell_list = []
         self.screen_battle._spell_sel = 0
+        self.screen_battle._spell_scroll = 0
         self.screen_battle._actions_remaining = 1
+        self.screen_battle._ai_cache = {}
         # Position grid for battle screen before first update runs
         grid_w = self.grid.cols * self.hex_renderer.hex_w
         self.hex_renderer.reposition((self.win_w - grid_w) / 2, self._s(config.GRID_OFFSET_Y))

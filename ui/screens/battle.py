@@ -319,7 +319,8 @@ class BattleScreen:
         cell_idx = cell_to_index(*target_hex)
         base = CAST_START + spell_slot * GRID_CELLS
         cast_idx = base + cell_idx
-        if self._legal_mask[cast_idx] == 1.0:
+        if (cast_idx < len(self._legal_mask)
+                and self._legal_mask[cast_idx] == 1.0):
             action = index_to_action(cast_idx, self.battle, unit)
             if isinstance(action, CastAction):
                 self._do_cast((action, f"Player: Cast {action.spell.name}"))
@@ -681,7 +682,16 @@ class BattleScreen:
         if unit is None:
             return False
         hero = self.battle.heroes.get(unit.team)
-        return hero is not None and not hero._cast_this_round
+        if hero is None or hero._cast_this_round:
+            return False
+        # Check if at least one spell is castable
+        from engine.spells import SPELLS
+        hero_spell_names = {s.name for s in hero.spellbook}
+        for spell_name in _SPELL_ORDER:
+            spell = SPELLS.get(spell_name)
+            if spell and spell_name in hero_spell_names and hero.can_cast(spell):
+                return True
+        return False
 
     def draw(self):
         g = self.game
@@ -989,7 +999,10 @@ class BattleScreen:
         self.b_path = None; self.b_target = None; self.b_log = []
         self._round_order = None
         self._ph = PH_IDLE; self._anim_unit = None
+        self._anim_px = (0.0, 0.0)
+        self._move_px = []; self._move_idx = 0; self._move_frac = 0.0
         self._popups = []; self._projectile = None; self._flash = None
+        self._exec_result = None
         self._await_input = False
         self._cast_mode = False
         self._pending_unit = None
@@ -1000,6 +1013,7 @@ class BattleScreen:
         self._selected_spell_slot = None
         self._spell_list = []
         self._spell_sel = 0
+        self._spell_scroll = 0
         self._actions_remaining = 1
         self._ai_cache = {}
         self.logger.reset()
