@@ -282,9 +282,15 @@ class BattleScreen:
                     self._spell_sel = i
                     self._select_spell()
                     return
-            # Click outside panel → close
+            # Click outside panel → close or cast on target
             if not panel.collidepoint(ev.pos):
-                self._cast_mode = False
+                if self._await_spell_target:
+                    # In target selection mode — click hex to cast
+                    hex_pos = self.game.hex_renderer.pixel_to_hex(*ev.pos)
+                    if hex_pos:
+                        self._select_spell(target_hex=hex_pos)
+                else:
+                    self._cast_mode = False
         elif ev.type == pygame.MOUSEWHEEL:
             mx, my = pygame.mouse.get_pos()
             panel = self._spell_panel_rect()
