@@ -82,6 +82,8 @@ class BattleScreen:
         self._selected_spell_slot = None
         self._await_spell_target = False
         self._actions_remaining = 1
+        self._spell_scroll = 0
+        self._SPELL_VISIBLE = 8  # max visible rows in spell panel
 
     # ── event handling ────────────────────────────────────────
 
@@ -250,6 +252,7 @@ class BattleScreen:
 
         self._cast_mode = True
         self._spell_sel = 0
+        self._spell_scroll = 0
         self._selected_unit = unit  # ensure _selected_unit is set for _select_spell
         self._legal_mask = legal_mask(self.battle, unit)
 
@@ -266,7 +269,28 @@ class BattleScreen:
         elif ev.type == pygame.MOUSEMOTION:
             self._hover_cell = self.game.hex_renderer.pixel_to_hex(*ev.pos)
         elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-            self._select_spell(target_hex=self._hover_cell)
+            # Click Cast Spell button again → toggle close
+            if self._cast_spell_btn_rect().collidepoint(ev.pos):
+                self._cast_mode = False
+                return
+            # Click on a spell row → select it
+            s = self.game._s
+            panel = self._spell_panel_rect()
+            for i in range(len(self._spell_list)):
+                row = self._spell_row_rect(i, panel)
+                if row.collidepoint(ev.pos):
+                    self._spell_sel = i
+                    self._select_spell()
+                    return
+            # Click outside panel → close
+            if not panel.collidepoint(ev.pos):
+                self._cast_mode = False
+        elif ev.type == pygame.MOUSEWHEEL:
+            mx, my = pygame.mouse.get_pos()
+            panel = self._spell_panel_rect()
+            if panel.collidepoint(mx, my):
+                max_scroll = max(0, len(self._spell_list) - self._SPELL_VISIBLE)
+                self._spell_scroll = max(0, min(max_scroll, self._spell_scroll - ev.y))
 
     def _select_spell(self, target_hex=None):
         if not self._spell_list:
@@ -811,33 +835,66 @@ class BattleScreen:
             highlights[self._hover_cell] = highlights.get(
                 self._hover_cell, (200, 200, 200))
 
-    def _draw_spell_panel(self, canvas, s):
-        panel_w = s(220)
-        panel_h = s(40 + len(self._spell_list) * 28)
+    def _spell_panel_rect(self):
+        """Rect for the spell panel."""
+        s = self.game._s
+        visible = min(len(self._spell_list), self._SPELL_VISIBLE)
+        panel_w = s(240)
+        panel_h = s(40 + visible * 28 + 10)
         panel_x = self.game.win_w - panel_w - s(10)
         panel_y = s(50)
+        return pygame.Rect(int(panel_x), int(panel_y), int(panel_w), int(panel_h))
 
-        panel = pygame.Rect(int(panel_x), int(panel_y), int(panel_w), int(panel_h))
+    def _spell_row_rect(self, idx, panel):
+        """Rect for spell row idx (absolute index), or None if not visible."""
+        s = self.game._s
+        visible_idx = idx - self._spell_scroll
+        if visible_idx < 0 or visible_idx >= self._SPELL_VISIBLE:
+            return None
+        y = panel.y + s(34 + visible_idx * 28)
+        return pygame.Rect(int(panel.x + s(6)), int(y),
+                           int(panel.w - s(22)), int(s(24)))
+
+    def _draw_spell_panel(self, canvas, s):
+        panel = self._spell_panel_rect()
         pygame.draw.rect(canvas, (20, 28, 45), panel, border_radius=int(s(6)))
         pygame.draw.rect(canvas, (80, 100, 140), panel, 2, border_radius=int(s(6)))
 
         canvas.blit(fonts.TITLE.render("SPELLS", True, config.WHITE),
-                    (panel_x + s(10), panel_y + s(6)))
+                    (panel.x + s(10), panel.y + s(6)))
 
         from engine.spells import SPELLS
-        for i, spell_name in enumerate(self._spell_list):
+        visible = min(len(self._spell_list), self._SPELL_VISIBLE)
+        for vi in range(visible):
+            idx = self._spell_scroll + vi
+            if idx >= len(self._spell_list):
+                break
+            spell_name = self._spell_list[idx]
             spell = SPELLS[spell_name]
-            y = panel_y + s(34 + i * 28)
-            sel = (i == self._spell_sel)
+            row = self._spell_row_rect(idx, panel)
+            if row is None:
+                continue
+            sel = (idx == self._spell_sel)
             bg = (50, 55, 78) if sel else (30, 38, 55)
-            row = pygame.Rect(int(panel_x + s(6)), int(y),
-                              int(panel_w - s(12)), int(s(24)))
             pygame.draw.rect(canvas, bg, row, border_radius=int(s(3)))
             if sel:
                 pygame.draw.rect(canvas, config.YELLOW, row, 2, border_radius=int(s(3)))
+            else:
+                pygame.draw.rect(canvas, (60, 68, 92), row, 1, border_radius=int(s(3)))
             text = f"{spell_name} ({spell.cost}sp)"
             canvas.blit(fonts.BODY.render(text, True, config.WHITE),
                         (row.x + s(8), row.y + s(3)))
+
+        # Scrollbar
+        max_scroll = max(0, len(self._spell_list) - self._SPELL_VISIBLE)
+        if max_scroll > 0:
+            track = pygame.Rect(int(panel.right - s(8)), int(panel.y + s(34)),
+                                int(s(6)), int(panel.h - s(44)))
+            pygame.draw.rect(canvas, (28, 34, 50), track, border_radius=int(s(3)))
+            th = max(int(track.h * self._SPELL_VISIBLE / len(self._spell_list)), int(s(20)))
+            off = int((track.h - th) * (self._spell_scroll / max_scroll))
+            thumb = pygame.Rect(track.x, track.y + off, track.w, th)
+            pygame.draw.rect(canvas, (95, 108, 140), thumb, border_radius=int(s(3)))
 
     def _draw_units(self, current=None):
         g = self.game
