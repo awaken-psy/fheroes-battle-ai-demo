@@ -278,7 +278,7 @@ class BattleScreen:
             panel = self._spell_panel_rect()
             for i in range(len(self._spell_list)):
                 row = self._spell_row_rect(i, panel)
-                if row.collidepoint(ev.pos):
+                if row is not None and row.collidepoint(ev.pos):
                     self._spell_sel = i
                     self._select_spell()
                     return
